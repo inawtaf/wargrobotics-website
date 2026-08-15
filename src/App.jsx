@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/AuthContext';
 
 import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
+import AnalyticsTracker from '@/components/AnalyticsTracker';
 import PageNotFound from '@/lib/PageNotFound';
 
 import Home from '@/pages/Home';
@@ -23,6 +24,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <AnalyticsTracker />
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />

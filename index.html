@@ -8,6 +8,16 @@
     <meta name="description" content="Warg Robotics — Next-gen modular FPV vehicles, low-latency HD video transmission, and autonomous navigation software." />
     <meta name="theme-color" content="#0B0F17" />
     <title>Warg Robotics — Modular FPV & Autonomous Systems</title>
+
+    <!-- Google Analytics (GA4) -->
+    <!-- Set VITE_GA_MEASUREMENT_ID in your .env file (see README) to your Measurement ID, e.g. G-XXXXXXXXXX -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '%VITE_GA_MEASUREMENT_ID%');
+    </script>
   </head>
   <body>
     <div id="root"></div>
