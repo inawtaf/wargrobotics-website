@@ -13,13 +13,13 @@ const PCB_IMG = 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59
 const GOGGLES_IMG = 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/ba9e93097_generated_f5fa1c56.png';
 
 const CONTROLLERS = [
-  { id: 'digital-fpv', name: 'Digital FPV', desc: '720p HD 60fps camera with digital video feed.', price: 17000, latency: '35ms', autonomy: 'NO', fov: '60°', range: '2km', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/e77a93ca9_3.png' },
-  { id: 'digital-fpv-wide', name: 'Digital FPV – Wide Angle', desc: '1080p HD 30fps wide angle camera with digital video feed for wider vision.', price: 20000, latency: '35ms', autonomy: 'YES', fov: '160°', range: '12km', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/e3445e823_4.png' },
+  { id: 'digital-fpv', name: 'Digital FPV', desc: '720p HD 60fps camera with digital video feed.', latency: '35ms', autonomy: 'NO', fov: '60°', range: '2km', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/e77a93ca9_3.png' },
+  { id: 'digital-fpv-wide', name: 'Digital FPV – Wide Angle', desc: '1080p HD 30fps wide angle camera with digital video feed for wider vision.', latency: '35ms', autonomy: 'YES', fov: '160°', range: '12km', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/e3445e823_4.png' },
 ];
 
 const GOGGLES = [
-  { id: 'warg-hd-goggles', name: 'Warg HD Goggles', desc: 'High definition display for outdoor and remote piloting.', price: 15000, res: '1080p30', fov: '150°', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/37b7bee7a_goggle.png' },
-  { id: 'warg-hdmi', name: 'Warg HDMI Display', desc: 'Plug in to your TV/monitor or any other device display with HDMI output.', price: 10000, res: '1080p30', fov: '150°', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/cb1ff2b0d_hdmi.png' },
+  { id: 'warg-hd-goggles', name: 'Warg HD Goggles', desc: 'High definition display for outdoor and remote piloting.', res: '1080p30', fov: '150°', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/37b7bee7a_goggle.png' },
+  { id: 'warg-hdmi', name: 'Warg HDMI Display', desc: 'Plug in to your TV/monitor or any other device display with HDMI output.', res: '1080p30', fov: '150°', img: 'https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/cb1ff2b0d_hdmi.png' },
 ];
 
 const PRODUCTS = {
@@ -28,9 +28,9 @@ const PRODUCTS = {
     label: 'GROUND SYSTEMS',
     tagline: 'Modular ground FPV vehicles built for speed and terrain.',
     chassis: [
-      { id: 'classic-pony', name: 'Classis Pony', desc: 'Lightweight 1/10 carbon chassis for high-speed ground FPV.', price: 14000, weight: '500g', speed: '15km/h', range: '2km', img: CAR_IMAGES[0], tag: 'GROUND' },
-      { id: 'explorer-jeep', name: 'Explorer Jeep', desc: 'Reinforced AWD chassis with active suspension for any terrain.', price: 17000, weight: '700g', speed: '25km/h', range: '5km', img: CAR_IMAGES[1], tag: 'GROUND' },
-      { id: 'mustang-fire-red', name: 'Mustang Fire', desc: 'High-speed rally chassis tuned for flat terrain and racing.', price: 18000, weight: '600g', speed: '35km/h', range: '2km', img: CAR_IMAGES[2], tag: 'GROUND' },
+      { id: 'classic-pony', name: 'Classis Pony', desc: 'Lightweight 1/10 carbon chassis for high-speed ground FPV.', weight: '500g', speed: '15km/h', range: '2km', img: CAR_IMAGES[0], tag: 'GROUND' },
+      { id: 'explorer-jeep', name: 'Explorer Jeep', desc: 'Reinforced AWD chassis with active suspension for any terrain.', weight: '700g', speed: '25km/h', range: '5km', img: CAR_IMAGES[1], tag: 'GROUND' },
+      { id: 'mustang-fire-red', name: 'Mustang Fire', desc: 'High-speed rally chassis tuned for flat terrain and racing.', weight: '600g', speed: '35km/h', range: '2km', img: CAR_IMAGES[2], tag: 'GROUND' },
     ],
   },
   planes: {
@@ -38,9 +38,9 @@ const PRODUCTS = {
     label: 'AIR SYSTEMS',
     tagline: 'FPV aircraft engineered for long-range flight.',
     chassis: [
-      { id: 'fixed-wing-sports', name: 'Fixed Wing - Sports', desc: 'Agile fixed-wing platform for sport FPV flying and racing.', price: 20000, weight: '250g', speed: '85km/h', range: '12km', img: PLANE_IMAGES[0], tag: 'AIR' },
-      { id: 'nano-quad', name: 'Nano Quad', desc: '2-inch nano quad for quick explorations. Auto stabilize with collision avoidance.', price: 20000, weight: '150g', speed: '60km/h', range: '5km', img: PLANE_IMAGES[2], tag: 'AIR' },
-      { id: 'mini-quad', name: 'Mini Quad', desc: 'Versatile explorer wing for scenic FPV and aerial tours.', price: 15000, weight: '250g', speed: '50km/h', range: '7km', img: PLANE_IMAGES[3], tag: 'AIR' },
+      { id: 'fixed-wing-sports', name: 'Fixed Wing - Sports', desc: 'Agile fixed-wing platform for sport FPV flying and racing.', weight: '250g', speed: '85km/h', range: '12km', img: PLANE_IMAGES[0], tag: 'AIR' },
+      { id: 'nano-quad', name: 'Nano Quad', desc: '2-inch nano quad for quick explorations. Auto stabilize with collision avoidance.', weight: '150g', speed: '60km/h', range: '5km', img: PLANE_IMAGES[2], tag: 'AIR' },
+      { id: 'mini-quad', name: 'Mini Quad', desc: 'Versatile explorer wing for scenic FPV and aerial tours.', weight: '250g', speed: '50km/h', range: '7km', img: PLANE_IMAGES[3], tag: 'AIR' },
     ],
   },
 };
@@ -67,9 +67,8 @@ function OptionCard({ option, selected, onSelect, fields }) {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="mb-1">
             <h4 className="text-titanium font-bold text-base">{option.name}</h4>
-            <span className="font-mono-data text-cyan font-bold text-sm whitespace-nowrap">₹{option.price.toLocaleString('en-IN')}</span>
           </div>
           <p className="text-titanium/50 text-xs leading-relaxed mb-3 line-clamp-2">{option.desc}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -105,7 +104,7 @@ function FormSection({ step, title, subtitle, options, selected, onSelect, field
   );
 }
 
-function BuildSummary({ config, product, total, stage, onOrder, onFormSubmit }) {
+function BuildSummary({ config, product, stage, onOrder, onFormSubmit }) {
   const rows = [
     { key: 'chassis', label: 'CHASSIS', icon: product === 'planes' ? Plane : Car },
     { key: 'controller', label: 'VISION', icon: Cpu },
@@ -156,13 +155,6 @@ function BuildSummary({ config, product, total, stage, onOrder, onFormSubmit }) 
           </div>
         )}
 
-        {total > 0 && (
-          <div className="flex items-center justify-between mb-6 pt-4 border-t border-cyan/10">
-            <span className="text-titanium font-bold">Total Build</span>
-            <span className="font-mono-data text-2xl font-bold text-cyan text-glow-cyan">₹{total.toLocaleString('en-IN')}</span>
-          </div>
-        )}
-
         {stage === 'confirmed' ? (
           <div className="border border-cyan/30 bg-cyan/5 p-5 text-center">
             <div className="w-12 h-12 mx-auto mb-3 bg-cyan/10 border border-cyan flex items-center justify-center">
@@ -195,7 +187,6 @@ export default function Products() {
   const [stage, setStage] = useState('idle');
 
   const product = PRODUCTS[tab];
-  const total = Object.values(config).reduce((sum, o) => sum + (o?.price || 0), 0);
 
   const switchTab = (t) => {
     setTab(t);
@@ -294,7 +285,7 @@ export default function Products() {
           </div>
 
           <div className="lg:col-span-1">
-            <BuildSummary config={config} product={tab} total={total} stage={stage} onOrder={() => setStage('form')} onFormSubmit={() => setStage('confirmed')} />
+            <BuildSummary config={config} product={tab} stage={stage} onOrder={() => setStage('form')} onFormSubmit={() => setStage('confirmed')} />
           </div>
         </div>
       </section>
