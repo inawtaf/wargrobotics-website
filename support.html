@@ -1,0 +1,237 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service and warranty</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20260919b">
+
+<a class="skip" href="#main">Skip to content</a>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <symbol id="warg-mark" viewBox="0 0 100 100">
+    <path d="M18 0 H100 V82 L82 100 H0 V18 Z" fill="var(--mk-sil,#0A0A0D)"></path>
+    <circle cx="48" cy="47" r="24.25" fill="none" stroke="var(--mk-ring,#4A4E57)" stroke-width="15.5"></circle>
+    <circle cx="48" cy="47" r="16.5" fill="var(--mk-pupil,#0A0A0D)"></circle>
+    <path d="M48 47 L80 47 A32 32 0 0 0 64 19.3 Z" fill="var(--mk-gloss,#D9D9D9)" opacity="var(--mk-gloss-op,0.4)"></path>
+    <circle cx="37" cy="58" r="6" fill="var(--mk-catch,#F7F8FA)"></circle>
+  </symbol>
+</svg><div class="masthead masthead-flat on-dark">
+  <nav class="nav">
+    <div class="wrap">
+      <a class="lockup" href="index.html" aria-label="Warg Robotics home">
+        <svg class="mark mk-ondark" role="img" aria-hidden="true"><use href="#warg-mark"></use></svg>
+        <span class="wm"><span class="a">WARG</span><span class="b">ROBOTICS</span></span>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#products" aria-current="page">Products</a>
+        <a href="index.html#tech">How it works</a>
+        <a href="index.html#deployments">Deployments</a>
+      </div>
+      <a class="btn btn-solid nav-buy" href="index.html#products">Buy now</a>
+    </div>
+  </nav>
+</div>
+    <nav class="crumb" aria-label="Breadcrumb">
+    <div class="wrap">
+      <a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Service and warranty</span>
+    </div>
+  </nav>
+
+<main id="main">
+
+  <section class="sec form-hero">
+    <div class="wrap">
+      <h1 class="t-section">Service and warranty</h1>
+      <p class="t-lede">Something wrong with a unit you own. Tell us what it is doing and we will tell you whether it is a setting, a repair or a replacement.</p>
+      <p class="t-body form-divert">Not a fault? For bulk orders, custom builds, partnerships or hiring, use <a href="contact.html">the general contact form</a>.</p>
+    </div>
+  </section>
+
+  <section class="sec-sm">
+    <div class="wrap">
+      <div class="assure" data-stagger>
+        <div class="assure-item">
+          <p class="assure-v">12 months</p>
+          <p class="assure-k">Warranty from delivery</p>
+        </div>
+        <div class="assure-item">
+          <p class="assure-v">In India</p>
+          <p class="assure-k">Repair and replacement handled locally</p>
+        </div>
+        <div class="assure-item">
+          <p class="assure-v">1 working day</p>
+          <p class="assure-k">Target first reply</p>
+        </div>
+      </div>
+      <div class="open-note">
+        <b>Needs your input.</b> The full warranty terms &mdash; what is covered, what is excluded, and how a return is handled &mdash; have not been written yet. This page states only the twelve-month term you have confirmed. Nothing here should go live until the terms are signed off.<sup class="fn"><a href="#n2">2</a></sup>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sunk">
+    <div class="wrap">
+      <h2 class="t-sub" style="margin-bottom:8px">Report a problem</h2>
+      <p class="t-body" style="margin-bottom:26px">Everything except the photographs is needed to open a case. The photographs are what usually save a round trip.</p>
+
+      <form class="form" id="support-form" novalidate>
+
+        <div class="field">
+          <label for="issue">What is happening?</label>
+          <select id="issue" name="issue" required>
+            <option value="">Choose the closest match</option>
+            <option>It will not power on</option><option>No video on the screen</option><option>The link drops or breaks up</option><option>Recording or storage problem</option><option>The app will not connect or update</option><option>Physical damage after a crash</option><option>Something else</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="product">Which unit</label>
+            <select id="product" name="product" required>
+              <option value="">Choose one</option>
+              <option>Ghost</option>
+              <option>Greywind</option>
+              <option>Not sure</option>
+            </select>
+          </div>
+          <div class="field field-half">
+            <label for="started">When did it start</label>
+            <input type="text" id="started" name="started" placeholder="First flight, last week, after an update">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="order">Order number</label>
+            <input type="text" id="order" name="order" required aria-describedby="order-hint">
+            <p class="hint" id="order-hint">On your invoice and your confirmation email.</p>
+          </div>
+          <div class="field field-half">
+            <label for="serial">Serial number</label>
+            <input type="text" id="serial" name="serial" aria-describedby="serial-hint">
+            <p class="hint" id="serial-hint">On the underside of the air unit. Leave blank if you cannot reach it.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="detail">Describe it</label>
+          <textarea id="detail" name="detail" rows="6" required aria-describedby="detail-hint"></textarea>
+          <p class="hint" id="detail-hint">What you did, what you expected, what happened instead. Any lights or messages on the unit or in the app.</p>
+        </div>
+
+        <div class="field">
+          <label for="photos">Photographs</label>
+          <input type="file" id="photos" name="photos" accept="image/*" multiple aria-describedby="photos-hint">
+          <p class="hint" id="photos-hint">The unit, the mounting, and any damage. Up to six images.</p>
+          <ul class="filelist" id="filelist"></ul>
+        </div>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="sname">Your name</label>
+            <input type="text" id="sname" name="sname" required autocomplete="name">
+          </div>
+          <div class="field field-half">
+            <label for="semail">Email</label>
+            <input type="email" id="semail" name="semail" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="sphone">Phone</label>
+            <input type="tel" id="sphone" name="sphone" autocomplete="tel">
+          </div>
+          <div class="field field-half">
+            <label for="pincode">Pincode</label>
+            <input type="text" id="pincode" name="pincode" inputmode="numeric" autocomplete="postal-code" aria-describedby="pincode-hint">
+            <p class="hint" id="pincode-hint">So we can work out collection if the unit has to come back.</p>
+          </div>
+        </div>
+
+        <div class="form-foot">
+          <button class="btn btn-solid" type="submit">Open a case</button>
+          <p class="form-note">Or write to <a href="mailto:support@wargrobotics.com">support@wargrobotics.com</a> directly.</p>
+        </div>
+        <p class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <h2 class="t-sub" style="margin-bottom:22px">What happens next</h2>
+      <ol class="next">
+        <li>
+          <h3>We read it and reply</h3>
+          <p>Target is one working day. If what you describe is a setting or a known fix, the reply is the whole answer.</p>
+        </li>
+        <li>
+          <h3>We confirm the fault</h3>
+          <p>Usually from your description and the photographs. Sometimes we will ask for a short clip of the behaviour.</p>
+        </li>
+        <li>
+          <h3>Repair, replacement or a fix in the app</h3>
+          <p>If the unit has to come back, we arrange that with you against the pincode you gave us.<sup class="fn"><a href="#n2">2</a></sup></p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec-sm" aria-labelledby="notes-h">
+    <div class="wrap">
+      <div class="notes">
+        <h2 id="notes-h" class="t-eyebrow" style="color:var(--ink-3)">Notes and conditions</h2>
+        <ol>
+          <li id="n1">This form has no server behind it yet. Submitting opens a pre-filled email in your mail client. Photographs cannot be carried that way, so the draft lists the files you chose and asks you to attach them. Point the form at a real endpoint before launch and the file input will work properly.</li>
+          <li id="n2">Warranty coverage, exclusions, the returns process and the first-reply target are all working claims. None of them are signed off, and the page should not go live until they are.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ footer ============ -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <span class="lockup">
+          <svg class="mark mk-ondark" role="img" aria-hidden="true"><use href="#warg-mark"></use></svg>
+          <span class="wm" style="color:#F7F8FA"><span class="a">WARG</span><span class="b">ROBOTICS</span></span>
+        </span>
+        <p>Precision-engineered vision systems. Low-latency digital video transmission for vehicles that move.</p>
+      </div>
+      <div>
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#products">Products</a></li>
+          <li><a href="index.html#tech">How it works</a></li>
+          <li><a href="index.html#deployments">Deployments</a></li>
+          <li><a href="index.html#products">Buy now</a></li>
+          <li><a href="contact.html">Contact us</a></li>
+          <li><a href="support.html">Service and warranty</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>Indiranagar, Bengaluru<br>IN 560001</li>
+          <li><a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>&copy; 2026 Warg Robotics</span>
+      <nav aria-label="Legal">
+        <a href="#privacy">Privacy</a>
+        <a href="#terms">Terms</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+
+
+<script src="warg.js?v=20260919b"></script>

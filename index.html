@@ -1,16 +1,649 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="https://media.base44.com/images/public/6a6228d5d9e17113e1c6cb59/4e5a46552_companyname.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="description" content="Warg Robotics — Next-gen modular FPV vehicles, low-latency HD video transmission, and autonomous navigation software." />
-    <meta name="theme-color" content="#0B0F17" />
-    <title>Warg Robotics — Modular FPV & Autonomous Systems</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warg Robotics</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20260919b">
+
+<a class="skip" href="#main">Skip to content</a>
+
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <symbol id="warg-mark" viewBox="0 0 100 100">
+    <path d="M18 0 H100 V82 L82 100 H0 V18 Z" fill="var(--mk-sil,#0A0A0D)"></path>
+    <circle cx="48" cy="47" r="24.25" fill="none" stroke="var(--mk-ring,#4A4E57)" stroke-width="15.5"></circle>
+    <circle cx="48" cy="47" r="16.5" fill="var(--mk-pupil,#0A0A0D)"></circle>
+    <path d="M48 47 L80 47 A32 32 0 0 0 64 19.3 Z" fill="var(--mk-gloss,#D9D9D9)" opacity="var(--mk-gloss-op,0.4)"></path>
+    <circle cx="37" cy="58" r="6" fill="var(--mk-catch,#F7F8FA)"></circle>
+  </symbol>
+</svg>
+
+<!-- ============ masthead: nav + hero, one dark block ============ -->
+<div class="masthead on-dark">
+  <nav class="nav">
+    <div class="wrap">
+      <a class="lockup" href="#top" aria-label="Warg Robotics home">
+        <svg class="mark mk-ondark" role="img" aria-hidden="true"><use href="#warg-mark"></use></svg>
+        <span class="wm"><span class="a">WARG</span><span class="b">ROBOTICS</span></span>
+      </a>
+      <div class="nav-links">
+        <a href="#features" aria-current="page">Features</a>
+        <a href="#products">Products</a>
+        <a href="#tech">How it works</a>
+        <a href="#deployments">Deployments</a>
+      </div>
+      <a class="btn btn-solid nav-buy" href="#products">Buy now</a>
+    </div>
+  </nav>
+
+  <section class="hero-seq" id="top">
+   <div class="hero-stage">
+
+    <!-- footage layer. On the live site swap this <img> for:
+         <video class="feed-media" autoplay muted loop playsinline preload="metadata"
+                poster="feed-poster.jpg" width="1920" height="1080">
+           <source src="feed.webm" type="video/webm"><source src="feed.mp4" type="video/mp4">
+         </video>
+         Muted + playsinline or iOS refuses to autoplay. The driver below calls
+         play() once the zoom passes the handover point. -->
+    <div class="hero-feed" aria-hidden="true">
+      <img class="feed-media" src="img/ref-feed-frame.jpg"
+           alt="" width="960" height="540">
+      <div class="feed-scrim"></div>
+      <div class="feed-hud">
+        <span class="tl"><span class="rec"></span>Rec 1080p30</span>
+        <span class="tr"><b>60ms</b> glass to glass</span>
+        <span class="bl">Feed / fpv.link.hd</span>
+        <span class="br">HDMI out</span>
+        <i class="k1"></i><i class="k2"></i><i class="k3"></i><i class="k4"></i>
+      </div>
+    </div>
+
+   <header class="hero">
+    <div class="wrap hero-inner">
+      <figure class="shot hero-shot shot-free hero-cam">
+        <img src="img/ref-airunit-hero.png" alt="Reference photograph of an FPV air unit: camera module, heatsink body and antenna pair" width="1060" height="716">
+        <span class="ref-tag"><a href="#n4" style="color:inherit;text-decoration:none">Reference image, not our hardware</a></span>
+      </figure>
+
+      <h1 class="t-hero">Sixty milliseconds,<br><em>glass to glass.</em></h1>
+
+      <p class="hero-sub">Camera, transmitter, receiver. It records every flight while it streams, and the picture goes to any screen with an HDMI port.</p>
+
+      <div class="hero-cta">
+        <a class="btn btn-solid" href="#products">Buy now</a>
+        <a class="btn btn-line" href="contact.html">Contact us</a>
+      </div>
+    </div>
+   </header>
+   </div>
+  </section>
+</div>
+
+
+
+<div class="subnav-sentinel" aria-hidden="true"></div>
+<div class="subnav">
+  <div class="wrap">
+    <span class="who">Warg</span>
+    <nav aria-label="Product sections">
+      <a href="#products">Products</a>
+      <a href="#features">Features</a>
+      <a href="#tech">How it works</a>
+      <a href="#deployments">Deployments</a>
+    </nav>
+    <a class="btn btn-solid" href="#products">Buy now</a>
+  </div>
+</div>
+
+<main id="main">
+
+  <section class="sec-sm" aria-label="Key specifications">
+    <div class="wrap">
+      <div class="figures" data-stagger>
+        <div class="fig-cell"><div class="v">60<span>ms</span></div><p class="k">Glass to glass</p></div>
+        <div class="fig-cell"><div class="v">1080<span>p</span></div><p class="k">Record and live</p></div>
+        <div class="fig-cell"><div class="v">16<span>gb</span></div><p class="k">Onboard storage</p></div>
+        <div class="fig-cell"><div class="v">500<span>m</span></div><p class="k">Operating range<sup class="fn"><a href="#n2">2</a></sup></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ the product line ============
+       Named units, not a configurator. The card carries a name, one line
+       of specification and a price; everything else is on the unit's own
+       page. ==================================================== -->
+  <section class="sec sunk" id="products">
+    <div class="wrap">
+      <div class="shead shead-c" data-stagger>
+        <h2 class="t-section">Meet our Wargs</h2>
+        <p class="t-lede">Three units. They differ in the picture they give you; everything else is the same across the line.</p>
+      </div>
+
+      <div class="prods" data-stagger>
+        <article class="prod">
+          <div class="prod-shot">
+            <div class="shot-frame ar-43" role="img" aria-label="Placeholder for a Ghost product photograph">
+              <div><p class="r">Ghost</p></div>
+            </div>
+            <span class="prod-flag flag-live">Pre-booking</span>
+          </div>
+          <div class="prod-body">
+            <div class="prod-name">
+              <h3>Ghost</h3>
+              <p class="prod-rider">Jon</p>
+            </div>
+            <p class="prod-line">720p &middot; 90 fps &middot; 8 GB</p>
+            <p class="prod-mrp"><s>&#8377;22,999</s></p>
+            <p class="prod-offer">&#8377;19,999<span>+GST</span></p>
+            <a class="btn btn-solid" href="ghost.html#prebook">Pre-book for &#8377;5,000</a>
+          </div>
+        </article>
+        <article class="prod">
+          <div class="prod-shot">
+            <div class="shot-frame ar-43" role="img" aria-label="Placeholder for a Greywind product photograph">
+              <div><p class="r">Greywind</p></div>
+            </div>
+            <span class="prod-flag flag-live">Pre-booking</span>
+          </div>
+          <div class="prod-body">
+            <div class="prod-name">
+              <h3>Greywind</h3>
+              <p class="prod-rider">Robb</p>
+            </div>
+            <p class="prod-line">1080p &middot; 30 fps &middot; 16 GB</p>
+            <p class="prod-mrp"><s>&#8377;29,999</s></p>
+            <p class="prod-offer">&#8377;24,999<span>+GST</span></p>
+            <a class="btn btn-solid" href="greywind.html#prebook">Pre-book for &#8377;5,000</a>
+          </div>
+        </article>
+        <article class="prod prod-soon">
+          <div class="prod-shot">
+            <div class="shot-frame ar-43" role="img" aria-label="Placeholder for a BloodRaven product photograph">
+              <div><p class="r">BloodRaven</p></div>
+            </div>
+            <span class="prod-flag flag-soon">Coming soon</span>
+          </div>
+          <div class="prod-body">
+            <div class="prod-name">
+              <h3>BloodRaven</h3>
+              <p class="prod-rider">Brynden</p>
+            </div>
+            <p class="prod-line">1080p live &middot; 4K recording</p>
+            <p class="prod-offer prod-tba">Not announced</p>
+            <a class="btn btn-line" href="contact.html">Tell me when it lands</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ features: thin faces, depth in the popups ============ -->
+  <section class="sec" id="features">
+    <div class="wrap">
+      <div class="shead shead-c" data-stagger>
+        <h2 class="t-section">Five reasons to change your video link</h2>
+        <p class="t-lede">Hover or tap a card for the detail.</p>
+      </div>
+
+      <div class="car">
+        <div class="car-track" id="feat-track" role="group" aria-label="Key features">
+        <article class="feat car-card" data-reveal aria-labelledby="fc1-h">
+          <h3 id="fc1-h">Premium video transmission</h3>
+          <p class="car-line">Digital the whole way. Picture is the difference.</p>
+          <div class="viz">
+            <div class="rez">
+              <div class="rez-row"><span class="rez-k">720p</span><span class="rez-track"><i class="rez-fill" style="--w:44%"></i></span><span class="rez-tag">90 fps</span></div>
+              <div class="rez-row is-top"><span class="rez-k">1080p</span><span class="rez-track"><i class="rez-fill" style="--w:72%"></i></span><span class="rez-tag">30 fps</span></div>
+              <div class="rez-row is-soon"><span class="rez-k">4K</span><span class="rez-track"><i class="rez-fill" style="--w:100%"></i></span><span class="rez-tag">Soon</span></div>
+            </div>
+          </div>
+          <button class="car-more" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="pop1">
+            More detail<span aria-hidden="true">&#43;</span>
+          </button>
+        </article>
+
+        <article class="feat car-card" data-reveal aria-labelledby="fcR-h">
+          <h3 id="fcR-h">Record while you fly</h3>
+          <p class="car-line">Live out and onboard recording, at once.</p>
+          <div class="viz">
+            <div class="split-path" role="img" aria-label="One sensor feeding a live output and an internal recording at the same time">
+              <svg viewBox="0 0 240 74" fill="none" aria-hidden="true">
+                <rect x="1" y="27" width="40" height="20" stroke="currentColor" stroke-width="1.4"/>
+                <text x="21" y="41" class="sp-t" text-anchor="middle">SENSOR</text>
+                <path d="M41 37h26m0 0v-22h22m-22 22v22h22" stroke="currentColor" stroke-width="1.4"/>
+                <rect class="sp-a" x="89" y="3" width="66" height="24" stroke="currentColor" stroke-width="1.4"/>
+                <text x="122" y="18" class="sp-t" text-anchor="middle">LIVE OUT</text>
+                <rect class="sp-b" x="89" y="47" width="66" height="24" stroke="currentColor" stroke-width="1.4"/>
+                <text x="122" y="62" class="sp-t" text-anchor="middle">RECORD</text>
+                <path d="M155 59h24" stroke="currentColor" stroke-width="1.4"/>
+                <rect class="sp-c" x="179" y="47" width="58" height="24" stroke="currentColor" stroke-width="1.4"/>
+                <text x="208" y="62" class="sp-t" text-anchor="middle">USB</text>
+              </svg>
+            </div>
+          </div>
+          <button class="car-more" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popR">
+            More detail<span aria-hidden="true">&#43;</span>
+          </button>
+        </article>
+
+        <article class="feat car-card" data-reveal aria-labelledby="fc2-h">
+          <h3 id="fc2-h">Ready to go</h3>
+          <p class="car-line">Mount it, plug it in, fly.</p>
+          <div class="viz">
+            <div class="steps">
+              <div class="step"><i class="dot"></i><div class="t">Mount</div></div>
+              <div class="step"><i class="dot"></i><div class="t">Connect</div></div>
+              <div class="step"><i class="dot"></i><div class="t">Fly</div></div>
+            </div>
+          </div>
+          <button class="car-more" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="pop2">
+            More detail<span aria-hidden="true">&#43;</span>
+          </button>
+        </article>
+
+        <article class="feat car-card" data-reveal aria-labelledby="fc3-h">
+          <h3 id="fc3-h">Fits what you already fly</h3>
+          <p class="car-line">Any airframe, any size.</p>
+          <div class="viz">
+            <div class="glyphs">
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect x="12.5" y="12.5" width="7" height="7"/><path d="M12.5 12.5 7.5 7.5M19.5 12.5l5-5M12.5 19.5l-5 5M19.5 19.5l5 5"/><circle cx="6" cy="6" r="3.2"/><circle cx="26" cy="6" r="3.2"/><circle cx="6" cy="26" r="3.2"/><circle cx="26" cy="26" r="3.2"/></svg><span>Quad</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M16 3c1.7 2.4 2.5 5.4 2.7 8.6L30 19v3l-11.2-3.4c-.1 2.6-.5 4.9-1 6.7l3.2 2.4v2l-5-1.6-5 1.6v-2l3.2-2.4c-.5-1.8-.9-4.1-1-6.7L2 22v-3l11.3-7.4C13.5 8.4 14.3 5.4 16 3Z"/></svg><span>Fixed wing</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M7.5 8.5v15M24.5 8.5v15"/><path d="M16 4.5c1 1.9 1.6 4 1.7 6.3H30v3H17.7c-.1 3-.5 5.6-1.1 7.4l2.4 1.7v1.7L16 23.5l-3 1.1v-1.7l2.4-1.7c-.6-1.8-1-4.4-1.1-7.4H2v-3h12.3c.1-2.3.7-4.4 1.7-6.3Z"/><circle cx="7.5" cy="8.5" r="2.5"/><circle cx="24.5" cy="8.5" r="2.5"/><circle cx="7.5" cy="23.5" r="2.5"/><circle cx="24.5" cy="23.5" r="2.5"/></svg><span>VTOL</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M5 12h22v7H5z"/><path d="M11 12V7.5h10V12"/><circle cx="10.5" cy="23.5" r="3.4"/><circle cx="21.5" cy="23.5" r="3.4"/></svg><span>Ground</span></div>
+            </div>
+          </div>
+          <button class="car-more" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="pop3">
+            More detail<span aria-hidden="true">&#43;</span>
+          </button>
+        </article>
+
+        <article class="feat car-card" data-reveal aria-labelledby="fc4-h">
+          <h3 id="fc4-h">Any screen with HDMI</h3>
+          <p class="car-line">No goggle to buy.</p>
+          <div class="viz">
+            <div class="glyphs glyphs-screen">
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect class="scr" x="3" y="7" width="26" height="15.5" fill="currentColor" stroke="none"/><rect x="3" y="7" width="26" height="15.5"/><path d="M11 27h10M16 22.5V27"/></svg><span>TV</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect class="scr" x="4" y="5" width="24" height="16" fill="currentColor" stroke="none"/><rect x="4" y="5" width="24" height="16"/><path d="M16 21v5M10 27h12"/></svg><span>Monitor</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path class="scr" d="M7 13h18v6H7z" fill="currentColor" stroke="none"/><path d="M4 10h24v9a3 3 0 0 1-3 3h-4l-5-3.5L11 22H7a3 3 0 0 1-3-3v-9Z"/><path d="M4 10 1.5 7M28 10l2.5-3"/></svg><span>Goggles</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect class="scr" x="9" y="6" width="14" height="19" fill="currentColor" stroke="none"/><rect x="6.5" y="3" width="19" height="26"/><path d="M14 26.5h4"/></svg><span>Tablet</span></div>
+          <div class="glyph"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect class="scr" x="12" y="7" width="8" height="17" fill="currentColor" stroke="none"/><rect x="10" y="3" width="12" height="26"/><path d="M14.5 26.5h3"/></svg><span>Phone</span></div>
+            </div>
+          </div>
+          <button class="car-more" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="pop4">
+            More detail<span aria-hidden="true">&#43;</span>
+          </button>
+        </article>
+
+        </div>
+
+        <div class="car-ui" hidden>
+          <div class="car-dots" aria-label="Feature"></div>
+          <div class="car-arrows">
+            <button class="car-arr" type="button" data-dir="-1" aria-label="Previous features">&#8592;</button>
+            <button class="car-arr" type="button" data-dir="1" aria-label="Next features">&#8594;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pop-scrim" hidden></div>
+      <div class="pop" id="pop1" role="dialog" aria-labelledby="pop1-h" hidden>
+        <button class="pop-x" type="button" aria-label="Close">&times;</button>
+        <h3 id="pop1-h">Premium video transmission</h3>
+        <p class="pop-body">Digital from the sensor to the screen, with no analogue stage anywhere in the path. Picture quality is what separates the units in the range; everything else about them is deliberately the same.</p>
+        <dl class="pop-pts">
+            <div><dt>HD digital</dt><dd>No analogue stage, so no static, no rolling interference and no slow fade at the edge of range. The picture is either there or it is not.</dd></div>
+            <div><dt>60 ms glass to glass</dt><dd>Measured end to end on the bench rather than summed from component datasheets.</dd></div>
+            <div><dt>Frame rate where it counts</dt><dd>720p at 90 fps on Ghost for fast flying, 1080p at 30 fps on Greywind for detail, with 720p90 available on it too.</dd></div>
+            <div><dt>4K recording next</dt><dd>BloodRaven records above what it transmits: 1080p live with 4K written to storage. Not yet announced for sale.</dd></div>
+        </dl>
+      </div>
+      <div class="pop" id="popR" role="dialog" aria-labelledby="popR-h" hidden>
+        <button class="pop-x" type="button" aria-label="Close">&times;</button>
+        <h3 id="popR-h">Record while you fly</h3>
+        <p class="pop-body">The module records to its own storage at the same time as it streams to your screen. You are not choosing between seeing the flight and keeping it, and the recording is written on the air unit rather than reconstructed from the transmitted stream.</p>
+        <dl class="pop-pts">
+            <div><dt>Live and record together</dt><dd>Both run at once. The link going down does not take the recording with it.</dd></div>
+            <div><dt>Onboard storage</dt><dd>8&nbsp;GB on Ghost, 16&nbsp;GB on Greywind. No card to buy, lose or forget.</dd></div>
+            <div><dt>Straight off over USB</dt><dd>Plug the air unit into a computer and pull the files. No proprietary reader and no app in the middle.</dd></div>
+        </dl>
+      </div>
+      <div class="pop" id="pop2" role="dialog" aria-labelledby="pop2-h" hidden>
+        <button class="pop-x" type="button" aria-label="Close">&times;</button>
+        <h3 id="pop2-h">Ready to go</h3>
+        <p class="pop-body">No soldering, no firmware rabbit hole, no forum thread at midnight. The module arrives bound and configured, and everything you change afterwards you change from your phone.</p>
+        <dl class="pop-pts">
+            <div><dt>Plug and play</dt><dd>One cable to power and four bolts to mount. Nothing to flash before you get a picture.</dd></div>
+            <div><dt>Five minute setup</dt><dd>Box to first frame in about five minutes, including binding the ground unit.</dd></div>
+            <div><dt>Mobile and web app</dt><dd>Channel, bitrate, recording and firmware from your phone. Updates arrive over the air.</dd></div>
+        </dl>
+      </div>
+      <div class="pop" id="pop3" role="dialog" aria-labelledby="pop3-h" hidden>
+        <button class="pop-x" type="button" aria-label="Close">&times;</button>
+        <h3 id="pop3-h">Fits what you already fly</h3>
+        <p class="pop-body">Light and small enough for a five-inch freestyle quad, and indifferent to what it is bolted to. The mount pattern is standard, so the module goes onto the drone you already own instead of forcing you to buy another one.</p>
+        <dl class="pop-pts">
+            <div><dt>All sizes</dt><dd>Small enough for a five-inch freestyle build, unchanged on anything larger.</dd></div>
+            <div><dt>All wing types</dt><dd>Quads, fixed wing and VTOL. Ground vehicles and fixed surveillance rigs take the same module.</dd></div>
+            <div><dt>Retrofit or new build</dt><dd>Upgrade an existing drone without replacing it, or design the module into a build from the start.</dd></div>
+        </dl>
+      </div>
+      <div class="pop" id="pop4" role="dialog" aria-labelledby="pop4-h" hidden>
+        <button class="pop-x" type="button" aria-label="Close">&times;</button>
+        <h3 id="pop4-h">Any screen with HDMI</h3>
+        <p class="pop-body">Most systems tie you to one goggle, and the goggle often costs more than the link itself. The ground unit here drives whatever screen is already in front of you.</p>
+        <dl class="pop-pts">
+            <div><dt>HDMI out</dt><dd>The ground unit drives any HDMI screen directly, with no converter in between.</dd></div>
+            <div><dt>No goggle lock-in</dt><dd>A TV, a monitor, a tablet, your phone, or goggles you already own. The choice stops being part of the purchase.</dd></div>
+        </dl>
+      </div>
+  </section>
+
+  <!-- ============ the signal path ============
+       The latency total only means something once you can see what it is
+       crossing, so the five stages are drawn on the hardware they happen
+       in rather than as an abstract bar. ======================== -->
+  <section class="sec-lg" id="tech">
+    <div class="wrap">
+      <div class="shead shead-c" data-stagger>
+        <h2 class="t-section">Where the sixty milliseconds goes<sup class="fn"><a href="#n1">1</a></sup></h2>
+        <p class="t-lede">Five stages, in series, from the light hitting the sensor to the picture on your screen.</p>
+      </div>
+
+      <div class="path" data-reveal>
+        <svg viewBox="0 0 720 212" class="path-svg" role="img"
+             aria-label="Signal path: camera to transmitter by cable, transmitter to receiver over the air, receiver to any HDMI screen by cable. Sensor 12 ms, encode 16 ms, air link 11 ms, decode 13 ms, display 8 ms.">
+          <g class="pk-line" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <!-- camera -->
+            <rect class="pk-fill" x="34" y="64" width="48" height="44" rx="2"/>
+            <circle class="pk-fill" cx="34" cy="86" r="13"/>
+            <circle class="pk-lens" cx="34" cy="86" r="6"/>
+            <!-- cable to the transmitter -->
+            <path class="pk-cable" d="M82 86c20 0 22 14 34 14s16-14 24-14"/>
+            <!-- transmitter -->
+            <rect class="pk-fill" x="140" y="58" width="104" height="56" rx="2"/>
+            <path d="M166 58V40M218 58V40"/>
+            <circle class="pk-node" cx="166" cy="37" r="3"/>
+            <circle class="pk-node" cx="218" cy="37" r="3"/>
+            <text class="pk-in" x="192" y="92" text-anchor="middle">TX</text>
+            <!-- over the air -->
+            <g class="pk-rf">
+              <path d="M258 72a22 22 0 0 1 0 28"/>
+              <path d="M272 62a38 38 0 0 1 0 48"/>
+              <path d="M286 52a54 54 0 0 1 0 68"/>
+            </g>
+            <!-- receiver -->
+            <rect class="pk-fill" x="330" y="58" width="104" height="56" rx="2"/>
+            <path d="M356 58V40M408 58V40"/>
+            <circle class="pk-node" cx="356" cy="37" r="3"/>
+            <circle class="pk-node" cx="408" cy="37" r="3"/>
+            <text class="pk-in" x="382" y="92" text-anchor="middle">RX</text>
+            <!-- cable to the screen -->
+            <path class="pk-cable" d="M434 86c20 0 22 14 34 14s16-14 26-14"/>
+            <!-- any HDMI screen -->
+            <rect class="pk-fill" x="494" y="42" width="140" height="88" rx="2"/>
+            <rect class="pk-screen" x="506" y="54" width="116" height="64"/>
+            <path d="M564 130v14M538 144h52"/>
+          </g>
+          <g class="pk-label" text-anchor="middle">
+            <text x="58" y="172">CAMERA</text>
+            <text x="192" y="172">TRANSMITTER</text>
+            <text x="288" y="172">AIR</text>
+            <text x="382" y="172">RECEIVER</text>
+            <text x="564" y="172">ANY HDMI SCREEN</text>
+          </g>
+          <g class="pk-ms" text-anchor="middle">
+            <text x="58" y="196">12 ms</text>
+            <text x="192" y="196">16 ms</text>
+            <text x="288" y="196">11 ms</text>
+            <text x="382" y="196">13 ms</text>
+            <text x="564" y="196">8 ms</text>
+          </g>
+        </svg>
+      </div>
+
+      <p class="path-foot" data-reveal><b>60 ms</b> end to end, measured on the bench rather than summed from component datasheets.</p>
+    </div>
+  </section>
+
+  <section class="sec sunk" id="deployments">
+    <div class="wrap">
+      <div class="shead shead-c" data-stagger>
+        <h2 class="t-section">Where it is flying<sup class="fn"><a href="#n3">3</a></sup></h2>
+        <p class="t-lede">Four platforms the module runs on today, with what we have proven and what we have not.</p>
+      </div>
+
+      <div class="dep" data-reveal>
+        <div class="dep-list" role="tablist" aria-label="Deployment platforms">
+          <button class="dep-tab" role="tab" id="t1" aria-controls="p1" aria-selected="true">FPV and freestyle</button>
+          <button class="dep-tab" role="tab" id="t2" aria-controls="p2" aria-selected="false" tabindex="-1">Industrial inspection</button>
+          <button class="dep-tab" role="tab" id="t3" aria-controls="p3" aria-selected="false" tabindex="-1">Ground robotics</button>
+          <button class="dep-tab" role="tab" id="t4" aria-controls="p4" aria-selected="false" tabindex="-1">Research platforms</button>
+        </div>
+
+        <div class="dep-panel" role="tabpanel" id="p1" aria-labelledby="t1" tabindex="0">
+          <div class="dep-body">
+            <figure class="shot shot-plate">
+              <img src="img/ref-quad-mounted.jpg" alt="Reference photograph of a small FPV quadcopter carrying an air unit" width="960" height="725">
+              <span class="ref-tag"><a href="#n4" style="color:inherit;text-decoration:none">Reference image, not our hardware</a></span>
+            </figure>
+            <div class="dep-meta">
+              <span class="status status-live">In production</span>
+              <h3>FPV and freestyle</h3>
+              <p>The original case, and still the hardest. Below about seventy milliseconds the link stops being something a pilot compensates for, which is the entire point.</p>
+              <div class="twocol">
+                <div class="ok"><h4>Proven</h4><ul>
+                  <li>60 ms sustained through gates and tight lines</li>
+                  <li>Link holds under hard banking and prop wash</li>
+                  <li>Standard 20 by 20 stack, no adapter plate</li>
+                </ul></div>
+                <div class="gap"><h4>Not yet</h4><ul>
+                  <li>No published figure for multi-pilot channel density</li>
+                  <li>Untested below -5 &deg;C</li>
+                  <li>No head-tracking integration</li>
+                </ul></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dep-panel" role="tabpanel" id="p2" aria-labelledby="t2" tabindex="0" hidden>
+          <div class="dep-body">
+            <figure class="shot">
+              <div class="shot-frame ar-169" role="img" aria-label="Placeholder for a structure inspection photograph">
+                <div><p class="r">Structure inspection, standoff</p><p class="d">1920 x 1080</p></div>
+              </div>
+            </figure>
+            <div class="dep-meta">
+              <span class="status status-trial">Field trials</span>
+              <h3>Industrial inspection</h3>
+              <p>Range and encryption matter more than latency here. Assets sit a long way from an operator, and the footage is often evidence, so the transport has to be defensible as well as clear.</p>
+              <div class="twocol">
+                <div class="ok"><h4>Proven</h4><ul>
+                  <li>Stable link at extended standoff<sup class="fn"><a href="#n2">2</a></sup></li>
+                  <li>Stable frame at hover under moderate wind</li>
+                  <li>Swappable optics for close-in detail work</li>
+                </ul></div>
+                <div class="gap"><h4>Not yet</h4><ul>
+                  <li>No thermal or multispectral variant shipping</li>
+                  <li>No chain-of-custody or tamper-evident recording</li>
+                  <li>No BVLOS regulatory package</li>
+                </ul></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dep-panel" role="tabpanel" id="p3" aria-labelledby="t3" tabindex="0" hidden>
+          <div class="dep-body">
+            <figure class="shot">
+              <div class="shot-frame ar-169" role="img" aria-label="Placeholder for a ground vehicle photograph">
+                <div><p class="r">Rover, low camera angle</p><p class="d">1920 x 1080</p></div>
+              </div>
+            </figure>
+            <div class="dep-meta">
+              <span class="status status-trial">Field trials</span>
+              <h3>Ground robotics</h3>
+              <p>Same module, same mount, bolted to rovers instead of airframes. Ground platforms trade line of sight for vibration and obstruction, which is a different problem from the air but not a harder one.</p>
+              <div class="twocol">
+                <div class="ok"><h4>Proven</h4><ul>
+                  <li>Runs unmodified off the vehicle's own bus</li>
+                  <li>Survives sustained chassis vibration</li>
+                  <li>Low mounting height, no gimbal required</li>
+                </ul></div>
+                <div class="gap"><h4>Not yet</h4><ul>
+                  <li>No figure for range with terrain obstruction</li>
+                  <li>No sealed or IP-rated enclosure</li>
+                  <li>No mesh or relay between vehicles</li>
+                </ul></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dep-panel" role="tabpanel" id="p4" aria-labelledby="t4" tabindex="0" hidden>
+          <div class="dep-body">
+            <figure class="shot">
+              <div class="shot-frame ar-169" role="img" aria-label="Placeholder for a test bench photograph">
+                <div><p class="r">Test bench, calibration target</p><p class="d">1920 x 1080</p></div>
+              </div>
+            </figure>
+            <div class="dep-meta">
+              <span class="status status-trial">Pilot programme</span>
+              <h3>Research platforms</h3>
+              <p>Groups building control systems need a video link whose latency is repeatable, not merely low. A number that drifts is worse than a number that is high, because you can design around a high one.</p>
+              <div class="twocol">
+                <div class="ok"><h4>Proven</h4><ul>
+                  <li>Latency holds within a tight band run to run</li>
+                  <li>Deterministic behaviour at fixed bitrate</li>
+                  <li>Bench-repeatable against a calibration target</li>
+                </ul></div>
+                <div class="gap"><h4>Not yet</h4><ul>
+                  <li>No published jitter distribution</li>
+                  <li>No open SDK or timestamp API</li>
+                  <li>No ROS integration</li>
+                </ul></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="sec-split" data-reveal></div>
+
+      <div class="shead shead-c" data-stagger>
+        <h2 class="t-section">Built around your constraint</h2>
+        <p class="t-lede">For a manufacturer or an integrator, the module is specified to your vehicle instead of the other way round.</p>
+      </div>
+
+      <div class="b2b" data-stagger>
+        <div class="b2b-item">
+          <h4>Imaging to your optical path</h4>
+          <ul>
+            <li>Lens and field of view selected per airframe</li>
+            <li>Sensor swapped where the light demands it</li>
+            <li>Global shutter for measurement work</li>
+          </ul>
+        </div>
+        <div class="b2b-item">
+          <h4>Transport tuned to your environment</h4>
+          <ul>
+            <li>Channel and frequency plan per deployment</li>
+            <li>Bitrate matched to the link budget</li>
+            <li>Range specified to your regulatory ceiling<sup class="fn"><a href="#n2">2</a></sup></li>
+          </ul>
+        </div>
+        <div class="b2b-item">
+          <h4>Chassis cut to your vehicle</h4>
+          <ul>
+            <li>Mount pattern and stack height to fit</li>
+            <li>Connector orientation and cable exit</li>
+            <li>Weight budget agreed before tooling</li>
+          </ul>
+        </div>
+        <div class="b2b-item">
+          <h4>An open feed you can build on</h4>
+          <ul>
+            <li>Standard output into your own pipeline</li>
+            <li>Feeds image-processing and detection layers</li>
+            <li>No proprietary decoder in the path</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="sec-cta sec-cta-c" data-reveal>
+        <a class="btn btn-solid" href="contact.html">Talk to us about a build</a>
+        <span class="hint">Bulk orders, OEM programmes and custom specifications.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec-lg close" id="contact">
+    <div class="wrap" data-stagger>
+      <h2 class="t-section" style="max-width:20ch; margin-inline:auto">Tell us what you need to see.</h2>
+      <p class="t-lede" style="text-align:center">Pre-book online, or talk to us about a bulk order or a custom build. We answer from Bengaluru, usually the same day.</p>
+      <div class="row">
+        <a class="btn btn-solid" href="#products">See the products</a>
+        <a class="btn btn-line" href="contact.html">Contact us</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec-sm" aria-labelledby="notes-h">
+    <div class="wrap">
+      <div class="notes" data-reveal>
+        <h2 id="notes-h" class="t-eyebrow" style="color:var(--ink-3)">Notes and conditions</h2>
+        <ol>
+          <li id="n1">Glass-to-glass total is 60 ms. The five stage values shown are illustrative, proportioned to sum to the total, and are not yet bench-confirmed.</li>
+          <li id="n2">500 m is the regulatory limit for this class of operation in India, not a hardware limit. Publish a longer tested figure only once it is signed off, and never as an operating recommendation.</li>
+          <li id="n3">Deployment status and the proven and not-yet lists are working claims and need sign-off before publication.</li>
+          <li id="n4">All product photography on this page is DJI O4 Air Unit reference imagery standing in for Warg hardware. It is a competitor's copyrighted asset and must be replaced before this page is published anywhere.</li>
+          <li id="n5">Prices are exclusive of GST. The offer price applies to the first 100 orders. Pre-booking takes &#8377;5,000 against the order; units ship from 1 November.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ footer ============ -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <span class="lockup">
+          <svg class="mark mk-ondark" role="img" aria-hidden="true"><use href="#warg-mark"></use></svg>
+          <span class="wm" style="color:#F7F8FA"><span class="a">WARG</span><span class="b">ROBOTICS</span></span>
+        </span>
+        <p>Precision-engineered vision systems. Low-latency digital video transmission for vehicles that move.</p>
+      </div>
+      <div>
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#products">Products</a></li>
+          <li><a href="#tech">How it works</a></li>
+          <li><a href="#deployments">Deployments</a></li>
+          <li><a href="#products">Buy now</a></li>
+          <li><a href="contact.html">Contact us</a></li>
+          <li><a href="support.html">Service and warranty</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>Indiranagar, Bengaluru<br>IN 560001</li>
+          <li><a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>&copy; 2026 Warg Robotics</span>
+      <nav aria-label="Legal">
+        <a href="#privacy">Privacy</a>
+        <a href="#terms">Terms</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<script src="warg.js?v=20260919b"></script>
