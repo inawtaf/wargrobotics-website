@@ -1,0 +1,269 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-book a Warg air unit</title>
+<meta name="description" content="Reserve a Ghost, Greywind or Raven. No payment is taken — fill in the form and we confirm your place in the queue and a dispatch date when we have one.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Warg Robotics">
+<meta property="og:title" content="Pre-book a Warg air unit">
+<meta property="og:description" content="Reserve a Ghost, Greywind or Raven. No payment is taken — fill in the form and we confirm your place in the queue and a dispatch date when we have one.">
+<meta property="og:image" content="img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pre-book a Warg air unit">
+<meta name="twitter:description" content="Reserve a Ghost, Greywind or Raven. No payment is taken.">
+<meta name="twitter:image" content="img/og.jpg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20260924k">
+
+<a class="skip" href="#main">Skip to content</a>
+<div class="masthead masthead-flat on-dark">
+  <nav class="nav">
+    <div class="wrap">
+      <a class="lockup" href="index.html" aria-label="Warg Robotics home">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#products" aria-current="page">Products</a>
+        <a href="index.html#tech">How it works</a>
+        <a href="index.html#deployments">Deployments</a>
+      </div>
+      <a class="btn btn-solid nav-buy" href="#prebook-form">Pre-book</a>
+    </div>
+  </nav>
+</div>
+<nav class="crumb" aria-label="Breadcrumb">
+  <div class="wrap">
+    <a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Pre-book</span>
+  </div>
+</nav>
+
+<main id="main">
+
+  <section class="sec form-hero">
+    <div class="wrap">
+      <h1 class="t-section">Pre-book a unit</h1>
+      <p class="t-lede">Tell us which Warg you want and we will hold your place in the queue. <b>No payment is taken and nothing is charged now.</b></p>
+      <p class="t-body form-divert">We are not yet certain of a dispatch date, so we would rather not hold your money while you wait. We confirm your place by email, and we write again with a firm date as soon as we have one.</p>
+    </div>
+  </section>
+
+  <section class="sec-sm">
+    <div class="wrap">
+      <form class="form" id="prebook-form" novalidate>
+
+        <fieldset class="intents">
+          <legend class="field-legend">Which unit</legend>
+          <div class="intent-row intent-row-3">
+          <label class="intent">
+            <input type="radio" name="unit" value="Ghost" id="unit-ghost" checked required>
+            <span class="intent-box">
+              <span class="intent-name">Ghost</span>
+              <span class="intent-sub">720p &middot; 90&nbsp;fps &middot; 8&nbsp;GB</span>
+            </span>
+          </label>
+          <label class="intent">
+            <input type="radio" name="unit" value="Greywind" id="unit-greywind" required>
+            <span class="intent-box">
+              <span class="intent-name">Greywind</span>
+              <span class="intent-sub">1080p30 / 720p90 &middot; 16&nbsp;GB</span>
+            </span>
+          </label>
+          <label class="intent">
+            <input type="radio" name="unit" value="Raven" id="unit-raven" required>
+            <span class="intent-box">
+              <span class="intent-name">Raven</span>
+              <span class="intent-sub">1080p live &middot; 4K recording</span>
+            </span>
+          </label>
+          </div>
+        </fieldset>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="qty">How many</label>
+            <input type="number" id="qty" name="qty" min="1" step="1" value="1" inputmode="numeric" required>
+            <p class="hint" id="qty-hint">Ten or more is a bulk order &mdash; <a href="contact.html">talk to us instead</a>.</p>
+          </div>
+          <div class="field field-half">
+            <label for="pincode">Delivery pincode</label>
+            <input type="text" id="pincode" name="pincode" inputmode="numeric" autocomplete="postal-code" pattern="[0-9]{6}">
+            <p class="hint" id="pincode-hint">Optional. It lets us estimate delivery time once we are shipping.</p>
+          </div>
+        </div>
+
+        <!-- Pro: an add-on rather than a separate SKU. The compute is identical
+             on every unit, so a variant per unit would triple the product pages to
+             carry the same content, and there is no Pro price to attach yet. -->
+        <fieldset class="addon is-pro">
+          <legend class="field-legend">Onboard compute</legend>
+          <label class="addon-toggle">
+            <input type="checkbox" id="addon-pro" name="pro" value="yes">
+            <span class="addon-box">
+              <span class="addon-name">Add Pro &mdash; a Linux processor on board</span>
+              <span class="addon-sub">Runs your own code on the aircraft: image processing, autonomous navigation, path finding and precision flight. <a href="#pro">What Pro is</a>.</span>
+            </span>
+          </label>
+
+          <div class="extra" data-addon="pro" hidden>
+            <div class="field field-half">
+              <label for="pro-ram">Memory</label>
+              <select id="pro-ram" name="pro-ram">
+                <option value="">Not sure &mdash; help me choose</option>
+                <option>2 GB</option>
+                <option>4 GB</option>
+                <option>8 GB</option>
+              </select>
+              <p class="hint" id="pro-ram-hint">Sized against the model you need to run.</p>
+            </div>
+            <div class="field field-half">
+              <label for="pro-storage">Storage</label>
+              <select id="pro-storage" name="pro-storage">
+                <option value="">Not sure &mdash; help me choose</option>
+                <option>32 GB</option>
+                <option>64 GB</option>
+                <option>128 GB</option>
+              </select>
+              <p class="hint" id="pro-storage-hint">Separate from the camera's own recording storage.</p>
+            </div>
+          </div>
+          <p class="hint">Pro is priced against the configuration, so we quote it rather than list it. Picking &ldquo;not sure&rdquo; is fine &mdash; describe the job below and we will size it with you.</p>
+        </fieldset>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="name">Your name</label>
+            <input type="text" id="name" name="name" required autocomplete="name">
+          </div>
+          <div class="field field-half">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field field-half">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone" autocomplete="tel">
+            <p class="hint" id="phone-hint">Optional.</p>
+          </div>
+          <div class="field field-half">
+            <label for="flying">What you fly</label>
+            <input type="text" id="flying" name="flying">
+            <p class="hint" id="flying-hint">Optional. Airframe, rover or rig, so we can check it fits.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="message">Anything we should know</label>
+          <textarea id="message" name="message" rows="5"></textarea>
+          <p class="hint" id="message-hint">Optional. If you are adding Pro, tell us what it has to run.</p>
+        </div>
+
+        <div class="form-foot">
+          <button class="btn btn-solid" type="submit">Pre-book</button>
+          <p class="form-note">No payment is taken. Or write to <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a> directly.</p>
+        </div>
+        <p class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ what Pro is ============ -->
+  <section class="sec sunk is-pro" id="pro">
+    <div class="wrap">
+      <div class="shead" data-stagger>
+        <h2 class="t-section">What Pro is</h2>
+        <p class="t-lede">The same camera and the same link, with a Linux processor in the transmitter body. Available on any unit in the line.</p>
+      </div>
+
+      <div class="b2b" data-reveal>
+        <div class="b2b-item">
+          <h4>Image processing</h4>
+          <p>Detection and tracking against the full-rate frame, on the aircraft, before anything is compressed for the link.</p>
+        </div>
+        <div class="b2b-item">
+          <h4>Autonomous navigation</h4>
+          <p>The aircraft acts on what it sees, so the link is no longer inside the control loop.</p>
+        </div>
+        <div class="b2b-item">
+          <h4>Path finding</h4>
+          <p>Routing computed from the live picture rather than a map made earlier.</p>
+        </div>
+        <div class="b2b-item">
+          <h4>Precision flight</h4>
+          <p>Close-quarters work where a round trip to the ground station is too slow to be useful.</p>
+        </div>
+      </div>
+
+      <div class="spec-tiles" data-reveal style="margin-top:clamp(24px,3vw,36px)">
+        <div class="spec-tile">
+          <div class="v">2 / 4 / 8<span>GB</span></div>
+          <p class="k">Memory</p>
+          <p>Chosen independently of the camera.</p>
+        </div>
+        <div class="spec-tile">
+          <div class="v">8 / 16 / 32<span>GB</span></div>
+          <p class="k">Storage</p>
+          <p>Separate from the camera's own recording storage.</p>
+        </div>
+        <div class="spec-tile">
+          <div class="v">Linux</div>
+          <p class="k">Operating system</p>
+          <p>Full platform specification on request.</p>
+        </div>
+      </div>
+
+      <div class="sec-cta">
+        <a class="btn btn-line" href="contact.html">Talk to us about a Pro</a>
+        <p class="hint">Bulk and custom builds do not go through this form.</p>
+      </div>
+    </div>
+  </section>
+
+
+</main>
+
+<!-- ============ footer ============ -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <span class="lockup">
+          <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        </span>
+        <p>Precision-engineered vision systems. Low-latency digital video transmission for vehicles that move.</p>
+        <p class="foot-made">Designed and made in India</p>
+      </div>
+      <div>
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#products">Products</a></li>
+          <li><a href="index.html#tech">How it works</a></li>
+          <li><a href="index.html#deployments">Deployments</a></li>
+          <li><a href="prebook.html">Pre-book</a></li>
+          <li><a href="contact.html">Contact us</a></li>
+          <li><a href="support.html">Service and warranty</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>Indiranagar, Bengaluru<br>IN 560001</li>
+          <li><a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>&copy; 2026 Warg Robotics</span>
+    </div>
+  </div>
+</footer>
+
+<script src="warg.js?v=20260924k"></script>
