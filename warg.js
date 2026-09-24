@@ -469,6 +469,16 @@ document.documentElement.classList.add('js');
         return;
       }
       var body = compose(form);
+      /* analytics.js: count the lead, never its contents */
+      if(window.wargTrack){
+        var unit = form.querySelector('input[name="unit"]:checked');
+        var intent = form.querySelector('input[name="intent"]:checked');
+        window.wargTrack('generate_lead', {
+          form_id: form.id,
+          product: unit ? unit.value : '',
+          enquiry_type: intent ? intent.value : ''
+        });
+      }
       var hasFiles = !!form.querySelector('input[type="file"] input, input[type="file"]') &&
                      (form.querySelector('input[type="file"]') || {}).files &&
                      form.querySelector('input[type="file"]').files.length;
