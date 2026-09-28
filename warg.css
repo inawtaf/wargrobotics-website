@@ -1032,6 +1032,7 @@ sup.fn a:hover{ text-decoration:underline; }
 .form-status:empty{ display:none; }
 .form-status.ok{ padding:14px 16px; background:var(--accent-100); color:var(--accent-900); }
 .form-status.bad{ padding:14px 16px; background:var(--amber-050); color:var(--amber-700); }
+.hp-field{ position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
 .filelist{ list-style:none; margin:4px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:6px; }
 .filelist li{
   font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; letter-spacing:0.05em;

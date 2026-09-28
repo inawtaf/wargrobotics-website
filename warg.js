@@ -365,19 +365,34 @@ document.documentElement.classList.add('js');
   });
 })();
 
-/* ---- contact and support forms ---------------------------------------
-   There is no server yet. Rather than a Send button that silently does
-   nothing, the form validates, then hands the message to the visitor's own
-   mail client pre-filled. That is a stopgap, and it is labelled as one on
-   the page; when an endpoint exists, give the form an action and a method
-   and delete the submit handler below. The markup already carries the
-   names a backend would expect. */
+/* ---- contact, support and pre-book forms -------------------------------
+   Submissions go to a Google Apps Script web app, which writes each form to
+   its own tab in a Google Sheet, saves support photographs to Google Drive
+   and emails the team. Paste the web app URL (ends in /exec) below.
+
+   Until FORM_ENDPOINT is set, or if the endpoint cannot be reached, the form
+   falls back to the old behaviour: it opens the visitor's own mail client
+   pre-filled, so a message is never lost.
+
+   Sent as text/plain on purpose: Apps Script cannot answer a CORS preflight,
+   and a text/plain POST does not trigger one. */
 (function(){
+  var FORM_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw32OyarrwQE1YGUQs6qitwD0eypmHNUrYtsIV2gZzdUFOaZk5yRKidfTd_7XQd0wCWkA/exec';
+
   var forms = document.querySelectorAll('#contact-form, #support-form, #prebook-form');
   if(!forms.length) return;
 
   var TO = { 'contact-form':'hello@wargrobotics.com', 'support-form':'support@wargrobotics.com', 'prebook-form':'hello@wargrobotics.com' };
   var SUBJ = { 'contact-form':'Website enquiry', 'support-form':'Service request', 'prebook-form':'Pre-booking' };
+  var SUCCESS = {
+    'contact-form':'Thanks, we have your message and will reply by email.',
+    'support-form':'Your case is open. We will be in touch by email.',
+    'prebook-form':'You are on the pre-booking list. No payment is taken; we will email you before anything ships.'
+  };
+  var MAX_FILES = 6, MAX_EDGE = 1600, MAX_RAW_BYTES = 5 * 1024 * 1024;
+  var HONEYPOT = 'hp_trap';
+
+  var endpointReady = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(FORM_ENDPOINT);
 
   /* Show only the follow-up questions that belong to the chosen intent, and
      take the hidden ones out of validation so a hidden required field can
@@ -385,8 +400,7 @@ document.documentElement.classList.add('js');
   function syncIntent(form){
     var chosen = form.querySelector('input[name="intent"]:checked');
     /* Only the intent-driven boxes. The Pro add-on uses .extra[data-addon] and is
-       driven by its own block below; left unscoped, this would disable its fields
-       permanently and compose() would drop them from the message. */
+       driven by its own block below. */
     form.querySelectorAll('.extra[data-intent]').forEach(function(box){
       var on = !!chosen && box.getAttribute('data-intent') === chosen.value;
       box.hidden = !on;
@@ -394,24 +408,32 @@ document.documentElement.classList.add('js');
     });
   }
 
+  function clean(t){ return (t || '').replace(/\s+/g, ' ').trim().replace(/[?:]+$/, ''); }
+
+  /* Column name in the sheet and line label in the fallback email. */
   function labelFor(el){
-    /* The intent radios are labelled by the card they sit inside, not by a
-       <label for>, so read the visible name rather than falling back to the
-       field's own value slug. Trailing punctuation is dropped so the composed
-       line reads "What do you need: ..." and not "What do you need?: ...". */
+    if(el.getAttribute('data-label')) return el.getAttribute('data-label');
     if(el.type === 'radio'){
-      var box = el.parentNode.querySelector('.intent-name');
-      if(box) return box.textContent.trim();
+      var fs = el.closest('fieldset');
+      var lg = fs && fs.querySelector('legend');
+      if(lg) return clean(lg.textContent);
     }
     var l = el.id && el.form && el.form.querySelector('label[for="' + el.id + '"]');
-    var t = l ? l.textContent.trim() : (el.name || el.id);
-    return t.replace(/[?:]+$/, '');
+    return l ? clean(l.textContent) : (el.name || el.id);
   }
+
+  /* Visible name of a chosen radio card, not its value slug. */
+  function radioValue(el){
+    var box = el.parentNode.querySelector('.intent-name');
+    return box ? box.textContent.trim() : el.value;
+  }
+
+  function isHoneypot(el){ return el.name === HONEYPOT; }
 
   function validate(form){
     var bad = null;
     form.querySelectorAll('input, select, textarea').forEach(function(el){
-      if(el.disabled || el.type === 'file'){ return; }
+      if(el.disabled || el.type === 'file' || isHoneypot(el)){ return; }
       var ok = el.checkValidity();
       el.setAttribute('aria-invalid', ok ? 'false' : 'true');
       if(!ok && !bad) bad = el;
@@ -419,24 +441,137 @@ document.documentElement.classList.add('js');
     return bad;
   }
 
-  function compose(form){
-    var lines = [];
+  /* Ordered [label, value] pairs; order becomes column order in the sheet. */
+  function collectFields(form){
+    var out = [];
     form.querySelectorAll('input, select, textarea').forEach(function(el){
-      if(el.disabled || !el.name) return;
+      if(el.disabled || !el.name || el.type === 'file' || isHoneypot(el)) return;
       if(el.type === 'radio'){
-        if(!el.checked) return;
-        lines.push('Enquiry type: ' + labelFor(el));
+        if(el.checked) out.push([labelFor(el), radioValue(el)]);
         return;
       }
-      if(el.type === 'file'){
-        var names = Array.prototype.map.call(el.files || [], function(f){ return f.name; });
-        if(names.length) lines.push('Photographs to attach: ' + names.join(', '));
+      if(el.type === 'checkbox'){
+        out.push([labelFor(el), el.checked ? 'Yes' : 'No']);
         return;
       }
-      var v = (el.value || '').trim();
-      if(v) lines.push(labelFor(el) + ': ' + v);
+      out.push([labelFor(el), (el.value || '').trim()]);
     });
+    return out;
+  }
+
+  function fileInput(form){ return form.querySelector('input[type="file"]'); }
+  function chosenFiles(form){
+    var fi = fileInput(form);
+    return fi && fi.files ? Array.prototype.slice.call(fi.files, 0, MAX_FILES) : [];
+  }
+
+  function compose(form){
+    var lines = collectFields(form).filter(function(p){ return p[1]; })
+      .map(function(p){ return p[0] + ': ' + p[1]; });
+    var names = chosenFiles(form).map(function(f){ return f.name; });
+    if(names.length) lines.push('Photographs to attach: ' + names.join(', '));
     return lines.join('\n');
+  }
+
+  function mailtoHref(form){
+    var body = compose(form);
+    if(chosenFiles(form).length) body += '\n\n(Attach the photographs listed above to this email before sending.)';
+    return 'mailto:' + TO[form.id] + '?subject=' + encodeURIComponent(SUBJ[form.id]) +
+           '&body=' + encodeURIComponent(body);
+  }
+
+  function readAsBase64(blob){
+    return new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(String(r.result).split(',')[1] || ''); };
+      r.onerror = function(){ reject(r.error); };
+      r.readAsDataURL(blob);
+    });
+  }
+
+  /* Phone photos are often 5-10 MB. Scale to MAX_EDGE on the long side and
+     re-encode as JPEG so six of them upload quickly on mobile data. If the
+     browser cannot decode the format (HEIC on some desktops), send the
+     original as long as it is not huge. */
+  function prepareImage(file){
+    return new Promise(function(resolve){
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        var scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function(blob){
+          if(!blob) return resolve(raw());
+          readAsBase64(blob).then(function(data){
+            resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', data: data });
+          }, function(){ resolve(raw()); });
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); resolve(raw()); };
+      img.src = url;
+
+      function raw(){
+        if(file.size > MAX_RAW_BYTES) return null;
+        return readAsBase64(file).then(function(data){
+          return { name: file.name, type: file.type || 'application/octet-stream', data: data };
+        }, function(){ return null; });
+      }
+    });
+  }
+
+  function send(form){
+    var files = chosenFiles(form);
+    return Promise.all(files.map(prepareImage)).then(function(prepared){
+      var hp = form.querySelector('[name="' + HONEYPOT + '"]');
+      var payload = {
+        form: form.id,
+        page: location.pathname,
+        fields: collectFields(form),
+        files: prepared.filter(Boolean),
+        skippedFiles: prepared.filter(function(p){ return !p; }).length,
+        hp: hp ? hp.value : ''
+      };
+      return fetch(FORM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+        redirect: 'follow'
+      });
+    }).then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(data){
+      if(!data || !data.ok) throw new Error((data && data.error) || 'Rejected');
+      return data;
+    });
+  }
+
+  function setStatus(form, cls, text, href){
+    var status = form.querySelector('.form-status');
+    status.className = 'form-status ' + cls;
+    status.textContent = text;
+    if(href){
+      status.appendChild(document.createTextNode(' '));
+      var a = document.createElement('a');
+      a.href = href;
+      a.textContent = 'Email it to us instead';
+      status.appendChild(a);
+      status.appendChild(document.createTextNode('.'));
+    }
+  }
+
+  function resetForm(form){
+    form.reset();
+    syncIntent(form);
+    var pro = form.querySelector('#addon-pro');
+    if(pro) pro.dispatchEvent(new Event('change', { bubbles: true }));
+    var list = form.querySelector('#filelist');
+    if(list) list.innerHTML = '';
+    form.querySelectorAll('[aria-invalid]').forEach(function(el){ el.removeAttribute('aria-invalid'); });
   }
 
   forms.forEach(function(form){
@@ -447,41 +582,61 @@ document.documentElement.classList.add('js');
         var list = form.querySelector('#filelist');
         if(!list) return;
         list.innerHTML = '';
-        Array.prototype.slice.call(e.target.files || []).slice(0, 6).forEach(function(f){
+        Array.prototype.slice.call(e.target.files || []).slice(0, MAX_FILES).forEach(function(f){
           var li = document.createElement('li');
           li.textContent = f.name;
           list.appendChild(li);
         });
+        if((e.target.files || []).length > MAX_FILES){
+          var more = document.createElement('li');
+          more.textContent = 'Only the first ' + MAX_FILES + ' will be sent';
+          list.appendChild(more);
+        }
       }
       if(e.target.matches('input, select, textarea') && e.target.getAttribute('aria-invalid') === 'true'){
         e.target.setAttribute('aria-invalid', String(!e.target.checkValidity()));
       }
     });
 
+    var busy = false;
     form.addEventListener('submit', function(e){
       e.preventDefault();
-      var status = form.querySelector('.form-status');
+      if(busy) return;
       var bad = validate(form);
       if(bad){
-        status.className = 'form-status bad';
-        status.textContent = 'Check ' + labelFor(bad).toLowerCase() + ' and try again.';
+        setStatus(form, 'bad', 'Check ' + labelFor(bad).toLowerCase() + ' and try again.');
         bad.focus();
         return;
       }
-      var body = compose(form);
-      var hasFiles = !!form.querySelector('input[type="file"] input, input[type="file"]') &&
-                     (form.querySelector('input[type="file"]') || {}).files &&
-                     form.querySelector('input[type="file"]').files.length;
-      if(hasFiles){
-        body += '\n\n(Attach the photographs listed above to this email before sending.)';
+
+      if(!endpointReady){
+        var hasFiles = chosenFiles(form).length > 0;
+        window.location.href = mailtoHref(form);
+        setStatus(form, 'ok', hasFiles
+          ? 'Your mail client should open with this filled in. Attach the photographs, then send.'
+          : 'Your mail client should open with this filled in. Press send there and we have it.');
+        return;
       }
-      window.location.href = 'mailto:' + TO[form.id] +
-        '?subject=' + encodeURIComponent(SUBJ[form.id]) +
-        '&body=' + encodeURIComponent(body);
-      status.className = 'form-status ok';
-      status.textContent = hasFiles
-        ? 'Your mail client should open with this filled in. Attach the photographs, then send.'
-        : 'Your mail client should open with this filled in. Press send there and we have it.';
+
+      var btn = form.querySelector('button[type="submit"]');
+      var btnText = btn ? btn.textContent : '';
+      busy = true;
+      if(btn){ btn.disabled = true; btn.textContent = 'Sending\u2026'; }
+      setStatus(form, 'ok', chosenFiles(form).length ? 'Uploading your photographs\u2026' : 'Sending\u2026');
+
+      send(form).then(function(data){
+        if(window.wargTrack) wargTrack('generate_lead', { form_id: form.id });
+        var msg = SUCCESS[form.id] || 'Sent. Thank you.';
+        if(data.ref) msg += ' Your reference is ' + data.ref + '.';
+        resetForm(form);
+        setStatus(form, 'ok', msg);
+      }).catch(function(err){
+        if(window.console) console.error('Form submit failed:', err);
+        setStatus(form, 'bad', 'That did not go through. Nothing you typed is lost \u2014 try again in a moment, or', mailtoHref(form));
+      }).then(function(){
+        busy = false;
+        if(btn){ btn.disabled = false; btn.textContent = btnText; }
+      });
     });
   });
 })();
@@ -500,7 +655,7 @@ document.documentElement.classList.add('js');
     if(radio) radio.checked = true;
   }
 
-  var toggle = form.querySelector('#pro');
+  var toggle = form.querySelector('#addon-pro');
   var box = form.querySelector('.extra[data-addon="pro"]');
   if(!toggle || !box) return;
 

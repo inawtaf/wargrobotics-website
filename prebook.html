@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="Reserve a Ghost, Greywind or Raven. No payment is taken.">
 <meta name="twitter:image" content="img/og.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20260928k">
+<link rel="stylesheet" href="warg.css?v=20260928m">
 
 <a class="skip" href="#main">Skip to content</a>
 <div class="masthead masthead-flat on-dark">
@@ -104,7 +104,7 @@
         <fieldset class="addon is-pro">
           <legend class="field-legend">Onboard compute</legend>
           <label class="addon-toggle">
-            <input type="checkbox" id="addon-pro" name="pro" value="yes">
+            <input type="checkbox" id="addon-pro" name="pro" value="yes" data-label="Pro add-on">
             <span class="addon-box">
               <span class="addon-name">Add Pro &mdash; a Linux processor on board</span>
               <span class="addon-sub">Runs your own code on the aircraft: image processing, autonomous navigation, path finding and precision flight. <a href="#pro">What Pro is</a>.</span>
@@ -164,6 +164,12 @@
           <label for="message">Anything we should know</label>
           <textarea id="message" name="message" rows="5"></textarea>
           <p class="hint" id="message-hint">Optional. If you are adding Pro, tell us what it has to run.</p>
+        </div>
+
+        <!-- Spam trap: hidden from people, bots fill it in. Leave it empty. -->
+        <div class="hp-field" aria-hidden="true">
+          <label for="hp-trap">Leave this empty</label>
+          <input type="text" id="hp-trap" name="hp_trap" tabindex="-1" autocomplete="off">
         </div>
 
         <div class="form-foot">
@@ -267,4 +273,4 @@
   </div>
 </footer>
 
-<script src="warg.js?v=20260928k"></script>
+<script src="warg.js?v=20260928m"></script>
