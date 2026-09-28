@@ -182,7 +182,6 @@ a{color:inherit;}
 .hero-sub b{ color:rgba(247,248,250,0.95); font-weight:500; }
 .hero-shot{ width:min(268px,54%); }   /* portrait crop, so narrower than a landscape product shot; centring lives past the .shot reset, at the foot of this file */
 .hero-shot img{ filter:drop-shadow(0 30px 44px rgba(0,0,0,0.8)); }
-.hero-shot .ref-tag{ left:50%; transform:translateX(-50%); bottom:6px; }
 .hero h1{ margin-top:clamp(26px,3.2vw,40px); }
 .hero h1 em{ font-style:normal; color:var(--accent-400); }
 .hero-cta{ display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:clamp(26px,3vw,34px); }
@@ -222,11 +221,10 @@ a{color:inherit;}
 }
 .shot-plate img{ mix-blend-mode:multiply; }
 .shot-free{ position:relative; }
-.ref-tag{
-  position:absolute; left:0; bottom:0; z-index:2;
-  font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.12em;
-  text-transform:uppercase; background:var(--amber-400); color:#0A0A0D; padding:4px 9px;
-}
+
+/* Deployment tabs: three photographs of different native ratios, held to one
+   16:9 plate so switching tabs does not resize the panel. */
+.dep-shot img{ width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; clip-path:var(--clip-md); }
 
 /* ---------- image placeholder slots ----------
    No image-generation tool is available here and the artifact runtime
@@ -563,7 +561,10 @@ sup.fn a:hover{ text-decoration:underline; }
   #products .car-ui{ display:none; }
 }
 .car-track::-webkit-scrollbar{ display:none; }
-.car-card{ flex:0 0 clamp(268px, 44%, 480px); scroll-snap-align:start; border:1px solid var(--line-2); clip-path:var(--clip-md); }
+/* min-width:0 — without it a flex item refuses to go below the intrinsic
+   width of the photograph inside it, and one 1600px card blows the
+   whole carousel out. */
+.car-card{ flex:0 0 clamp(268px, 44%, 480px); min-width:0; scroll-snap-align:start; border:1px solid var(--line-2); clip-path:var(--clip-md); }
 /* A fixed peek of the next card, so the rail reads as scrollable instead of
    looking like a card that failed to reach the edge. */
 @media (max-width:640px){ .car-card{ flex:0 0 calc(100% - 46px); } }
@@ -695,7 +696,8 @@ sup.fn a:hover{ text-decoration:underline; }
 }
 .prod:hover{ transform:translateY(-3px); box-shadow:0 12px 22px -8px rgba(10,10,13,0.20); }
 .prod-soon{ background:var(--s-base); }
-.prod-shot{ position:relative; }
+.prod-shot{ position:relative; aspect-ratio:4/3; }
+.prod-shot img{ width:100%; height:100%; object-fit:contain; }
 .prod-shot .shot-frame{ clip-path:none; }
 .prod-flag{
   position:absolute; top:0; left:0; font-family:'IBM Plex Mono',ui-monospace,monospace;
@@ -812,6 +814,11 @@ sup.fn a:hover{ text-decoration:underline; }
 
 /* the chain bar itself does not slide; its segments draw instead */
 .js-anim .chain-bar.reveal{ opacity:1; transform:none; }
+
+/* The kit shot is a knockout on the page ground, not a plate: no panel colour
+   behind it, no clip, normal blending. */
+.kit-shot{ position:relative; margin-top:clamp(18px,2.2vw,26px); background:transparent; clip-path:none; }
+.kit-shot img{ display:block; width:100%; height:auto; mix-blend-mode:normal; }
 .js-anim .chain-bar .chain-seg{ transform:scaleX(0); transform-origin:left; transition:transform .72s var(--ease-out); }
 .js-anim .chain-bar.in .chain-seg{ transform:none; }
 .js-anim .chain-bar.in .chain-seg:nth-child(1){ transition-delay:60ms; }
@@ -1064,8 +1071,6 @@ sup.fn a:hover{ text-decoration:underline; }
 
 /* Product renders arrive on a light studio backdrop that has been keyed out,
    so they sit directly on the page ground with no plate behind them. */
-.kit-shot{ position:relative; margin-top:clamp(18px,2.2vw,26px); background:transparent; clip-path:none; }
-.kit-shot img{ display:block; width:100%; height:auto; mix-blend-mode:normal; }
 
 
 /* .shot{margin:0} is the <figure> reset and is declared after the hero block,
@@ -1130,9 +1135,9 @@ sup.fn a:hover{ text-decoration:underline; }
 /* The hero rig: camera, ribbon and transmitter as one landscape plate, sitting
    clear above WARG instead of straddling it. Its own block, not part of the
    wordmark grid, or the descriptor below would spread to the rig's width. */
-.hero-rig{ width:min(clamp(210px,27vw,430px),86%); margin:0 auto clamp(18px,2.8vw,38px); text-align:center; }
+.hero-rig{ width:min(clamp(280px,38vw,640px),94%); margin:0 auto clamp(14px,2.2vw,30px); text-align:center; }
 /* Capped on height as well as width for the same reason as --word above. */
-.hero-rig img{ display:inline-block; width:auto; max-width:100%; max-height:21vh; filter:drop-shadow(0 24px 46px rgba(0,0,0,0.55)); }
+.hero-rig img{ display:inline-block; width:auto; max-width:100%; max-height:31vh; filter:drop-shadow(0 26px 50px rgba(0,0,0,0.6)); }
 .wordmark-word{
   z-index:1; margin:0;
   font-family:'Space Grotesk','Inter',sans-serif; font-weight:700;
