@@ -11,7 +11,16 @@
    Nothing typed into a form (names, emails, messages) is ever sent to Google;
    GA's terms forbid personal data and we have no reason to collect it.
 
-   Add ?ga_debug=1 to any URL to see events live in GA > Admin > DebugView. */
+   Add ?ga_debug=1 to any URL to see events live in GA > Admin > DebugView.
+
+   ---- Cloudflare Web Analytics ------------------------------------------
+   The second, cookieless page-view counter. It has NO code here on purpose:
+   Cloudflare Pages injects its beacon (static.cloudflareinsights.com) into
+   every HTML page at deploy time once Web Analytics is switched on for the
+   project (Workers & Pages > project > Metrics > Web Analytics > Enable).
+   Don't also paste Cloudflare's manual snippet into the pages: Cloudflare
+   allows only one beacon per page. Compare its visitor count with GA's to
+   see roughly how much GA loses to ad blockers (some blockers drop both). */
 (function(){
   /* GA4 needs the web stream's MEASUREMENT ID (starts with "G-"), not the
      account or property number. GA > Admin > Data streams > your site. */
@@ -24,21 +33,6 @@
   window.wargTrack = function(name, params){
     try { gtag('event', name, params || {}); } catch(e){}
   };
-
-  /* ---- Vercel Web Analytics: a second, cookieless page-view counter ----
-     Served from our own domain (/_vercel/insights/...), so ad blockers that
-     drop Google Analytics usually let it through. Compare its visitor count
-     with GA's to see how much GA is missing. Needs Analytics switched on in
-     the Vercel project (Project > Analytics > Enable); until then the script
-     request 404s harmlessly. Hobby plan: 50k events/month, 1-month window.
-     If the site ever moves off Vercel, delete this block. */
-  if(!/^(localhost|127\.|\[?::1)/.test(location.hostname)){
-    window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
-    var va = document.createElement('script');
-    va.defer = true;
-    va.src = '/_vercel/insights/script.js';
-    document.head.appendChild(va);
-  }
 
   if(!/^G-[A-Z0-9]+$/.test(GA_ID) || GA_ID === 'G-XXXXXXXXXX'){
     if(window.console) console.warn('analytics.js: set GA_ID to your G- measurement ID');

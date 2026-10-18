@@ -6,6 +6,10 @@
 # gets, so a single dead edge IP shows up as "flaky" rather than as a fault.
 # Probing every address separately says exactly which one is down.
 #
+# Hosted on Cloudflare Pages. The pages.dev host is the deployment itself,
+# bypassing the custom domain: if it is up while wargrobotics.com is down,
+# the fault is in DNS or the custom-domain setup, not the site.
+#
 # Output: one line per probe to stdout, a Markdown table to $GITHUB_STEP_SUMMARY
 # (when set), and exit code 1 if any probe failed. Failed probe lines are also
 # written to $FAIL_FILE (default: failures.txt) for the workflow to report.
@@ -15,7 +19,7 @@ set -u
 HOSTS=(
   "wargrobotics.com"
   "www.wargrobotics.com"
-  "wargrobotics-website.vercel.app"
+  "wargrobotics-website.pages.dev"   # your Pages project's own address
 )
 APEX="wargrobotics.com"
 PATH_TO_CHECK="/"
