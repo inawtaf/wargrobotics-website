@@ -1133,12 +1133,6 @@ sup.fn a:hover{ text-decoration:underline; }
   margin:0 0 calc(-1 * clamp(10px,2.2vw,34px));
 }
 .wordmark-cam img{ display:block; width:100%; height:auto; filter:drop-shadow(0 16px 30px rgba(0,0,0,0.6)); }
-/* The hero rig: camera, ribbon and transmitter as one landscape plate, sitting
-   clear above WARG instead of straddling it. Its own block, not part of the
-   wordmark grid, or the descriptor below would spread to the rig's width. */
-.hero-rig{ width:min(clamp(280px,38vw,640px),94%); margin:0 auto clamp(14px,2.2vw,30px); text-align:center; }
-/* Capped on height as well as width for the same reason as --word above. */
-.hero-rig img{ display:inline-block; width:auto; max-width:100%; max-height:31vh; filter:drop-shadow(0 26px 50px rgba(0,0,0,0.6)); }
 .wordmark-word{
   z-index:1; margin:0;
   font-family:'Space Grotesk','Inter',sans-serif; font-weight:700;
