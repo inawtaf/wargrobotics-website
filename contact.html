@@ -1,0 +1,248 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="analytics.js?v=20260924a"></script>
+<title>Contact Warg Robotics</title>
+<meta name="description" content="Bulk orders, custom builds, partnerships and hiring. We answer from Bengaluru, usually the same day.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Warg Robotics">
+<meta property="og:title" content="Contact Warg Robotics">
+<meta property="og:description" content="Bulk orders, custom builds, partnerships and hiring. We answer from Bengaluru, usually the same day.">
+<meta property="og:image" content="img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Contact Warg Robotics">
+<meta name="twitter:description" content="Bulk orders, custom builds, partnerships and hiring. We answer from Bengaluru, usually the same day.">
+<meta name="twitter:image" content="img/og.jpg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20260928m">
+
+<a class="skip" href="#main">Skip to content</a>
+<div class="masthead masthead-flat on-dark">
+  <nav class="nav">
+    <div class="wrap">
+      <a class="lockup" href="index.html" aria-label="Warg Robotics home">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#products" aria-current="page">Products</a>
+        <a href="index.html#tech">How it works</a>
+        <a href="index.html#deployments">Deployments</a>
+      </div>
+      <a class="btn btn-solid nav-buy" href="prebook.html">Pre-book</a>
+    </div>
+  </nav>
+</div>
+    <nav class="crumb" aria-label="Breadcrumb">
+    <div class="wrap">
+      <a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Contact</span>
+    </div>
+  </nav>
+
+<main id="main">
+
+  <section class="sec form-hero">
+    <div class="wrap">
+      <h1 class="t-section">Talk to us</h1>
+      <p class="t-lede">Bulk orders, custom builds, partnerships and hiring. We answer from Goa, usually the same day.</p>
+      <p class="t-body form-divert">Already own a unit and something is wrong with it? <a href="support.html">Go to service and warranty</a> instead &mdash; that form asks for the things we need to help you quickly.</p>
+    </div>
+  </section>
+
+  <section class="sec-sm">
+    <div class="wrap">
+      <form class="form" id="contact-form" novalidate>
+        <fieldset class="intents">
+          <legend class="field-legend">What is this about?</legend>
+          <div class="intent-row">
+          <label class="intent">
+            <input type="radio" name="intent" value="bulk" id="intent-bulk" checked required>
+            <span class="intent-box">
+              <span class="intent-name">Bulk order</span>
+              <span class="intent-sub">Ten units or more</span>
+            </span>
+          </label>
+          <label class="intent">
+            <input type="radio" name="intent" value="custom" id="intent-custom" required>
+            <span class="intent-box">
+              <span class="intent-name">Custom build</span>
+              <span class="intent-sub">OEM and integration</span>
+            </span>
+          </label>
+          <label class="intent">
+            <input type="radio" name="intent" value="collaborate" id="intent-collaborate" required>
+            <span class="intent-box">
+              <span class="intent-name">Collaborate</span>
+              <span class="intent-sub">Partnerships and pilots</span>
+            </span>
+          </label>
+          <label class="intent">
+            <input type="radio" name="intent" value="work" id="intent-work" required>
+            <span class="intent-box">
+              <span class="intent-name">Work with us</span>
+              <span class="intent-sub">Open roles</span>
+            </span>
+          </label>
+          </div>
+        </fieldset>
+
+      <div class="extra" data-intent="bulk" hidden>
+        <div class="field field-half">
+          <label for="bulk-qty">How many units</label>
+          <input type="number" id="bulk-qty" name="bulk-qty" min="10" step="1" inputmode="numeric">
+          
+        </div>
+        <div class="field field-half">
+          <label for="bulk-product">Which unit</label>
+          <select id="bulk-product" name="bulk-product"><option value="">No preference yet</option><option>Ghost</option><option>Greywind</option><option>Both</option></select>
+          
+        </div>
+      </div>
+      <div class="extra" data-intent="custom" hidden>
+        <div class="field field-half">
+          <label for="custom-vehicle">What is it going on</label>
+          <input type="text" id="custom-vehicle" name="custom-vehicle">
+          <p class="hint" id="custom-vehicle-hint">Airframe, rover, fixed rig.</p>
+        </div>
+        <div class="field field-half">
+          <label for="custom-change">What needs to change</label>
+          <select id="custom-change" name="custom-change"><option value="">Not sure yet</option><option>Imaging or optics</option><option>Transport or range</option><option>Chassis or mounting</option><option>Feed into our own software</option></select>
+          
+        </div>
+      </div>
+      <div class="extra" data-intent="collaborate" hidden>
+        <div class="field field-half">
+          <label for="collab-org">Organisation</label>
+          <input type="text" id="collab-org" name="collab-org">
+          
+        </div>
+      </div>
+      <div class="extra" data-intent="work" hidden>
+        <div class="field field-half">
+          <label for="work-role">What you do</label>
+          <input type="text" id="work-role" name="work-role">
+          <p class="hint" id="work-role-hint">Firmware, RF, optics, mechanical, something else.</p>
+        </div>
+        <div class="field field-half">
+          <label for="work-link">Portfolio or CV link</label>
+          <input type="url" id="work-link" name="work-link" placeholder="https://">
+          
+        </div>
+      </div>
+
+        <div class="field-row">
+        <div class="field field-half">
+          <label for="name">Your name</label>
+          <input type="text" id="name" name="name" required autocomplete="name">
+          
+        </div>
+        <div class="field field-half">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email">
+          
+        </div>
+        </div>
+
+        <div class="field-row">
+        <div class="field field-half">
+          <label for="company">Company or team</label>
+          <input type="text" id="company" name="company" autocomplete="organization">
+          
+        </div>
+        <div class="field field-half">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" name="phone" autocomplete="tel">
+          
+        </div>
+        </div>
+
+        <div class="field">
+          <label for="message">What do you need?</label>
+          <textarea id="message" name="message" rows="6" required></textarea>
+          <p class="hint" id="message-hint">The more specific you are, the more useful our first reply is.</p>
+        </div>
+
+        <!-- Spam trap: hidden from people, bots fill it in. Leave it empty. -->
+        <div class="hp-field" aria-hidden="true">
+          <label for="hp-trap">Leave this empty</label>
+          <input type="text" id="hp-trap" name="hp_trap" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div class="form-foot">
+          <button class="btn btn-solid" type="submit">Send</button>
+          <p class="form-note">Or write to <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a> directly.</p>
+        </div>
+        <p class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="sec sunk">
+    <div class="wrap">
+      <h2 class="t-sub" style="margin-bottom:22px">Warg Robotics</h2>
+      <div class="kit">
+        <div class="kit-item">
+          <h4>Where we are</h4>
+          <p>7th Floor, Opp. Shram Shakti Bhawan, Patto Road, Panaji, Goa<br>IN 403001</p>
+        </div>
+        <div class="kit-item">
+          <h4>Email</h4>
+          <p><a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a><br>
+             <a href="mailto:support@wargrobotics.com">support@wargrobotics.com</a></p>
+        </div>
+        <div class="kit-item">
+          <h4>Social</h4>
+          <p class="open">Coming soon.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+</main>
+
+<!-- ============ footer ============ -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <span class="lockup">
+          <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        </span>
+        <p>Precision-engineered vision systems. Low-latency digital video transmission for vehicles that move.</p>
+        <p class="foot-made">Designed and made in India</p>
+      </div>
+      <div>
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#products">Products</a></li>
+          <li><a href="index.html#tech">How it works</a></li>
+          <li><a href="index.html#deployments">Deployments</a></li>
+          <li><a href="prebook.html">Pre-book</a></li>
+          <li><a href="contact.html">Contact us</a></li>
+          <li><a href="support.html">Service and warranty</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>7th Floor, Opp. Shram Shakti Bhawan, Patto Road, Panaji, Goa<br>IN 403001</li>
+          <li><a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>&copy; 2026 Warg Robotics</span>
+    </div>
+  </div>
+</footer>
+
+
+
+<script src="warg.js?v=20260928m"></script>
