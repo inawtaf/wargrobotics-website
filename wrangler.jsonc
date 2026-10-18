@@ -1,0 +1,26 @@
+// Cloudflare Workers config for wargrobotics.com.
+//
+// The site is a Worker with static assets only: no Worker script, Cloudflare
+// serves the files straight from the repo root. What must NOT be published
+// (repo tooling, this file) is listed in .assetsignore.
+//
+// "name" must match the Worker's name in the Cloudflare dashboard
+// (Workers & Pages > your project), or Workers Builds refuses to deploy.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wargrobotics-website",
+  "compatibility_date": "2026-10-18",
+
+  "assets": {
+    "directory": ".",
+    // /contact.html is served at /contact; old .html links redirect there.
+    "html_handling": "auto-trailing-slash",
+    // Unknown paths return a 404 status instead of the home page.
+    "not_found_handling": "none"
+  },
+
+  // Needed by `wrangler preview`, which Workers Builds runs for pull-request
+  // and other non-production branches. Empty is valid: a static site has no
+  // bindings, so previews need no settings of their own.
+  "previews": {}
+}

@@ -15,9 +15,10 @@
 
    ---- Cloudflare Web Analytics ------------------------------------------
    The second, cookieless page-view counter. It has NO code here on purpose:
-   Cloudflare Pages injects its beacon (static.cloudflareinsights.com) into
-   every HTML page at deploy time once Web Analytics is switched on for the
-   project (Workers & Pages > project > Metrics > Web Analytics > Enable).
+   with Web Analytics "automatic setup" on for the wargrobotics.com zone,
+   Cloudflare's edge adds its beacon (static.cloudflareinsights.com) to every
+   HTML page it serves. Set up in Cloudflare: Analytics & Logs > Web Analytics
+   > Add a site > pick the wargrobotics.com domain.
    Don't also paste Cloudflare's manual snippet into the pages: Cloudflare
    allows only one beacon per page. Compare its visitor count with GA's to
    see roughly how much GA loses to ad blockers (some blockers drop both). */

@@ -1,0 +1,18 @@
+# Files in the repo that must not be published as part of the website.
+# Same syntax as .gitignore. Wrangler reads this when uploading assets.
+
+# Repo tooling and config
+.git
+.github
+scripts
+wrangler.jsonc
+wrangler.toml
+.gitignore
+.assetsignore
+node_modules
+.wrangler
+README.md
+
+# OS clutter
+.DS_Store
+**/.DS_Store
