@@ -1,0 +1,4 @@
+# Repo tooling, not part of the website
+.github/
+scripts/
+.DS_Store

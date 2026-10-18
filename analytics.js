@@ -25,6 +25,21 @@
     try { gtag('event', name, params || {}); } catch(e){}
   };
 
+  /* ---- Vercel Web Analytics: a second, cookieless page-view counter ----
+     Served from our own domain (/_vercel/insights/...), so ad blockers that
+     drop Google Analytics usually let it through. Compare its visitor count
+     with GA's to see how much GA is missing. Needs Analytics switched on in
+     the Vercel project (Project > Analytics > Enable); until then the script
+     request 404s harmlessly. Hobby plan: 50k events/month, 1-month window.
+     If the site ever moves off Vercel, delete this block. */
+  if(!/^(localhost|127\.|\[?::1)/.test(location.hostname)){
+    window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
+    var va = document.createElement('script');
+    va.defer = true;
+    va.src = '/_vercel/insights/script.js';
+    document.head.appendChild(va);
+  }
+
   if(!/^G-[A-Z0-9]+$/.test(GA_ID) || GA_ID === 'G-XXXXXXXXXX'){
     if(window.console) console.warn('analytics.js: set GA_ID to your G- measurement ID');
     return;

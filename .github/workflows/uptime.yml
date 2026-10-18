@@ -1,0 +1,77 @@
+name: Uptime
+
+# Probes the site every 10 minutes and keeps one open "Site down" issue while
+# anything is failing. GitHub emails the repo owner when the issue opens, gets
+# a comment, or closes, so that is the alert.
+#
+# Limits worth knowing:
+#  - GitHub's scheduler can run late (often by several minutes) under load, so
+#    treat this as "did it go down today", not a precise SLA clock.
+#  - Runners sit in US data centres. They catch a dead origin or a dead edge
+#    IP, but not a fault that only one Indian ISP sees. Pair this with an
+#    external monitor that has an India probe location for that.
+#  - GitHub pauses scheduled workflows on public repos after 60 days with no
+#    commits. Any push re-enables it.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Probe hosts and edge IPs
+        id: probe
+        run: |
+          # Retry once after 30s so a single dropped packet doesn't page anyone.
+          if bash scripts/uptime-check.sh; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          else
+            sleep 30
+            if bash scripts/uptime-check.sh; then
+              echo "down=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "down=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Open or update the outage issue
+        if: steps.probe.outputs.down == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create downtime --color B60205 --description "Opened by the uptime workflow" 2>/dev/null || true
+          body=$(printf 'Failing probes at %s:\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' \
+            "$(date -u '+%Y-%m-%d %H:%M UTC')" "$(cat failures.txt)" \
+            "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+          open=$(gh issue list --label downtime --state open --json number --jq '.[0].number')
+          if [ -z "$open" ]; then
+            gh issue create --title "Site down: wargrobotics.com" --label downtime --body "$body"
+          else
+            gh issue comment "$open" --body "$body"
+          fi
+
+      - name: Close the outage issue on recovery
+        if: steps.probe.outputs.down == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --label downtime --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue close "$open" --comment "Recovered at $(date -u '+%Y-%m-%d %H:%M UTC'). All probes passing."
+          fi
