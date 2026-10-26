@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders – Warg admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20261026a">
+<style>
+  .adm{ padding-block:28px 60px; }
+  .adm-bar{ display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:20px; }
+  .adm-bar .field{ min-width:220px; }
+  .adm table{ width:100%; border-collapse:collapse; font-size:13.5px; background:var(--s-raised); }
+  .adm th,.adm td{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--line-2); vertical-align:top; }
+  .adm th{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2); }
+  .adm td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .adm .pill{ display:inline-block; padding:2px 8px; font-size:11.5px; background:var(--s-sunk); }
+  .adm .pill.paid{ background:var(--accent-100); color:var(--accent-900); }
+  .adm .pill.shipped,.adm .pill.delivered{ background:#E3F4E8; color:#1D6B36; }
+  .adm .warn{ color:var(--amber-700); font-size:12.5px; }
+  .adm-detail{ margin-top:24px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  @media (max-width:820px){ .adm-detail{ grid-template-columns:1fr; } .adm table{ font-size:12.5px; } }
+  .adm pre{ white-space:pre-wrap; font-size:12.5px; background:var(--s-sunk); padding:12px; margin:0; }
+  .adm-scroll{ overflow-x:auto; }
+</style>
+</head>
+<body>
+<main class="wrap adm">
+  <h1 class="t-section" style="font-size:28px">Orders</h1>
+
+  <form class="adm-bar" id="login">
+    <div class="field"><label for="tok">Admin token</label><input type="password" id="tok" autocomplete="off"></div>
+    <div class="field"><label for="flt">Show</label>
+      <select id="flt"><option value="">Recent</option><option>paid</option><option>shipped</option><option>delivered</option><option>created</option><option>cancelled</option></select>
+    </div>
+    <button class="btn btn-solid" type="submit">Load orders</button>
+  </form>
+  <p class="form-status" id="msg" role="status"></p>
+
+  <div class="adm-scroll"><table id="list" hidden>
+    <thead><tr><th>Order</th><th>Status</th><th>Buyer</th><th>Item</th><th class="num">Total</th><th>Invoice</th><th>Placed</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <section class="adm-detail" id="detail" hidden>
+    <div>
+      <h2 class="field-legend" id="d-h"></h2>
+      <pre id="d-info"></pre>
+      <p class="warn" id="d-warn"></p>
+      <button class="btn btn-line" id="d-retry" type="button">Retry invoice and emails</button>
+      <button class="btn btn-line" id="d-deliver" type="button">Mark delivered</button>
+    </div>
+    <form class="form" id="ship" style="max-width:none">
+      <h2 class="field-legend">Mark as shipped</h2>
+      <div class="field"><label for="s-courier">Courier</label><input id="s-courier" required placeholder="Delhivery"></div>
+      <div class="field"><label for="s-awb">Tracking number (AWB)</label><input id="s-awb" required></div>
+      <div class="field"><label for="s-url">Tracking link</label><input id="s-url" type="url" placeholder="https://">
+        <p class="hint">Optional. Sending this emails the buyer the tracking and delivery instructions.</p></div>
+      <div class="form-foot"><button class="btn btn-solid" type="submit">Mark shipped and email buyer</button></div>
+    </form>
+  </section>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var inr = function (p) { return '₹' + (p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 }); };
+  var current = null;
+  try { $('tok').value = sessionStorage.getItem('warg_admin') || ''; } catch (e) {}
+
+  function msg(t, bad) { $('msg').className = 'form-status' + (t ? (bad ? ' bad' : ' ok') : ''); $('msg').textContent = t || ''; }
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ authorization: 'Bearer ' + $('tok').value.trim(), 'content-type': 'application/json' }, opts.headers || {});
+    return fetch('/api/admin' + path, opts).then(function (r) {
+      return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status)); return d; });
+    });
+  }
+  function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; }
+
+  function loadList() {
+    msg('');
+    try { sessionStorage.setItem('warg_admin', $('tok').value.trim()); } catch (e) {}
+    var f = $('flt').value;
+    api('/orders' + (f ? '?status=' + f : '')).then(function (d) {
+      var tb = $('list').querySelector('tbody'); tb.innerHTML = '';
+      d.orders.forEach(function (o) {
+        var tr = document.createElement('tr');
+        var a = document.createElement('a'); a.href = '#'; a.textContent = o.order_number;
+        a.onclick = function (e) { e.preventDefault(); openOrder(o.order_number); };
+        cell(tr, '').appendChild(a);
+        var pill = document.createElement('span'); pill.className = 'pill ' + o.status; pill.textContent = o.status;
+        cell(tr, '').appendChild(pill);
+        cell(tr, o.customer_name + '\n' + o.city + ', ' + o.state_code);
+        cell(tr, o.product_name + ' × ' + o.quantity);
+        cell(tr, inr(o.total_paise), 'num');
+        var inv = cell(tr, o.invoice_number || (o.invoice_error ? 'failed' : '—'));
+        if (!o.invoice_number && o.invoice_error) inv.className = 'warn';
+        cell(tr, (o.paid_at || o.created_at).replace('T', ' ').slice(0, 16));
+        tb.appendChild(tr);
+      });
+      $('list').hidden = false;
+      if (!d.orders.length) msg('No orders to show.');
+    }).catch(function (e) { msg(e.message, true); });
+  }
+
+  function openOrder(n) {
+    api('/orders/' + encodeURIComponent(n)).then(function (d) {
+      var o = d.order; current = o;
+      $('detail').hidden = false;
+      $('d-h').textContent = o.order_number + ' · ' + o.status;
+      $('d-info').textContent = [
+        o.product_name + ' × ' + o.quantity + ' (' + o.price_type + ' price)',
+        'Total ' + inr(o.total_paise) + ' incl. GST ' + inr(o.gst_paise) + ' (' + (o.tax_kind === 'intra' ? 'CGST+SGST' : 'IGST') + ')',
+        '',
+        o.customer_name + (o.business_name ? ' / ' + o.business_name + ' (' + o.gstin + ')' : ''),
+        o.email + ' · ' + o.phone,
+        o.address_line1, o.address_line2 || '', o.city + ', ' + o.state_code + ' ' + o.pincode,
+        '',
+        'Razorpay: ' + (o.razorpay_payment_id || '—'),
+        'Invoice: ' + (o.invoice_number || '—'),
+        'Confirmation email: ' + (o.confirmation_sent_at || 'not sent'),
+        o.tracking_number ? 'Shipped: ' + o.courier + ' ' + o.tracking_number : ''
+      ].filter(function (l, i, a) { return l !== '' || (a[i - 1] !== ''); }).join('\n');
+      $('d-warn').textContent = [o.invoice_error && 'Invoice error: ' + o.invoice_error, o.email_error && 'Email error: ' + o.email_error].filter(Boolean).join(' · ');
+      $('ship').hidden = !(o.status === 'paid' || o.status === 'shipped');
+      $('d-deliver').hidden = o.status !== 'shipped';
+      $('s-courier').value = o.courier || ''; $('s-awb').value = o.tracking_number || ''; $('s-url').value = o.tracking_url || '';
+      $('detail').scrollIntoView({ behavior: 'smooth' });
+    }).catch(function (e) { msg(e.message, true); });
+  }
+
+  $('login').onsubmit = function (e) { e.preventDefault(); loadList(); };
+  $('ship').onsubmit = function (e) {
+    e.preventDefault();
+    if (!current || !confirm('Email ' + current.email + ' that order ' + current.order_number + ' has shipped?')) return;
+    api('/orders/' + encodeURIComponent(current.order_number) + '/ship', { method: 'POST',
+      body: JSON.stringify({ courier: $('s-courier').value, tracking_number: $('s-awb').value, tracking_url: $('s-url').value }) })
+      .then(function () { msg('Marked shipped; the buyer has been emailed.'); loadList(); openOrder(current.order_number); })
+      .catch(function (e) { msg(e.message, true); });
+  };
+  $('d-retry').onclick = function () {
+    api('/orders/' + encodeURIComponent(current.order_number) + '/retry', { method: 'POST' })
+      .then(function (d) { msg('Retried: ' + JSON.stringify(d.result)); openOrder(current.order_number); })
+      .catch(function (e) { msg(e.message, true); });
+  };
+  $('d-deliver').onclick = function () {
+    api('/orders/' + encodeURIComponent(current.order_number) + '/deliver', { method: 'POST' })
+      .then(function () { msg('Marked delivered.'); loadList(); openOrder(current.order_number); })
+      .catch(function (e) { msg(e.message, true); });
+  };
+  if ($('tok').value) loadList();
+})();
+</script>
+</body>
+</html>

@@ -16,3 +16,13 @@ README.md
 # OS clutter
 .DS_Store
 **/.DS_Store
+
+# Backend source, tests and docs (the Worker bundles src/ itself)
+src
+migrations
+test
+package.json
+package-lock.json
+BACKEND.md
+.dev.vars
+.dev.vars.*

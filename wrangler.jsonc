@@ -1,26 +1,84 @@
 // Cloudflare Workers config for wargrobotics.com.
 //
-// The site is a Worker with static assets only: no Worker script, Cloudflare
-// serves the files straight from the repo root. What must NOT be published
-// (repo tooling, this file) is listed in .assetsignore.
+// Static site + a small backend for orders. Requests to /api/* run the Worker
+// (src/worker.js); everything else is served straight from the static files.
+// What must NOT be published as a file (src/, tooling, this config) is listed
+// in .assetsignore. Setup steps and secrets: BACKEND.md.
 //
-// "name" must match the Worker's name in the Cloudflare dashboard
-// (Workers & Pages > your project), or Workers Builds refuses to deploy.
+// "name" must match the Worker's name in the Cloudflare dashboard.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "wargrobotics-website",
+  "main": "src/worker.js",
   "compatibility_date": "2026-10-18",
 
   "assets": {
     "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
     // /contact.html is served at /contact; old .html links redirect there.
     "html_handling": "auto-trailing-slash",
-    // Unknown paths return a 404 status instead of the home page.
     "not_found_handling": "none"
   },
 
-  // Needed by `wrangler preview`, which Workers Builds runs for pull-request
-  // and other non-production branches. Empty is valid: a static site has no
-  // bindings, so previews need no settings of their own.
-  "previews": {}
+  // Orders database. Create it once with
+  //   npx wrangler d1 create wargrobotics-orders
+  // and paste the database_id it prints here.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wargrobotics-orders",
+      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Retry invoices/emails that failed, every 15 minutes.
+  "triggers": { "crons": ["*/15 * * * *"] },
+
+  "observability": { "enabled": true },
+
+  // Non-secret settings. Secrets (API keys) are set in the dashboard or with
+  // `npx wrangler secret put NAME`, never in this file. See BACKEND.md.
+  "vars": {
+    "SITE_URL": "https://wargrobotics.com",
+    "SELLER_STATE": "KA",
+    "RAZORPAY_KEY_ID": "rzp_live_REPLACE",
+    "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
+    "EMAIL_REPLY_TO": "hello@wargrobotics.com",
+    "ORDER_NOTIFY_EMAIL": "hello@wargrobotics.com",
+    "ZOHO_ORG_ID": "REPLACE",
+    "ZOHO_TAX_ID_INTRA": "REPLACE",
+    "ZOHO_TAX_ID_INTER": "REPLACE",
+    "ZOHO_ITEM_ID_GHOST": "REPLACE",
+    "ZOHO_ITEM_ID_GREYWIND": "REPLACE"
+  },
+
+  // Pull-request and branch builds (`wrangler preview`). Previews inherit
+  // nothing from above, so they get their own database and Razorpay TEST key:
+  // a preview can never take real money or touch real orders.
+  //   npx wrangler d1 create wargrobotics-orders-preview
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "wargrobotics-orders-preview",
+        "database_id": "REPLACE_WITH_PREVIEW_DATABASE_ID",
+        "migrations_dir": "migrations"
+      }
+    ],
+    "vars": {
+      "SITE_URL": "https://wargrobotics.com",
+      "SELLER_STATE": "KA",
+      "RAZORPAY_KEY_ID": "rzp_test_REPLACE",
+      "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
+      "EMAIL_REPLY_TO": "hello@wargrobotics.com",
+      "ORDER_NOTIFY_EMAIL": "",
+      "ZOHO_ORG_ID": "",
+      "ZOHO_TAX_ID_INTRA": "",
+      "ZOHO_TAX_ID_INTER": "",
+      "ZOHO_ITEM_ID_GHOST": "",
+      "ZOHO_ITEM_ID_GREYWIND": ""
+    }
+  }
 }
