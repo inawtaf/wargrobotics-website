@@ -58,3 +58,16 @@ export function base64FromBytes(bytes) {
   for (let i = 0; i < bytes.length; i += chunk) s += String.fromCharCode(...bytes.subarray(i, i + chunk));
   return btoa(s);
 }
+
+const MAX_BODY = 16 * 1024;
+export async function readJson(request) {
+  const text = await request.text();
+  if (text.length > MAX_BODY) throw Object.assign(new Error('Request too large.'), { status: 413 });
+  try { return JSON.parse(text || '{}'); } catch { throw Object.assign(new Error('Invalid request.'), { status: 400 }); }
+}
+
+export const httpError = (status, message, extra) => Object.assign(new Error(message), { status, extra });
+
+export function newRequestNumber(prefix, date = new Date()) {
+  return newOrderNumber(date).replace(/^WR/, prefix);
+}

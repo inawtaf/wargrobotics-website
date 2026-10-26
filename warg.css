@@ -1348,3 +1348,64 @@ sup.fn a:hover{ text-decoration:underline; }
 .order-ship p{ margin:8px 0 0; }
 .checkout .intents > .hint{ font-size:12.5px; line-height:1.5; color:var(--ink-3); }
 .checkout .intents > .hint a{ color:var(--accent-700); }
+
+/* ---------- header: account and cart ---------- */
+.nav-acct{ display:flex; align-items:center; gap:20px; flex:none; }
+.nav-acct.push{ margin-left:auto; }
+.nav-acct a{
+  font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11.5px; letter-spacing:0.1em;
+  text-transform:uppercase; color:rgba(247,248,250,0.78); text-decoration:none; white-space:nowrap;
+}
+.nav-acct a:hover{ color:var(--paper); }
+.nav-cart-n{ display:inline-block; min-width:18px; padding:1px 5px; margin-left:3px; text-align:center; background:var(--accent-700); color:#fff; font-size:10.5px; letter-spacing:0; }
+.nav-cart-n[hidden]{ display:none; }
+@media (max-width:880px){ .nav-acct{ margin-left:auto; } .nav-buy{ margin-left:0; } }
+@media (max-width:520px){ .nav-acct{ gap:12px; } .nav-acct a{ font-size:10.5px; } .nav .wrap{ gap:14px; } }
+
+/* ---------- account area ---------- */
+.auth{ max-width:460px; }
+.auth-tabs,.acct-tabs{ display:flex; gap:1px; background:var(--line-2); border:1px solid var(--line-2); margin-bottom:24px; flex-wrap:wrap; }
+.auth-tabs button,.acct-tabs a{
+  flex:1; padding:14px 12px; background:var(--s-raised); border:0; cursor:pointer; text-align:center; text-decoration:none;
+  font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-2);
+}
+.auth-tabs button[aria-selected="true"],.acct-tabs a[aria-current="page"]{ background:var(--accent-100); color:var(--accent-900); box-shadow:inset 0 -2px 0 var(--accent-700); }
+.btn-google{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:var(--s-raised); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line-2); font-weight:600; }
+.btn-google:hover{ box-shadow:inset 0 0 0 1px var(--line-3); background:var(--s-sunk); }
+.or-rule{ display:flex; align-items:center; gap:12px; margin:20px 0; color:var(--ink-3); font-size:12.5px; }
+.or-rule::before,.or-rule::after{ content:""; flex:1; height:1px; background:var(--line-2); }
+.link-btn{ background:none; border:0; padding:0; color:var(--accent-700); font:inherit; font-size:13.5px; cursor:pointer; text-decoration:underline; }
+.banner{ padding:14px 16px; margin-bottom:20px; font-size:14px; line-height:1.55; background:var(--amber-050); color:var(--amber-700); }
+.banner.ok{ background:var(--accent-100); color:var(--accent-900); }
+.banner button{ margin-left:6px; }
+
+.cards{ display:grid; gap:1px; background:var(--line-2); border:1px solid var(--line-2); }
+.card{ background:var(--s-raised); padding:clamp(16px,2.2vw,22px); }
+.card-head{ display:flex; justify-content:space-between; gap:12px; align-items:baseline; flex-wrap:wrap; }
+.card-title{ margin:0; font-family:'Space Grotesk','Inter',sans-serif; font-weight:500; font-size:16px; }
+.card-meta{ margin:4px 0 0; font-size:13px; color:var(--ink-3); }
+.card-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+.card-actions .btn{ height:40px; padding:0 16px; font-size:13px; }
+.pill{ display:inline-block; padding:3px 9px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; background:var(--s-sunk); color:var(--ink-2); }
+.pill.paid,.pill.open,.pill.in_progress{ background:var(--accent-100); color:var(--accent-900); }
+.pill.shipped,.pill.delivered,.pill.resolved{ background:#E3F4E8; color:#1D6B36; }
+.empty{ padding:28px; text-align:center; color:var(--ink-3); background:var(--s-raised); border:1px dashed var(--line-2); }
+
+.cart-line{ display:grid; grid-template-columns:1fr auto auto; gap:16px; align-items:center; }
+@media (max-width:560px){ .cart-line{ grid-template-columns:1fr auto; } .cart-line .cart-price{ grid-column:1 / -1; } }
+.qty{ display:inline-flex; border:1px solid var(--line-2); }
+.qty button{ width:36px; height:36px; border:0; background:var(--s-sunk); cursor:pointer; font-size:16px; color:var(--ink); }
+.qty button:disabled{ opacity:.4; cursor:default; }
+.qty span{ min-width:36px; display:grid; place-items:center; font-variant-numeric:tabular-nums; }
+.cart-price{ text-align:right; font-variant-numeric:tabular-nums; }
+.cart-price s{ color:var(--ink-3); font-size:12.5px; margin-right:6px; }
+
+.addr-pick{ display:grid; gap:1px; background:var(--line-2); border:1px solid var(--line-2); margin-top:10px; }
+.addr-pick label{ display:flex; gap:12px; align-items:flex-start; background:var(--s-raised); padding:14px 16px; cursor:pointer; font-size:14px; line-height:1.5; }
+.addr-pick input{ margin-top:4px; accent-color:var(--accent-700); }
+.addr-pick label:has(input:checked){ background:var(--accent-100); }
+.check{ display:flex; gap:10px; align-items:center; font-size:14px; cursor:pointer; }
+.check input{ accent-color:var(--accent-700); width:16px; height:16px; }
+
+/* `hidden` must win over component display rules (.form is display:flex). */
+[hidden]{ display:none !important; }

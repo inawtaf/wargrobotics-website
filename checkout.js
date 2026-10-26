@@ -1,206 +1,148 @@
-/* Checkout: prices from /api/products, live quote, then Razorpay Checkout.
-   The server sets the price; nothing the browser sends can change it. */
+/* Checkout: signed-in only. Cart from the account, address from the address
+   book (or a new one), price quote from the server, then Razorpay Checkout.
+   The server sets every price; nothing the browser sends can change it. */
 (function () {
   var form = document.getElementById('checkout-form');
   if (!form) return;
+  var api = window.WargApi, F = window.WargForm;
   var btn = document.getElementById('pay-btn');
-  var statusEl = form.querySelector('.form-status');
-  var cfg = null, quote = null, busy = false, quoteTimer = null;
-
-  function inr(paise) {
-    return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function inrWhole(paise) { return '₹' + Math.round(paise / 100).toLocaleString('en-IN'); }
+  var addresses = [], user = null, quote = null, busy = false;
   function $(id) { return document.getElementById(id); }
-  function track(name, params) { if (window.wargTrack) window.wargTrack(name, params); }
+  function track(n, p) { if (window.wargTrack) window.wargTrack(n, p); }
 
-  function setStatus(msg, cls) {
-    statusEl.className = 'form-status' + (cls ? ' ' + cls : '');
-    statusEl.textContent = msg || '';
-  }
-
-  function chosenSku() {
-    var r = form.querySelector('input[name="sku"]:checked');
-    return r ? r.value : 'ghost';
-  }
-
-  // ?unit=greywind preselects a product.
-  var unit = new URLSearchParams(location.search).get('unit');
-  if (unit && $('sku-' + unit)) $('sku-' + unit).checked = true;
-
-  // Business GSTIN fields
-  var biz = $('is-business'), bizBox = form.querySelector('[data-addon="business"]');
-  biz.addEventListener('change', function () { bizBox.hidden = !biz.checked; });
-
-  // ---------------------------------------------------------------- prices
-  fetch('/api/products').then(function (r) {
-    if (!r.ok) throw new Error('prices unavailable');
-    return r.json();
-  }).then(function (data) {
-    cfg = data;
-    var sel = $('state_code');
-    data.states.forEach(function (s) {
-      var o = document.createElement('option');
-      o.value = s.code; o.textContent = s.name;
-      sel.appendChild(o);
+  window.WargMe().then(function (d) {
+    if (!d.user) { location.href = '/login?next=%2Fcheckout'; return; }
+    user = d.user;
+    if (!user.email_verified) { $('verify-banner').hidden = false; $('vb-email').textContent = user.email; }
+    return Promise.all([api('/products'), api('/account/addresses')]).then(function (r) {
+      var sel = $('state_code');
+      r[0].states.forEach(function (s) { var o = document.createElement('option'); o.value = s.code; o.textContent = s.name; sel.appendChild(o); });
+      addresses = r[1].addresses;
+      if (user.name) $('name').value = user.name;
+      if (user.phone) $('phone').value = user.phone;
+      renderAddresses();
+      refresh();
     });
-    data.products.forEach(function (p) {
-      var el = form.querySelector('[data-price="' + p.sku + '"]');
-      if (!el) return;
-      var offer = p.offer_units_left > 0;
-      el.innerHTML = '';
-      if (offer) {
-        var was = document.createElement('s'); was.textContent = inrWhole(p.list_price_paise);
-        el.appendChild(was); el.appendChild(document.createTextNode(' '));
-      }
-      var now = document.createElement('b');
-      now.textContent = inrWhole(offer ? p.offer_price_paise : p.list_price_paise) + ' + GST';
-      el.appendChild(now);
-    });
-    $('quantity').max = data.max_quantity;
-    refreshQuote();
-  }).catch(function () {
-    btn.textContent = 'Checkout unavailable';
-    setStatus('We could not load prices. Please refresh, or email hello@wargrobotics.com to order.', 'bad');
-  });
+  }).catch(function () { F.status(form, 'Could not load checkout. Please refresh.', 'bad'); });
 
-  function refreshQuote() {
-    clearTimeout(quoteTimer);
-    quoteTimer = setTimeout(function () {
-      var qty = parseInt($('quantity').value, 10);
-      if (!cfg || !(qty >= 1 && qty <= cfg.max_quantity)) return;
-      fetch('/api/quote', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sku: chosenSku(), quantity: qty, state_code: $('state_code').value })
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        if (d.quote) renderQuote(d.quote);
-      }).catch(function () {});
-    }, 150);
+  $('vb-resend').onclick = function () {
+    api('/auth/resend-verification', { method: 'POST' })
+      .then(function () { F.status(form, 'Sent. Check your inbox (and spam), then come back and refresh this page.', 'ok'); })
+      .catch(function (e) { F.status(form, e.message, 'bad'); });
+  };
+
+  // ---------------------------------------------------------------- addresses
+  function addrText(a) {
+    return [a.business_name, a.address_line1, a.address_line2, a.city + ' ' + a.pincode, a.phone].filter(Boolean).join(', ');
   }
-
-  function renderQuote(q) {
-    quote = q;
-    $('sum-name').textContent = q.productName;
-    $('sum-qty').textContent = q.quantity;
-    $('sum-subtotal').textContent = inr(q.subtotalPaise);
-    // Replace the tax rows: one IGST row, or CGST + SGST once a state is chosen.
-    var total = document.querySelector('.summary-total');
-    Array.prototype.forEach.call(document.querySelectorAll('.summary-lines .tax-row'), function (el) { el.remove(); });
-    var lines = $('state_code').value ? q.taxLines : [{ label: 'GST 18%', paise: q.gstPaise }];
-    lines.forEach(function (l) {
-      var row = document.createElement('div');
-      row.className = 'tax-row';
-      var dt = document.createElement('dt'); dt.textContent = l.label;
-      var dd = document.createElement('dd'); dd.textContent = inr(l.paise);
-      row.appendChild(dt); row.appendChild(dd);
-      total.parentNode.insertBefore(row, total);
+  function renderAddresses() {
+    var box = $('addr-list');
+    box.innerHTML = '';
+    addresses.forEach(function (a, i) {
+      var l = document.createElement('label');
+      l.innerHTML = '<input type="radio" name="address_choice"><span><b></b><br><span class="t-small"></span></span>';
+      var r = l.querySelector('input'); r.value = a.id; r.checked = Boolean(a.is_default) || i === 0;
+      l.querySelector('b').textContent = (a.label ? a.label + ' · ' : '') + a.name;
+      l.querySelector('.t-small').textContent = addrText(a);
+      box.appendChild(l);
     });
-    $('sum-total').textContent = inr(q.totalPaise);
-    var offer = $('sum-offer');
-    if (q.priceType === 'offer') {
-      offer.hidden = false;
-      offer.textContent = 'Offer price – ' + q.offerUnitsLeft + ' of the first 100 left';
-    } else {
-      offer.hidden = true;
-    }
-    if (!busy) { btn.disabled = false; btn.textContent = 'Pay ' + inr(q.totalPaise); }
+    var n = document.createElement('label');
+    n.innerHTML = '<input type="radio" name="address_choice" value="new"><span><b>Deliver to a new address</b></span>';
+    if (!addresses.length) n.querySelector('input').checked = true;
+    box.appendChild(n);
+    syncNew();
   }
-
+  function choice() { var c = form.querySelector('input[name="address_choice"]:checked'); return c ? c.value : 'new'; }
+  function syncNew() { $('new-address').hidden = choice() !== 'new'; }
+  function stateCode() {
+    var c = choice();
+    if (c === 'new') return $('state_code').value;
+    var a = addresses.find(function (x) { return String(x.id) === c; });
+    return a ? a.state_code : '';
+  }
   form.addEventListener('change', function (e) {
-    if (e.target.name === 'sku' || e.target.name === 'state_code' || e.target.name === 'quantity') refreshQuote();
+    if (e.target.name === 'address_choice') { syncNew(); refresh(); }
+    if (e.target.id === 'state_code') refresh();
+    if (e.target.id === 'is-business') form.querySelector('[data-addon="business"]').hidden = !e.target.checked;
   });
-  $('quantity').addEventListener('input', refreshQuote);
 
-  // ---------------------------------------------------------------- errors
-  function clearErrors() {
-    Array.prototype.forEach.call(form.querySelectorAll('.err'), function (el) { el.remove(); });
-    Array.prototype.forEach.call(form.querySelectorAll('[aria-invalid]'), function (el) {
-      el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby');
+  // ---------------------------------------------------------------- summary
+  function refresh() {
+    var sc = stateCode();
+    api('/cart' + (sc ? '?state_code=' + sc : '')).then(function (c) {
+      if (!c.items.length) { location.href = '/cart'; return; }
+      quote = c.quote;
+      var box = $('sum-items'); box.innerHTML = '';
+      quote.lines.forEach(function (l) {
+        var p = document.createElement('p'); p.className = 'summary-item';
+        p.textContent = l.productName + ' × ' + l.quantity;
+        var s = document.createElement('p'); s.className = 'summary-offer';
+        s.textContent = window.inr(l.subtotalPaise) + (l.priceType === 'offer' ? ' · offer price' : '');
+        box.appendChild(p); box.appendChild(s);
+      });
+      $('sum-subtotal').textContent = window.inr(quote.subtotalPaise);
+      var total = document.querySelector('.summary-total');
+      Array.prototype.forEach.call(document.querySelectorAll('.summary-lines .tax-row'), function (el) { el.remove(); });
+      (sc ? quote.taxLines : [{ label: 'GST 18%', paise: quote.gstPaise }]).forEach(function (l) {
+        var row = document.createElement('div'); row.className = 'tax-row';
+        var dt = document.createElement('dt'); dt.textContent = l.label;
+        var dd = document.createElement('dd'); dd.textContent = window.inr(l.paise);
+        row.appendChild(dt); row.appendChild(dd); total.parentNode.insertBefore(row, total);
+      });
+      $('sum-total').textContent = window.inr(quote.totalPaise);
+      if (!busy) setBusy(false);
     });
-  }
-  function showErrors(fields) {
-    var first = null;
-    Object.keys(fields).forEach(function (name) {
-      var input = form.querySelector('[name="' + name + '"]');
-      if (!input) return;
-      if (name === 'gstin' || name === 'business_name') { biz.checked = true; bizBox.hidden = false; }
-      var p = document.createElement('p');
-      p.className = 'err'; p.id = 'err-' + name; p.textContent = fields[name];
-      var field = input.closest('.field') || input.closest('fieldset');
-      field.appendChild(p);
-      input.setAttribute('aria-invalid', 'true');
-      input.setAttribute('aria-describedby', p.id);
-      if (!first) first = input;
-    });
-    if (first) first.focus();
-  }
-
-  // ---------------------------------------------------------------- pay
-  function payload() {
-    var f = new FormData(form);
-    var b = {};
-    ['sku', 'quantity', 'name', 'email', 'phone', 'address_line1', 'address_line2', 'city', 'state_code', 'pincode', 'hp_trap']
-      .forEach(function (k) { b[k] = (f.get(k) || '').toString(); });
-    b.quantity = parseInt(b.quantity, 10);
-    if (biz.checked) { b.gstin = (f.get('gstin') || '').toString(); b.business_name = (f.get('business_name') || '').toString(); }
-    return b;
   }
 
   function setBusy(on, label) {
     busy = on;
-    btn.disabled = on;
-    btn.textContent = label || (quote ? 'Pay ' + inr(quote.totalPaise) : 'Pay');
+    btn.disabled = on || !user || !user.email_verified;
+    btn.textContent = label || (quote ? 'Pay ' + window.inr(quote.totalPaise) : 'Pay');
   }
 
+  // ---------------------------------------------------------------- pay
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     if (busy) return;
-    clearErrors(); setStatus('');
+    F.clear(form);
     if (typeof window.Razorpay !== 'function') {
-      setStatus('The payment window could not load. Check your connection or ad blocker, then try again.', 'bad');
+      F.status(form, 'The payment window could not load. Check your connection or ad blocker, then try again.', 'bad');
       return;
     }
+    var body = { hp_trap: $('hp-trap').value };
+    if (choice() === 'new') {
+      var v = F.values(form);
+      body.address = { name: v.name, phone: v.phone, address_line1: v.address_line1, address_line2: v.address_line2, city: v.city, state_code: v.state_code, pincode: v.pincode };
+      if ($('is-business').checked) { body.address.gstin = v.gstin; body.address.business_name = v.business_name; }
+      body.save_address = $('save-address').checked;
+    } else {
+      body.address_id = Number(choice());
+    }
     setBusy(true, 'Creating your order…');
-    fetch('/api/orders', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload())
-    }).then(function (r) {
-      return r.json().then(function (d) { return { status: r.status, data: d }; });
-    }).then(function (res) {
-      if (res.status === 422) {
-        setBusy(false); showErrors(res.data.fields || {});
-        setStatus('Please check the highlighted fields.', 'bad');
-        return;
-      }
-      if (res.status !== 201) throw new Error(res.data.error || 'order failed');
-      openRazorpay(res.data);
-    }).catch(function (err) {
+    api('/orders', { method: 'POST', body: body }).then(openRazorpay).catch(function (err) {
       setBusy(false);
-      setStatus('We could not create your order: ' + err.message + '. Nothing has been charged.', 'bad');
+      F.fail(form, err);
+      if (err.data && err.data.fields && err.data.fields.address_id) F.status(form, err.data.fields.address_id, 'bad');
     });
   });
 
   function openRazorpay(o) {
-    track('begin_checkout', { currency: 'INR', value: o.amount_paise / 100, items: [{ item_id: o.quote.sku, item_name: o.quote.productName, quantity: o.quote.quantity }] });
+    track('begin_checkout', { currency: 'INR', value: o.amount_paise / 100, items: o.quote.lines.map(function (l) { return { item_id: l.sku, item_name: l.productName, quantity: l.quantity }; }) });
     var rzp = new window.Razorpay({
       key: o.razorpay_key_id,
       order_id: o.razorpay_order_id,
       amount: o.amount_paise,
       currency: 'INR',
       name: 'Warg Robotics',
-      description: o.quote.productName + ' × ' + o.quote.quantity + ' · ' + o.order_number,
+      description: o.quote.summary + ' · ' + o.order_number,
       prefill: o.prefill,
       notes: { order_number: o.order_number },
       theme: { color: '#2B00FF' },
       handler: function (resp) { confirmPayment(o, resp); },
-      modal: {
-        ondismiss: function () {
-          setBusy(false);
-          setStatus('Payment window closed. Nothing has been charged; you can try again.', 'bad');
-        }
-      }
+      modal: { ondismiss: function () { setBusy(false); F.status(form, 'Payment window closed. Nothing has been charged; you can try again.', 'bad'); } }
     });
     rzp.on('payment.failed', function (resp) {
-      setStatus('Payment failed: ' + ((resp.error && resp.error.description) || 'please try another method') + '.', 'bad');
+      F.status(form, 'Payment failed: ' + ((resp.error && resp.error.description) || 'please try another method') + '.', 'bad');
     });
     setBusy(true, 'Waiting for payment…');
     rzp.open();
@@ -209,17 +151,11 @@
   function confirmPayment(o, resp) {
     setBusy(true, 'Confirming payment…');
     var go = function () { location.href = '/order?n=' + encodeURIComponent(o.order_number) + '&t=' + o.token; };
-    fetch('/api/orders/' + encodeURIComponent(o.order_number) + '/confirm', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        token: o.token,
-        razorpay_order_id: resp.razorpay_order_id,
-        razorpay_payment_id: resp.razorpay_payment_id,
-        razorpay_signature: resp.razorpay_signature
-      })
-    }).then(function (r) { return r.json(); }).then(function (d) {
+    api('/orders/' + encodeURIComponent(o.order_number) + '/confirm', { method: 'POST', body: {
+      razorpay_order_id: resp.razorpay_order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature
+    } }).then(function () {
       track('purchase', { transaction_id: o.order_number, currency: 'INR', value: o.amount_paise / 100, tax: o.quote.gstPaise / 100,
-        items: [{ item_id: o.quote.sku, item_name: o.quote.productName, quantity: o.quote.quantity, price: o.quote.unitPricePaise / 100 }] });
+        items: o.quote.lines.map(function (l) { return { item_id: l.sku, item_name: l.productName, quantity: l.quantity, price: l.unitPricePaise / 100 }; }) });
       go();
     }).catch(go);   // the webhook still records the payment; the order page will show it
   }

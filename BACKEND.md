@@ -1,11 +1,19 @@
-# Orders backend
+# Accounts and orders backend
 
-Online orders for Ghost and Greywind: the buyer pays on the site, the order is
-saved, a GST invoice is created in Zoho Books, and the buyer gets emails at
-each step.
+Customer accounts and online orders for Ghost and Greywind. Customers sign in
+with Google or with an email and password, fill a cart, and pay with Razorpay.
+Each order is saved, a GST invoice is created in Zoho Books, and the customer
+gets emails at each step. In their account they can track orders, download
+invoices, reorder, keep saved addresses and raise service requests.
+
+**An account with a confirmed email is required to buy.** Signed-out visitors
+can browse and fill a cart (kept in their browser), and it moves into their
+account when they sign in.
 
 ```
-checkout.html ─► POST /api/orders ─► D1 (order saved) ─► Razorpay order
+cart.html ─► login.html (Google or email) ─► checkout.html
+                                                  │
+checkout.html ─► POST /api/orders (cart + address) ─► D1 (order saved) ─► Razorpay order
       │
       └─► Razorpay Checkout (UPI / card / netbanking)
               │
@@ -26,12 +34,31 @@ every 15 minutes and sends the invoice on its own once it exists.
 
 | Piece | Where |
 |---|---|
-| Worker code | `src/` (`worker.js` is the entry point) |
-| Database schema | `migrations/0001_orders.sql` |
+| Worker code | `src/` (`worker.js` routes; `auth.js` sessions and passwords; `google.js` Google sign-in; `account.js` account API; `orders.js` orders) |
+| Database schema | `migrations/0001_orders.sql`, `migrations/0002_accounts.sql` |
 | Prices, offer limit, GST rate, states | `src/config.js` |
 | Email wording | `src/email.js` |
-| Checkout / order status / admin pages | `checkout.html` + `checkout.js`, `order.html`, `admin.html` |
+| Pages | `login.html`, `reset.html`, `cart.html`, `checkout.html`, `order.html`, `account.html`, `admin.html` |
+| Page scripts | `site.js` (header links, cart; on every page), `auth-page.js`, `cart-page.js`, `checkout.js`, `account-page.js` |
 | Settings and bindings | `wrangler.jsonc` |
+
+**How sign-in is protected**
+- Passwords are hashed with PBKDF2-SHA256, 100,000 rounds (the most Workers
+  allows) and a random salt, plus a secret pepper (`AUTH_PEPPER`), so a copy of
+  the database alone is not enough to start guessing.
+- A session is a random token in an HttpOnly, Secure, SameSite=Lax cookie that
+  lasts 30 days. Only its hash is stored.
+- Wrong passwords are throttled (10 per email and 50 per network per 15
+  minutes). A wrong email and a wrong password get the same message, and
+  "forgot password" never reveals whether an account exists.
+- Requests that change anything must come from the site itself (an Origin
+  check), which blocks other sites submitting forms as a signed-in customer.
+- Google sign-in uses the authorisation-code flow with PKCE, state and nonce.
+  If Google signs in someone whose email matches an account that was never
+  confirmed, that account's password is removed. This stops anyone from
+  registering someone else's email in advance and keeping access.
+- Changing or resetting a password signs out the account's other devices and
+  emails the customer.
 
 Prices exclude GST; 18% is added at checkout. CGST + SGST applies within
 Karnataka (`SELLER_STATE`), IGST elsewhere. Delivery is free.
@@ -53,6 +80,10 @@ npx wrangler d1 create wargrobotics-orders-preview    # copy into the "previews"
 npx wrangler d1 migrations apply wargrobotics-orders --remote
 npx wrangler d1 migrations apply wargrobotics-orders-preview --remote
 ```
+
+If you already applied the earlier version of `0001_orders.sql` (from the
+first orders patch), delete the database and create it again before applying.
+The order tables changed shape for carts, and nothing real has been stored yet.
 
 ### 2. Razorpay
 
@@ -101,12 +132,30 @@ npx wrangler d1 migrations apply wargrobotics-orders-preview --remote
 Emails come from `orders@wargrobotics.com`, and replies go to
 `hello@wargrobotics.com`. Change these with `EMAIL_FROM` and `EMAIL_REPLY_TO`.
 
-### 5. Settings in wrangler.jsonc
+### 5. Google sign-in
+
+1. Go to console.cloud.google.com and create a project, for example "Warg website".
+2. Open **Google Auth Platform → Branding** (older consoles call it the *OAuth
+   consent screen*). Enter the app name "Warg Robotics", your support email,
+   the logo, and links to your privacy policy and terms. Under **Audience**,
+   choose External and publish the app (no Google review is needed for basic
+   sign-in).
+3. Open **Clients → Create client → Web application** and add:
+   - Authorised JavaScript origins: `https://wargrobotics.com`
+   - Authorised redirect URIs: `https://wargrobotics.com/api/auth/google/callback`
+4. Copy the Client ID into `wrangler.jsonc` as `GOOGLE_CLIENT_ID`. The Client
+   Secret is a secret (step 7).
+
+Sign-in only works on the address in the redirect URI, so make
+`wargrobotics.com` the main address (redirect `www` to it, as recommended
+earlier).
+
+### 6. Settings in wrangler.jsonc
 
 Replace every `REPLACE` value. The `previews` block uses the Razorpay **test**
 key and the preview database, so pull-request builds can never take real money.
 
-### 6. Secrets
+### 7. Secrets
 
 Set these for production in **Workers & Pages → wargrobotics-website →
 Settings → Variables and Secrets** (type: Secret), or with
@@ -121,22 +170,31 @@ Settings → Variables and Secrets** (type: Secret), or with
 | `RESEND_API_KEY` | Resend API key |
 | `ORDER_LINK_SECRET` | random string, at least 32 characters; signs buyers' order-page links (changing it breaks old links) |
 | `ADMIN_TOKEN` | random string, at least 24 characters; your login for `admin.html` |
+| `GOOGLE_CLIENT_SECRET` | from step 5 |
+| `AUTH_PEPPER` | random string, at least 32 characters, mixed into every password hash. **Never change it once accounts exist, or every password stops working.** |
 
 Generate random values with `openssl rand -hex 32`.
 
-For previews, set at least `RAZORPAY_KEY_SECRET` (test), `ORDER_LINK_SECRET` and
-`ADMIN_TOKEN` with `npx wrangler preview secret put NAME`.
+For previews, set at least `RAZORPAY_KEY_SECRET` (test), `ORDER_LINK_SECRET`,
+`ADMIN_TOKEN` and `AUTH_PEPPER` with `npx wrangler preview secret put NAME`.
+Google sign-in won't work on preview addresses, because they aren't in
+Google's redirect list; use email sign-in there.
 
-### 7. Deploy and test
+### 8. Deploy and test
 
 Push to `main`. Then, with Razorpay still in test mode:
 
-1. Buy a Ghost at `/checkout` using a Razorpay test card or UPI ID.
+1. Create an account at `/login`, confirm the email, and sign out and in again,
+   both with the password and with Google.
+2. Add a Ghost to the cart and buy it at `/checkout` with a Razorpay test card
+   or UPI ID.
 2. Check that the order page says *Thank you*, the invoice appears in Zoho
    Books as paid, and the confirmation email arrives with the PDF attached.
-3. Open `/admin`, paste `ADMIN_TOKEN`, mark the order shipped, and check that
-   the dispatch email arrives.
-4. Switch to live: put the live Key ID in `wrangler.jsonc`, update
+3. Open `/account`: the order, its invoice download and *Buy again* should all
+   work. Raise a service request.
+4. Open `/admin`, paste `ADMIN_TOKEN`, mark the order shipped, and update the
+   service request. Check that both emails arrive.
+5. Switch to live: put the live Key ID in `wrangler.jsonc`, update
    `RAZORPAY_KEY_SECRET`, add the webhook again in live mode, and redeploy.
    Delete or void the test invoices in Zoho.
 
@@ -151,6 +209,13 @@ Push to `main`. Then, with Razorpay still in test mode:
 - **Invoice or email failed:** `/admin` shows the error. Fix the cause (for
   example a Zoho ID), then click *Retry*. The cron also retries every 15 minutes,
   up to 20 attempts.
+- **Service request:** you get a "Service SR-…" email at `ORDER_NOTIFY_EMAIL`.
+  In `/admin`, under *Service requests*, set the status, write a note and save.
+  The customer is emailed and sees the note in their account. If the customer
+  replies with photos, the reply goes to `hello@wargrobotics.com`.
+- **Customer can't sign in:** they can use *Forgot password* on `/login`. To
+  change someone's email address, edit the `users` row in the D1 console
+  (Workers & Pages → D1 → wargrobotics-orders → Console).
 - **Refund:** issue it in the Razorpay dashboard and a credit note in Zoho. The
   order status isn't changed automatically yet.
 - **Change a price or the offer:** edit `src/config.js` and the item rate in
@@ -160,10 +225,14 @@ Push to `main`. Then, with Razorpay still in test mode:
 
 ```bash
 npm install
-npm test                                          # unit tests
-cp .dev.vars.example .dev.vars                    # local-only settings
-npx wrangler d1 migrations apply wargrobotics-orders --local
-node test/mock-services.mjs 8899 &                # stands in for Razorpay, Zoho, Resend
-npx wrangler dev --test-scheduled &
-node test/e2e.mjs                                 # 16 end-to-end checks
+npm test                 # unit tests
+bash test/run-e2e.sh     # 31 end-to-end checks: accounts, Google, cart, checkout,
+                         # invoices, emails, service requests. Uses stand-ins for
+                         # Razorpay, Zoho, Resend and Google, on a fresh local database.
 ```
+
+To click around locally, run `cp .dev.vars.example .dev.vars`,
+`node test/mock-services.mjs 8899 &` and `npx wrangler dev`, then open
+`http://localhost:8787`. Use `localhost`, not `127.0.0.1`, or the browser won't
+keep the sign-in cookie. Confirmation and reset emails don't really get sent
+locally; read them from `http://127.0.0.1:8899/__calls`.

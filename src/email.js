@@ -61,7 +61,8 @@ function orderTable(o) {
     ? row('CGST 9%', inr(Math.floor(o.gst_paise / 2))) + row('SGST 9%', inr(o.gst_paise - Math.floor(o.gst_paise / 2)))
     : row('IGST 18%', inr(o.gst_paise));
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;border-top:1px solid #e6e7eb;border-bottom:1px solid #e6e7eb">
-${row(`${h(o.product_name)} × ${o.quantity}`, inr(o.subtotal_paise))}
+${(o.items || []).map(i => row(`${h(i.product_name)} × ${i.quantity}`, inr(i.subtotal_paise))).join('')}
+${row('Subtotal', inr(o.subtotal_paise))}
 ${tax}
 ${row('Total paid', inr(o.total_paise), true)}
 </table>`;
@@ -73,9 +74,10 @@ function addressBlock(o) {
   return `<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#4a4d57">${lines.map(h).join('<br>')}</p>`;
 }
 
-// o.link_token is filled in by the caller (fulfil.js) before rendering.
+// o.link_token is filled in by the caller (orders.js) before rendering.
+const site = env => env.SITE_URL || 'https://wargrobotics.com';
 const orderLink = (env, o) =>
-  `${env.SITE_URL || 'https://wargrobotics.com'}/order?n=${encodeURIComponent(o.order_number)}&t=${o.link_token}`;
+  `${site(env)}/order?n=${encodeURIComponent(o.order_number)}&t=${o.link_token}`;
 
 // ---------------------------------------------------------------- templates
 
@@ -92,11 +94,12 @@ export function confirmationEmail(env, o, { hasInvoice }) {
     p('<b>What happens next</b>'),
     p('We test and pack each unit before dispatch. When it ships we email you the courier and tracking number, with instructions for receiving the parcel.'),
     btn(orderLink(env, o), 'View your order'),
+    p(`You can also track this order and download the invoice from <a href="${site(env)}/account" style="color:#2a00ff">your account</a>.`),
     p('Questions? Reply to this email and quote your order number.'),
   ].join(''));
   const text = `Order ${o.order_number} confirmed.
 
-${o.product_name} x ${o.quantity}
+${o.summary}
 Total paid: ${inr(o.total_paise)} (incl. GST)
 
 ${hasInvoice ? 'Your GST invoice is attached.' : 'Your GST invoice will follow shortly.'}
@@ -120,7 +123,7 @@ export function dispatchEmail(env, o) {
     ? btn(o.tracking_url, 'Track your parcel')
     : '';
   const html = layout(`Your order ${o.order_number} has shipped`, [
-    p(`Hi ${first}, your ${h(o.product_name)} is on its way.`),
+    p(`Hi ${first}, your order (${h(o.summary)}) is on its way.`),
     p(`<b>Courier:</b> ${h(o.courier)}<br><b>Tracking number:</b> ${h(o.tracking_number)}`),
     track,
     p('<b>Delivering to</b>'),
@@ -155,7 +158,7 @@ Support: https://wargrobotics.com/support`;
 export function teamEmail(env, o) {
   const lines = [
     `Order ${o.order_number} paid: ${inr(o.total_paise)}`,
-    `${o.product_name} x ${o.quantity} (${o.price_type} price)`,
+    ...(o.items || []).map(i => `${i.product_name} x ${i.quantity} (${i.price_type} price)`),
     '',
     `${o.customer_name}${o.business_name ? ` / ${o.business_name} (${o.gstin})` : ''}`,
     `${o.email} · ${o.phone}`,
@@ -166,8 +169,91 @@ export function teamEmail(env, o) {
     `Invoice: ${o.invoice_number || 'not yet created'}`,
   ].filter(l => l !== null && l !== undefined);
   return {
-    subject: `New order ${o.order_number} – ${o.product_name} × ${o.quantity}`,
+    subject: `New order ${o.order_number} – ${o.summary}`,
     html: `<pre style="font:14px/1.6 ui-monospace,monospace">${h(lines.join('\n'))}</pre>`,
     text: lines.join('\n'),
+  };
+}
+
+// ---------------------------------------------------------------- accounts
+
+export function verifyEmail(env, user, token) {
+  const link = `${site(env)}/api/auth/verify?token=${encodeURIComponent(token)}`;
+  return {
+    subject: 'Confirm your email – Warg Robotics',
+    html: layout('Confirm your email', [
+      p(`Hi ${h(user.name.split(' ')[0])}, confirm this is your email address to finish setting up your Warg Robotics account.`),
+      btn(link, 'Confirm my email'),
+      p('The link works for 24 hours. If you did not create an account, ignore this email.'),
+    ].join('')),
+    text: `Confirm your email for your Warg Robotics account:\n${link}\n\nThe link works for 24 hours. If you did not create an account, ignore this email.`,
+  };
+}
+
+export function resetEmail(env, user, token) {
+  const link = `${site(env)}/reset?token=${encodeURIComponent(token)}`;
+  return {
+    subject: 'Reset your password – Warg Robotics',
+    html: layout('Reset your password', [
+      p(`Hi ${h(user.name.split(' ')[0])}, we received a request to reset the password for your Warg Robotics account.`),
+      btn(link, 'Choose a new password'),
+      p('The link works for one hour and can be used once. If you did not ask for this, ignore this email: your password stays the same.'),
+    ].join('')),
+    text: `Reset your Warg Robotics password:\n${link}\n\nThe link works for one hour. If you did not ask for this, ignore this email.`,
+  };
+}
+
+export function passwordChangedEmail(env, user) {
+  return {
+    subject: 'Your password was changed – Warg Robotics',
+    html: layout('Your password was changed', [
+      p(`Hi ${h(user.name.split(' ')[0])}, the password for your Warg Robotics account was just changed, and other devices were signed out.`),
+      p(`If this was not you, <a href="${site(env)}/login#forgot" style="color:#2a00ff">reset your password</a> now and reply to this email.`),
+    ].join('')),
+    text: `The password for your Warg Robotics account was just changed. If this was not you, reset it at ${site(env)}/login#forgot and reply to this email.`,
+  };
+}
+
+// ---------------------------------------------------------------- service requests
+
+const KIND = { repair: 'Repair', warranty: 'Warranty claim', return: 'Return', setup: 'Setup help', other: 'Other' };
+const STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' };
+
+export function serviceCreatedEmail(env, sr, user) {
+  return {
+    subject: `Service request ${sr.request_number} received – Warg Robotics`,
+    html: layout(`Request ${sr.request_number} received`, [
+      p(`Hi ${h(user.name.split(' ')[0])}, we have your ${h(KIND[sr.kind].toLowerCase())} request${sr.order_number ? ` for order ${h(sr.order_number)}` : ''}. We will reply within two working days.`),
+      p(`<b>${h(sr.subject)}</b><br>${h(sr.message).replace(/\n/g, '<br>')}`),
+      p('If photos or a video would help, reply to this email with them attached.'),
+      btn(`${site(env)}/account#service`, 'View your requests'),
+    ].join('')),
+    text: `We have your request ${sr.request_number}: ${sr.subject}\nWe will reply within two working days. Reply to this email with photos if they help.`,
+  };
+}
+
+export function serviceTeamEmail(env, sr, user) {
+  const lines = [
+    `${KIND[sr.kind]} request ${sr.request_number}${sr.order_number ? ` (order ${sr.order_number})` : ''}`,
+    `${user.name} · ${user.email}${user.phone ? ' · ' + user.phone : ''}`,
+    '', sr.subject, '', sr.message, '', `Update it in ${site(env)}/admin`,
+  ];
+  return {
+    subject: `Service ${sr.request_number}: ${sr.subject}`,
+    html: `<pre style="font:14px/1.6 ui-monospace,monospace;white-space:pre-wrap">${h(lines.join('\n'))}</pre>`,
+    text: lines.join('\n'),
+  };
+}
+
+export function serviceUpdateEmail(env, sr, user) {
+  return {
+    subject: `Update on ${sr.request_number}: ${STATUS[sr.status]} – Warg Robotics`,
+    html: layout(`Request ${sr.request_number}: ${STATUS[sr.status]}`, [
+      p(`Hi ${h(user.name.split(' ')[0])}, there is an update on your request <b>${h(sr.subject)}</b>.`),
+      sr.team_note ? p(h(sr.team_note).replace(/\n/g, '<br>')) : '',
+      btn(`${site(env)}/account#service`, 'View your requests'),
+      p('Reply to this email if you have questions.'),
+    ].join('')),
+    text: `Update on ${sr.request_number} (${STATUS[sr.status]}): ${sr.team_note || ''}\n${site(env)}/account#service`,
   };
 }

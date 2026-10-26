@@ -5,22 +5,21 @@
 CREATE TABLE orders (
   id                    INTEGER PRIMARY KEY AUTOINCREMENT,
   order_number          TEXT NOT NULL UNIQUE,          -- WR-261026-K7Q2, shown to the buyer
+  user_id               INTEGER REFERENCES users(id),  -- account that placed it (see 0002)
   status                TEXT NOT NULL DEFAULT 'created'
                         CHECK (status IN ('created','paid','shipped','delivered','cancelled','refunded')),
 
-  -- what was bought (one product per order)
-  product_sku           TEXT NOT NULL,                 -- 'ghost' | 'greywind'
-  product_name          TEXT NOT NULL,
-  quantity              INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 9),
-  price_type            TEXT NOT NULL CHECK (price_type IN ('offer','list')),
-  unit_price_paise      INTEGER NOT NULL,              -- before GST
-  subtotal_paise        INTEGER NOT NULL,              -- unit price x quantity
+  -- totals across all items (lines are in order_items)
+  item_count            INTEGER NOT NULL,              -- total units, 1..9
+  summary               TEXT NOT NULL,                 -- "Warg Ghost × 1, Warg Greywind × 2"
+  subtotal_paise        INTEGER NOT NULL,              -- before GST
   gst_rate_bp           INTEGER NOT NULL,              -- basis points: 1800 = 18%
   gst_paise             INTEGER NOT NULL,
   total_paise           INTEGER NOT NULL,              -- what the buyer pays
   tax_kind              TEXT NOT NULL CHECK (tax_kind IN ('intra','inter')),  -- CGST+SGST or IGST
 
-  -- buyer
+  -- buyer and delivery address (a copy: editing a saved address later
+  -- must not change where a past order went)
   customer_name         TEXT NOT NULL,
   email                 TEXT NOT NULL,
   phone                 TEXT NOT NULL,
@@ -64,9 +63,23 @@ CREATE TABLE orders (
   updated_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
-CREATE INDEX idx_orders_status   ON orders (status, created_at);
-CREATE INDEX idx_orders_email    ON orders (email);
-CREATE INDEX idx_orders_sku_paid ON orders (product_sku, price_type, status);
+CREATE INDEX idx_orders_status ON orders (status, created_at);
+CREATE INDEX idx_orders_user   ON orders (user_id, id);
+
+-- One row per product in an order.
+CREATE TABLE order_items (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id          INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  sku               TEXT NOT NULL,                     -- 'ghost' | 'greywind'
+  product_name      TEXT NOT NULL,
+  quantity          INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 9),
+  price_type        TEXT NOT NULL CHECK (price_type IN ('offer','list')),
+  unit_price_paise  INTEGER NOT NULL,                  -- before GST
+  subtotal_paise    INTEGER NOT NULL,
+  gst_paise         INTEGER NOT NULL
+);
+CREATE INDEX idx_order_items_order ON order_items (order_id);
+CREATE INDEX idx_order_items_sku   ON order_items (sku, price_type);
 
 -- Every payment event we receive, for audit and debugging.
 CREATE TABLE payment_events (

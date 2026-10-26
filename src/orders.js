@@ -1,5 +1,5 @@
 import { PRODUCTS } from './config.js';
-import { quote } from './pricing.js';
+import { quoteCart } from './pricing.js';
 import { nowIso, nowSec, newOrderNumber, orderToken } from './util.js';
 import * as razorpay from './razorpay.js';
 import * as zoho from './zoho.js';
@@ -7,51 +7,55 @@ import * as email from './email.js';
 
 const sellerState = env => env.SELLER_STATE || 'KA';
 
-// Units already sold at the offer price. Orders still awaiting payment don't count.
-export async function unitsSoldAtOffer(env, sku) {
-  const row = await env.DB.prepare(
-    "SELECT COALESCE(SUM(quantity),0) AS n FROM orders WHERE product_sku = ? AND price_type = 'offer' AND status IN ('paid','shipped','delivered')"
-  ).bind(sku).first();
-  return row?.n || 0;
+// Units already sold at the offer price, per product. Unpaid orders don't count.
+export async function soldAtOffer(env) {
+  const { results } = await env.DB.prepare(`SELECT i.sku, COALESCE(SUM(i.quantity),0) AS n
+    FROM order_items i JOIN orders o ON o.id = i.order_id
+    WHERE i.price_type = 'offer' AND o.status IN ('paid','shipped','delivered') GROUP BY i.sku`).all();
+  return Object.fromEntries(results.map(r => [r.sku, r.n]));
 }
 
-export async function quoteFor(env, sku, quantity, buyerState) {
-  return quote({ sku, quantity, unitsSoldAtOffer: await unitsSoldAtOffer(env, sku), buyerState, sellerState: sellerState(env) });
+export async function quoteItems(env, items, buyerState) {
+  return quoteCart({ items, soldAtOffer: await soldAtOffer(env), buyerState, sellerState: sellerState(env) });
 }
 
 export const getByNumber = (env, n) => env.DB.prepare('SELECT * FROM orders WHERE order_number = ?').bind(n).first();
 export const getByRazorpayOrder = (env, id) => env.DB.prepare('SELECT * FROM orders WHERE razorpay_order_id = ?').bind(id).first();
+export const getItems = async (env, orderId) =>
+  (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
 
-// Saves the order, then asks Razorpay for an order to pay against.
-export async function createOrder(env, input) {
-  const q = await quoteFor(env, input.sku, input.quantity, input.state_code);
-  let orderNumber;
+// Saves the order and its lines, then asks Razorpay for an order to pay against.
+// user: the signed-in account; items: validated cart lines; addr: validated address.
+export async function createOrder(env, user, items, addr) {
+  const q = await quoteItems(env, items, addr.state_code);
+  let orderNumber, orderId;
   for (let i = 0; i < 5; i++) {
     orderNumber = newOrderNumber();
     try {
-      await env.DB.prepare(`INSERT INTO orders (
-          order_number, product_sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise,
-          gst_rate_bp, gst_paise, total_paise, tax_kind,
+      const row = await env.DB.prepare(`INSERT INTO orders (
+          order_number, user_id, item_count, summary, subtotal_paise, gst_rate_bp, gst_paise, total_paise, tax_kind,
           customer_name, email, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
-        orderNumber, q.sku, q.productName, q.quantity, q.priceType, q.unitPricePaise, q.subtotalPaise,
-        q.gstRateBp, q.gstPaise, q.totalPaise, q.taxKind,
-        input.name, input.email, input.phone, input.address_line1, input.address_line2, input.city,
-        input.state_code, input.pincode, input.gstin, input.business_name
-      ).run();
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`).bind(
+        orderNumber, user.id, q.itemCount, q.summary, q.subtotalPaise, q.gstRateBp, q.gstPaise, q.totalPaise, q.taxKind,
+        addr.name, user.email, addr.phone, addr.address_line1, addr.address_line2, addr.city, addr.state_code, addr.pincode,
+        addr.gstin, addr.business_name
+      ).first();
+      orderId = row.id;
       break;
     } catch (e) {
       if (!String(e.message).includes('UNIQUE') || i === 4) throw e;   // order number clash: try another
     }
   }
+  await env.DB.batch(q.lines.map(l => env.DB.prepare(
+    'INSERT INTO order_items (order_id, sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(orderId, l.sku, l.productName, l.quantity, l.priceType, l.unitPricePaise, l.subtotalPaise, l.gstPaise)));
 
   const rzp = await razorpay.createOrder(env, {
     amountPaise: q.totalPaise,
     receipt: orderNumber,
-    notes: { order_number: orderNumber, product: q.sku, quantity: String(q.quantity) },
+    notes: { order_number: orderNumber, items: q.summary.slice(0, 250) },
   });
-  await env.DB.prepare('UPDATE orders SET razorpay_order_id = ?, updated_at = ? WHERE order_number = ?')
-    .bind(rzp.id, nowIso(), orderNumber).run();
+  await env.DB.prepare('UPDATE orders SET razorpay_order_id = ?, updated_at = ? WHERE id = ?').bind(rzp.id, nowIso(), orderId).run();
 
   return { orderNumber, quote: q, razorpayOrderId: rzp.id, token: await orderToken(env, orderNumber) };
 }
@@ -70,7 +74,13 @@ export async function markPaid(env, order, { paymentId, amountPaise }) {
   const r = await env.DB.prepare(
     "UPDATE orders SET status = 'paid', razorpay_payment_id = ?, paid_at = ?, updated_at = ? WHERE id = ? AND status = 'created'"
   ).bind(paymentId, nowIso(), nowIso(), order.id).run();
-  return r.meta.changes === 1;
+  if (r.meta.changes !== 1) return false;
+  // Bought: empty the cart of the products in this order.
+  if (order.user_id) {
+    await env.DB.prepare('DELETE FROM cart_items WHERE user_id = ? AND sku IN (SELECT sku FROM order_items WHERE order_id = ?)')
+      .bind(order.user_id, order.id).run();
+  }
+  return true;
 }
 
 // ------------------------------------------------------------------ fulfilment
@@ -84,20 +94,27 @@ async function takeLock(env, id, seconds = 120) {
   return r.meta.changes === 1;
 }
 const releaseLock = (env, id) => env.DB.prepare('UPDATE orders SET fulfil_lock_until = NULL WHERE id = ?').bind(id).run();
-const setFields = (env, id, fields) => {
+export const setFields = (env, id, fields) => {
   const keys = Object.keys(fields);
   return env.DB.prepare(`UPDATE orders SET ${keys.map(k => `${k} = ?`).join(', ')}, updated_at = ? WHERE id = ?`)
     .bind(...keys.map(k => fields[k]), nowIso(), id).run();
 };
 
+// The order row plus what templates and Zoho need.
+async function loadFull(env, orderId) {
+  const o = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+  if (!o) return null;
+  o.items = (await getItems(env, o.id)).map(i => ({ ...i, zohoItemVar: PRODUCTS[i.sku]?.zohoItemVar }));
+  o.link_token = await orderToken(env, o.order_number);
+  return o;
+}
+
 export async function fulfil(env, orderId) {
   if (!(await takeLock(env, orderId))) return { skipped: 'locked' };
   const result = {};
   try {
-    let o = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    const o = await loadFull(env, orderId);
     if (!o || o.status === 'created' || o.status === 'cancelled') return { skipped: o?.status || 'missing' };
-    o.zohoItemVar = PRODUCTS[o.product_sku].zohoItemVar;
-    o.link_token = await orderToken(env, o.order_number);
 
     // 1. GST invoice in Zoho Books
     if (!o.zoho_invoice_id) {
@@ -114,8 +131,7 @@ export async function fulfil(env, orderId) {
     }
 
     let pdf = null;
-    const needPdf = o.zoho_invoice_id && !o.invoice_sent_at;
-    if (needPdf) {
+    if (o.zoho_invoice_id && !o.invoice_sent_at) {
       try { pdf = await zoho.invoicePdf(env, o.zoho_invoice_id); }
       catch (e) { console.error(`invoice PDF failed for ${o.order_number}:`, e.message); }
     }
@@ -180,8 +196,7 @@ export async function retryUnfinished(env) {
 
 export async function markShipped(env, order, { courier, tracking_number, tracking_url }) {
   await setFields(env, order.id, { status: 'shipped', courier, tracking_number, tracking_url: tracking_url || null, shipped_at: nowIso() });
-  const o = { ...order, status: 'shipped', courier, tracking_number, tracking_url: tracking_url || null };
-  o.link_token = await orderToken(env, o.order_number);
+  const o = await loadFull(env, order.id);
   const m = email.dispatchEmail(env, o);
   await email.sendEmail(env, { to: o.email, ...m, idempotencyKey: `${o.order_number}-dispatch-${tracking_number}` });
   await setFields(env, order.id, { dispatch_sent_at: nowIso() });
@@ -191,22 +206,27 @@ export async function markDelivered(env, order) {
   await setFields(env, order.id, { status: 'delivered', delivered_at: nowIso() });
 }
 
-// What the buyer's order page may see: no internal ids, no errors.
-export function publicView(o) {
+// What the buyer may see: no internal ids, no errors.
+export function publicView(o, items) {
   return {
     order_number: o.order_number,
     status: o.status,
-    product_name: o.product_name,
-    quantity: o.quantity,
-    unit_price_paise: o.unit_price_paise,
+    summary: o.summary,
+    item_count: o.item_count,
+    items: (items || []).map(i => ({ sku: i.sku, product_name: i.product_name, quantity: i.quantity, price_type: i.price_type, unit_price_paise: i.unit_price_paise, subtotal_paise: i.subtotal_paise })),
     subtotal_paise: o.subtotal_paise,
     gst_paise: o.gst_paise,
     tax_kind: o.tax_kind,
     total_paise: o.total_paise,
     customer_name: o.customer_name,
+    phone: o.phone,
+    address_line1: o.address_line1,
+    address_line2: o.address_line2,
     city: o.city,
     state_code: o.state_code,
     pincode: o.pincode,
+    gstin: o.gstin,
+    business_name: o.business_name,
     invoice_number: o.invoice_number,
     courier: o.courier,
     tracking_number: o.tracking_number,

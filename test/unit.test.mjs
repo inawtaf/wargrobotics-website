@@ -1,19 +1,23 @@
 // Run: npm test   (Node 20+, no dependencies)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHmac, createHash } from 'node:crypto';
 
-import { quote, unitPrice } from '../src/pricing.js';
+import { quoteCart, unitPrice } from '../src/pricing.js';
 import { PRODUCTS } from '../src/config.js';
-import { validateOrder } from '../src/validate.js';
+import { validateAddress, validateItems, validateRegistration, passwordProblem } from '../src/validate.js';
+import { hashPassword, verifyPassword, burnPasswordCheck } from '../src/auth.js';
+import { safeNext, _test as g } from '../src/google.js';
 import { verifyCheckoutSignature, verifyWebhookSignature } from '../src/razorpay.js';
 import { newOrderNumber, orderToken, safeEqual, inr } from '../src/util.js';
 import { confirmationEmail, dispatchEmail } from '../src/email.js';
 
 const good = {
-  sku: 'ghost', quantity: 1, name: 'Asha Rao', email: 'Asha@Example.com', phone: '98450 12345',
+  name: 'Asha Rao', phone: '98450 12345',
   address_line1: '12, 3rd Cross, Indiranagar', city: 'Bengaluru', state_code: 'KA', pincode: '560038',
 };
+const quote = ({ sku, quantity, unitsSoldAtOffer, buyerState, sellerState }) =>
+  quoteCart({ items: [{ sku, quantity }], soldAtOffer: { [sku]: unitsSoldAtOffer }, buyerState, sellerState });
 
 test('offer price while units remain, list price once they run out', () => {
   const g = PRODUCTS.ghost;
@@ -25,6 +29,7 @@ test('offer price while units remain, list price once they run out', () => {
 
 test('GST 18% on top; CGST+SGST in Karnataka, IGST elsewhere', () => {
   const ka = quote({ sku: 'ghost', quantity: 1, unitsSoldAtOffer: 0, buyerState: 'KA', sellerState: 'KA' });
+  assert.equal(ka.summary, 'Warg Ghost × 1');
   assert.equal(ka.subtotalPaise, 1_999_900);
   assert.equal(ka.gstPaise, 359_982);
   assert.equal(ka.totalPaise, 2_359_882);           // ₹23,598.82
@@ -46,31 +51,81 @@ test('tax lines always add up to the GST total (odd paise)', () => {
   }
 });
 
-test('validation accepts a normal order and normalises fields', () => {
-  const v = validateOrder(good);
+test('cart: mixed products, per-line offer, totals add up', () => {
+  const q = quoteCart({ items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 2 }], soldAtOffer: { greywind: 99 }, buyerState: 'MH', sellerState: 'KA' });
+  assert.equal(q.lines[0].priceType, 'offer');
+  assert.equal(q.lines[1].priceType, 'list', 'only 1 Greywind offer unit left, line of 2 pays list');
+  assert.equal(q.subtotalPaise, 1_999_900 + 2 * 2_999_900);
+  assert.equal(q.gstPaise, q.lines.reduce((s, l) => s + l.gstPaise, 0));
+  assert.equal(q.totalPaise, q.subtotalPaise + q.gstPaise);
+  assert.equal(q.itemCount, 3);
+  assert.equal(q.summary, 'Warg Ghost × 1, Warg Greywind × 2');
+  assert.throws(() => quoteCart({ items: [] }));
+});
+
+test('cart items: merged, unknown products refused, 9-unit cap', () => {
+  assert.deepEqual(validateItems([{ sku: 'ghost', quantity: 2 }, { sku: 'GHOST', quantity: 1 }]).value, [{ sku: 'ghost', quantity: 3 }]);
+  assert.equal(validateItems([{ sku: 'raven', quantity: 1 }]).ok, false);
+  assert.equal(validateItems([{ sku: 'ghost', quantity: 5 }, { sku: 'greywind', quantity: 5 }]).ok, false);
+  assert.equal(validateItems([]).ok, false);
+});
+
+test('address validation accepts a normal address and normalises the phone', () => {
+  const v = validateAddress(good);
   assert.ok(v.ok, JSON.stringify(v.errors));
-  assert.equal(v.value.email, 'asha@example.com');
   assert.equal(v.value.phone, '+919845012345');
   assert.equal(v.value.gstin, null);
 });
 
-test('validation rejects bad input with a message per field', () => {
-  const v = validateOrder({ sku: 'raven', quantity: 12, email: 'nope', phone: '12345', state_code: 'XX', pincode: '012345' });
+test('address validation rejects bad input with a message per field', () => {
+  const v = validateAddress({ phone: '12345', state_code: 'XX', pincode: '012345' });
   assert.equal(v.ok, false);
-  for (const f of ['sku', 'quantity', 'name', 'email', 'phone', 'address_line1', 'city', 'state_code', 'pincode']) {
-    assert.ok(v.errors[f], `expected an error for ${f}`);
-  }
+  for (const f of ['name', 'phone', 'address_line1', 'city', 'state_code', 'pincode']) assert.ok(v.errors[f], `expected an error for ${f}`);
+});
+
+test('registration and password rules', () => {
+  assert.ok(validateRegistration({ name: 'Asha', email: 'A@B.co', password: 'correct horse battery' }).ok);
+  const bad = validateRegistration({ name: '', email: 'x', password: 'short' });
+  assert.ok(bad.errors.name && bad.errors.email && bad.errors.password);
+  assert.match(passwordProblem('password123'), /easy/);
+  assert.match(passwordProblem('aaaaaaaaaaaa'), /easy/);
+  assert.match(passwordProblem('asha@example.com', 'asha@example.com'), /email/);
+  assert.equal(passwordProblem('a long enough phrase'), null);
+});
+
+test('password hashing: verifies, rejects wrong password, salts, honours pepper', async () => {
+  const env = { AUTH_PEPPER: 'pepper' };
+  const h1 = await hashPassword(env, 'correct horse battery');
+  const h2 = await hashPassword(env, 'correct horse battery');
+  assert.match(h1, /^pbkdf2-sha256\$100000\$1\$/);
+  assert.notEqual(h1, h2, 'random salt');
+  assert.equal(await verifyPassword(env, 'correct horse battery', h1), true);
+  assert.equal(await verifyPassword(env, 'correct horse batterY', h1), false);
+  assert.equal(await verifyPassword({ AUTH_PEPPER: 'other' }, 'correct horse battery', h1), false, 'pepper is required');
+  assert.equal(await burnPasswordCheck(env, 'anything'), false);
+});
+
+test('Google: redirects stay on our site; ID token payload decodes', async () => {
+  assert.equal(safeNext('/checkout'), '/checkout');
+  assert.equal(safeNext('//evil.com'), '/account');
+  assert.equal(safeNext('https://evil.com'), '/account');
+  assert.equal(safeNext('/\\evil.com'), '/account');
+  const payload = Buffer.from(JSON.stringify({ sub: '1', name: 'Āsha' })).toString('base64url');
+  assert.deepEqual(g.decodeJwtPayload(`x.${payload}.y`), { sub: '1', name: 'Āsha' });
+  // PKCE S256 = base64url(SHA-256(verifier)), checked against Node's crypto
+  const verifier = 'test-verifier-0123456789-abcdefghijklmnopqrstuvwxyz';
+  assert.equal(await g.pkceChallenge(verifier), createHash('sha256').update(verifier).digest('base64url'));
 });
 
 test('GSTIN must be well-formed, match the state, and come with a business name', () => {
-  assert.equal(validateOrder({ ...good, gstin: '29ABCDE1234F1Z5' }).errors.business_name !== undefined, true);
-  assert.ok(validateOrder({ ...good, gstin: '29ABCDE1234F1Z5', business_name: 'Rao Drones' }).ok);
-  assert.match(validateOrder({ ...good, gstin: '27ABCDE1234F1Z5', business_name: 'X' }).errors.gstin, /outside Karnataka/);
-  assert.ok(validateOrder({ ...good, gstin: 'ABC', business_name: 'X' }).errors.gstin);
+  assert.equal(validateAddress({ ...good, gstin: '29ABCDE1234F1Z5' }).errors.business_name !== undefined, true);
+  assert.ok(validateAddress({ ...good, gstin: '29ABCDE1234F1Z5', business_name: 'Rao Drones' }).ok);
+  assert.match(validateAddress({ ...good, gstin: '27ABCDE1234F1Z5', business_name: 'X' }).errors.gstin, /outside Karnataka/);
+  assert.ok(validateAddress({ ...good, gstin: 'ABC', business_name: 'X' }).errors.gstin);
 });
 
 test('control characters and long strings are cleaned', () => {
-  const v = validateOrder({ ...good, name: 'Asha\u0000\nRao' + 'x'.repeat(500) });
+  const v = validateAddress({ ...good, name: 'Asha\u0000\nRao' + 'x'.repeat(500) });
   assert.ok(v.ok);
   assert.ok(!/[\u0000\n]/.test(v.value.name));
   assert.ok(v.value.name.length <= 100);
@@ -108,8 +163,8 @@ test('order numbers look right and order links cannot be guessed', async () => {
 
 test('emails render the order, escape buyer text and include the order link', () => {
   const o = {
-    order_number: 'WR-261026-AAAA', link_token: 'tok', customer_name: 'Asha <b>Rao</b>', product_name: 'Warg Ghost',
-    quantity: 1, subtotal_paise: 1_999_900, gst_paise: 359_982, total_paise: 2_359_882, tax_kind: 'intra',
+    order_number: 'WR-261026-AAAA', link_token: 'tok', customer_name: 'Asha <b>Rao</b>', summary: 'Warg Ghost × 1',
+    items: [{ product_name: 'Warg Ghost', quantity: 1, subtotal_paise: 1_999_900, price_type: 'offer' }], subtotal_paise: 1_999_900, gst_paise: 359_982, total_paise: 2_359_882, tax_kind: 'intra',
     address_line1: '12 Road', city: 'Bengaluru', state_code: 'KA', pincode: '560038', phone: '+919845012345',
     invoice_number: 'INV-000001', courier: 'Delhivery', tracking_number: 'DL123', tracking_url: 'https://track.example/DL123',
   };

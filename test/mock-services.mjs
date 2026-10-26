@@ -58,6 +58,16 @@ http.createServer((req, res) => {
     if (p === '/zoho/customerpayments') return send(res, 201, { code: 0, payment: { payment_id: 'p1' } });
     if (/^\/zoho\/invoices\/[^/]+$/.test(p) && url.searchParams.get('accept') === 'pdf') return send(res, 200, '%PDF-1.4 fake invoice', 'application/pdf');
 
+    // Google: the test passes the claims it wants back, base64url-encoded, as the "code".
+    if (p === '/google/token' && req.method === 'POST') {
+      const form = new URLSearchParams(raw);
+      if (!form.get('code_verifier') || form.get('client_secret') !== 'google-secret') return send(res, 400, { error: 'invalid_grant' });
+      let claims;
+      try { claims = JSON.parse(Buffer.from(form.get('code'), 'base64url').toString()); } catch { return send(res, 400, { error: 'invalid_grant' }); }
+      const b = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+      return send(res, 200, { access_token: 'x', id_token: `${b({ alg: 'RS256' })}.${b(claims)}.sig`, expires_in: 3600 });
+    }
+
     // Resend
     if (p === '/resend/emails') return send(res, 200, { id: 'em_' + state.calls.length });
 

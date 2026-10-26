@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="analytics.js?v=20261018c"></script>
+<title>Cart – Warg Robotics</title>
+<meta name="robots" content="noindex">
+
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0D">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20261026b">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+<div class="masthead masthead-flat on-dark">
+  <nav class="nav">
+    <div class="wrap">
+      <a class="lockup" href="/" aria-label="Warg Robotics home">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+      </a>
+      <div class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#products">Products</a>
+        <a href="/#tech">How it works</a>
+        <a href="/support">Support</a>
+      </div>
+    </div>
+  </nav>
+</div>
+<nav class="crumb" aria-label="Breadcrumb">
+  <div class="wrap"><a href="/">Home</a><span aria-hidden="true">/</span><span aria-current="page">Cart</span></div>
+</nav>
+
+<main id="main">
+  <section class="sec form-hero">
+    <div class="wrap"><h1 class="t-section">Your cart</h1></div>
+  </section>
+  <section class="sec-sm">
+    <div class="wrap checkout">
+      <div>
+        <p class="banner ok" id="cart-banner" hidden></p>
+        <div id="cart-lines" class="cards" aria-live="polite"><div class="card">Loading&hellip;</div></div>
+        <p class="hint" style="margin-top:12px">Up to 9 units per order. For more, <a href="/contact">ask about a bulk order</a>. Pro onboard compute is quoted separately &mdash; <a href="/prebook">pre-book with Pro</a>.</p>
+        <div class="card-actions">
+          <a class="btn btn-line" href="/cart?add=ghost" data-add="ghost">Add a Ghost</a>
+          <a class="btn btn-line" href="/cart?add=greywind" data-add="greywind">Add a Greywind</a>
+        </div>
+      </div>
+      <aside class="summary" id="cart-summary" hidden>
+        <h2 class="field-legend">Summary</h2>
+        <dl class="summary-lines">
+          <div><dt>Subtotal</dt><dd id="c-subtotal"></dd></div>
+          <div class="tax-row"><dt>GST 18%</dt><dd id="c-gst"></dd></div>
+          <div class="summary-total"><dt>Total</dt><dd id="c-total"></dd></div>
+        </dl>
+        <a class="btn btn-solid btn-lg" id="to-checkout" href="/checkout" style="width:100%;justify-content:center">Checkout</a>
+        <p class="hint" style="margin-top:12px">GST is split as CGST + SGST or IGST once you choose a delivery address. Delivery within India is included.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-base">
+      <span>&copy; 2026 Warg Robotics &middot; Indiranagar, Bengaluru &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="site.js?v=20261026b" defer></script>
+<script src="cart-page.js?v=20261026b" defer></script>
+</body>
+</html>

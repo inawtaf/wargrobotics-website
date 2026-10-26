@@ -6,11 +6,13 @@
 <script src="analytics.js?v=20261018c"></script>
 <title>Your order – Warg Robotics</title>
 <meta name="robots" content="noindex">
+
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261026a">
+<link rel="stylesheet" href="warg.css?v=20261026b">
 </head>
 <body>
 
@@ -18,12 +20,21 @@
 <div class="masthead masthead-flat on-dark">
   <nav class="nav">
     <div class="wrap">
-      <a class="lockup" href="index.html" aria-label="Warg Robotics home">
+      <a class="lockup" href="/" aria-label="Warg Robotics home">
         <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
       </a>
+      <div class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#products">Products</a>
+        <a href="/#tech">How it works</a>
+        <a href="/support">Support</a>
+      </div>
     </div>
   </nav>
 </div>
+<nav class="crumb" aria-label="Breadcrumb">
+  <div class="wrap"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/account#orders">Account</a><span aria-hidden="true">/</span><span aria-current="page">Order</span></div>
+</nav>
 
 <main id="main">
   <section class="sec form-hero">
@@ -32,107 +43,20 @@
       <p class="t-lede" id="order-lede">Loading&hellip;</p>
     </div>
   </section>
-
   <section class="sec-sm">
-    <div class="wrap checkout" id="order-body" hidden>
-      <div>
-        <ol class="order-steps" aria-label="Order progress">
-          <li data-step="paid">Paid</li>
-          <li data-step="shipped">Shipped</li>
-          <li data-step="delivered">Delivered</li>
-        </ol>
-        <div id="ship-box" class="order-ship" hidden>
-          <h2 class="field-legend">Tracking</h2>
-          <p><span id="ship-courier"></span> &middot; <span id="ship-awb"></span></p>
-          <p><a class="btn btn-line" id="ship-link" href="#" target="_blank" rel="noopener" hidden>Track your parcel</a></p>
-        </div>
-        <p class="t-body" id="order-next"></p>
-        <p class="form-note">Questions? Email <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a> with your order number.</p>
-      </div>
-      <aside class="summary">
-        <h2 class="field-legend">Order <span id="o-number"></span></h2>
-        <p class="summary-item"><span id="o-product"></span> <span class="summary-qty">&times; <span id="o-qty"></span></span></p>
-        <dl class="summary-lines">
-          <div><dt>Price</dt><dd id="o-subtotal"></dd></div>
-          <div><dt id="o-tax-label">GST 18%</dt><dd id="o-tax"></dd></div>
-          <div class="summary-total"><dt>Total paid</dt><dd id="o-total"></dd></div>
-        </dl>
-        <p class="hint">Delivering to <span id="o-where"></span>. <span id="o-invoice"></span></p>
-      </aside>
-    </div>
+    <div class="wrap" id="order-body" hidden></div>
   </section>
 </main>
 
 <footer class="foot">
   <div class="wrap">
     <div class="foot-base">
-      <span>&copy; 2026 Warg Robotics &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
+      <span>&copy; 2026 Warg Robotics &middot; Indiranagar, Bengaluru &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
     </div>
   </div>
 </footer>
 
-<script>
-(function () {
-  var q = new URLSearchParams(location.search), n = q.get('n'), t = q.get('t');
-  var $ = function (id) { return document.getElementById(id); };
-  var inr = function (p) { return '₹' + (p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  var tries = 0;
-
-  function fail(msg) { $('order-lede').textContent = msg; }
-  if (!n || !t) return fail('This link is incomplete. Use the link in your order email.');
-
-  function load() {
-    fetch('/api/orders/' + encodeURIComponent(n) + '?t=' + encodeURIComponent(t))
-      .then(function (r) { if (r.status === 404) throw new Error('nf'); return r.json(); })
-      .then(function (d) { render(d.order); })
-      .catch(function (e) { fail(e.message === 'nf' ? 'We could not find this order. Check the link in your email.' : 'Could not load your order. Please refresh.'); });
-  }
-
-  function render(o) {
-    $('order-body').hidden = false;
-    $('o-number').textContent = o.order_number;
-    $('o-product').textContent = o.product_name;
-    $('o-qty').textContent = o.quantity;
-    $('o-subtotal').textContent = inr(o.subtotal_paise);
-    $('o-tax-label').textContent = o.tax_kind === 'intra' ? 'CGST 9% + SGST 9%' : 'IGST 18%';
-    $('o-tax').textContent = inr(o.gst_paise);
-    $('o-total').textContent = inr(o.total_paise);
-    $('o-where').textContent = o.city + ', ' + o.state_code + ' ' + o.pincode;
-    $('o-invoice').textContent = o.invoice_number ? 'GST invoice ' + o.invoice_number + ' was emailed to you.' : '';
-
-    var order = ['paid', 'shipped', 'delivered'], reached = order.indexOf(o.status);
-    Array.prototype.forEach.call(document.querySelectorAll('.order-steps li'), function (li, i) {
-      li.classList.toggle('done', i <= reached);
-    });
-
-    if (o.status === 'created') {
-      $('order-h').textContent = 'Confirming your payment';
-      $('order-lede').textContent = 'This usually takes a few seconds. You can keep this page open.';
-      $('order-next').textContent = 'If you were charged, your order is safe: we confirm it as soon as Razorpay tells us, and email you.';
-      if (tries++ < 20) setTimeout(load, 3000);
-      else $('order-lede').textContent = 'Still waiting for the payment confirmation. If money left your account, we will email you shortly; otherwise you can place the order again.';
-      return;
-    }
-    if (o.status === 'cancelled' || o.status === 'refunded') {
-      $('order-h').textContent = 'Order ' + o.status;
-      $('order-lede').textContent = 'This order was ' + o.status + '. Email us if this is unexpected.';
-      return;
-    }
-    var first = o.customer_name.split(' ')[0];
-    $('order-h').textContent = o.status === 'paid' ? 'Thank you, ' + first : o.status === 'shipped' ? 'On its way' : 'Delivered';
-    $('order-lede').textContent = o.status === 'paid'
-      ? 'Your order ' + o.order_number + ' is confirmed. A confirmation email with your GST invoice is on its way.'
-      : o.status === 'shipped' ? 'Your order has shipped. Delivery instructions are in your email.' : 'Your order was delivered. Enjoy flying.';
-    $('order-next').textContent = o.status === 'paid' ? 'We test and pack each unit before dispatch, then email you the courier and tracking number.' : '';
-    if (o.tracking_number) {
-      $('ship-box').hidden = false;
-      $('ship-courier').textContent = o.courier;
-      $('ship-awb').textContent = o.tracking_number;
-      if (o.tracking_url) { $('ship-link').href = o.tracking_url; $('ship-link').hidden = false; }
-    }
-  }
-  load();
-})();
-</script>
+<script src="site.js?v=20261026b" defer></script>
+<script src="account-page.js?v=20261026b" defer></script>
 </body>
 </html>

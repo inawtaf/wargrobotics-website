@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="analytics.js?v=20261018c"></script>
 <title>Checkout – Warg Robotics</title>
-<meta name="description" content="Buy a Warg Ghost or Greywind. Pay securely with UPI, card or netbanking; GST invoice by email.">
 <meta name="robots" content="noindex">
+
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261026a">
+<link rel="stylesheet" href="warg.css?v=20261026b">
 </head>
 <body>
 
@@ -20,156 +20,85 @@
 <div class="masthead masthead-flat on-dark">
   <nav class="nav">
     <div class="wrap">
-      <a class="lockup" href="index.html" aria-label="Warg Robotics home">
+      <a class="lockup" href="/" aria-label="Warg Robotics home">
         <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
       </a>
       <div class="nav-links">
-        <a href="index.html#features">Features</a>
-        <a href="index.html#products" aria-current="page">Products</a>
-        <a href="index.html#tech">How it works</a>
-        <a href="index.html#deployments">Deployments</a>
+        <a href="/#features">Features</a>
+        <a href="/#products">Products</a>
+        <a href="/#tech">How it works</a>
+        <a href="/support">Support</a>
       </div>
     </div>
   </nav>
 </div>
 <nav class="crumb" aria-label="Breadcrumb">
-  <div class="wrap">
-    <a href="index.html">Home</a><span aria-hidden="true">/</span><a href="index.html#products">Products</a><span aria-hidden="true">/</span><span aria-current="page">Checkout</span>
-  </div>
+  <div class="wrap"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/cart">Cart</a><span aria-hidden="true">/</span><span aria-current="page">Checkout</span></div>
 </nav>
 
 <main id="main">
   <section class="sec form-hero">
     <div class="wrap">
       <h1 class="t-section">Checkout</h1>
-      <p class="t-lede">Pay with UPI, card or netbanking. Your GST invoice comes by email, and we email tracking when it ships.</p>
+      <p class="t-lede">Pay with UPI, card or netbanking. Your GST invoice comes by email and stays in your account.</p>
     </div>
   </section>
-
   <section class="sec-sm">
     <div class="wrap checkout">
       <form class="form" id="checkout-form" novalidate>
+        <p class="banner" id="verify-banner" hidden>Confirm your email to place an order: we sent a link to <b id="vb-email"></b>.
+          <button class="link-btn" type="button" id="vb-resend">Send it again</button></p>
 
         <fieldset class="intents">
-          <legend class="field-legend">Which unit</legend>
-          <div class="intent-row intent-row-2">
-            <label class="intent">
-              <input type="radio" name="sku" value="ghost" id="sku-ghost" checked>
-              <span class="intent-box">
-                <span class="intent-name">Ghost</span>
-                <span class="intent-sub">720p &middot; 90&nbsp;fps &middot; 8&nbsp;GB</span>
-                <span class="intent-price" data-price="ghost"></span>
-              </span>
-            </label>
-            <label class="intent">
-              <input type="radio" name="sku" value="greywind" id="sku-greywind">
-              <span class="intent-box">
-                <span class="intent-name">Greywind</span>
-                <span class="intent-sub">1080p30 / 720p90 &middot; 16&nbsp;GB</span>
-                <span class="intent-price" data-price="greywind"></span>
-              </span>
-            </label>
-          </div>
-          <p class="hint" style="margin-top:10px">Want Pro onboard compute? It is quoted per configuration &mdash; <a href="prebook.html">pre-book with Pro</a> instead.</p>
+          <legend class="field-legend">Deliver to</legend>
+          <div class="addr-pick" id="addr-list"></div>
         </fieldset>
 
-        <div class="field-row">
-          <div class="field field-half">
-            <label for="quantity">Quantity</label>
-            <input type="number" id="quantity" name="quantity" min="1" max="9" step="1" value="1" inputmode="numeric" required>
-            <p class="hint">Ten or more is a bulk order &mdash; <a href="contact.html">talk to us</a>.</p>
+        <div id="new-address" hidden>
+          <div class="field-row">
+            <div class="field"><label for="name">Receiver's name</label><input type="text" id="name" name="name" autocomplete="name" maxlength="100"></div>
+            <div class="field"><label for="phone">Mobile number</label><input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" placeholder="98450 12345">
+              <p class="hint">For the courier.</p></div>
           </div>
-        </div>
-
-        <h2 class="field-legend checkout-h">Your details</h2>
-        <div class="field-row">
-          <div class="field">
-            <label for="name">Full name</label>
-            <input type="text" id="name" name="name" required autocomplete="name" maxlength="100">
+          <div class="field"><label for="address_line1">House, building, street</label><input type="text" id="address_line1" name="address_line1" autocomplete="address-line1" maxlength="150"></div>
+          <div class="field"><label for="address_line2">Area, landmark</label><input type="text" id="address_line2" name="address_line2" autocomplete="address-line2" maxlength="150"><p class="hint">Optional.</p></div>
+          <div class="field-row">
+            <div class="field"><label for="city">City or town</label><input type="text" id="city" name="city" autocomplete="address-level2" maxlength="80"></div>
+            <div class="field"><label for="pincode">Pincode</label><input type="text" id="pincode" name="pincode" autocomplete="postal-code" inputmode="numeric" maxlength="6"></div>
           </div>
-          <div class="field">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required autocomplete="email" maxlength="254">
-            <p class="hint">Your order confirmation and invoice go here.</p>
+          <div class="field-row">
+            <div class="field"><label for="state_code">State</label><select id="state_code" name="state_code" autocomplete="address-level1"><option value="">Choose&hellip;</option></select>
+              <p class="hint">Sets whether GST is CGST + SGST or IGST.</p></div>
           </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="phone">Mobile number</label>
-            <input type="tel" id="phone" name="phone" required autocomplete="tel" inputmode="tel" placeholder="98450 12345">
-            <p class="hint">For the courier. Indian mobile numbers only for now.</p>
-          </div>
-        </div>
-
-        <h2 class="field-legend checkout-h">Delivery address</h2>
-        <div class="field">
-          <label for="address_line1">House, building, street</label>
-          <input type="text" id="address_line1" name="address_line1" required autocomplete="address-line1" maxlength="150">
-        </div>
-        <div class="field">
-          <label for="address_line2">Area, landmark</label>
-          <input type="text" id="address_line2" name="address_line2" autocomplete="address-line2" maxlength="150">
-          <p class="hint">Optional.</p>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="city">City or town</label>
-            <input type="text" id="city" name="city" required autocomplete="address-level2" maxlength="80">
-          </div>
-          <div class="field">
-            <label for="pincode">Pincode</label>
-            <input type="text" id="pincode" name="pincode" required autocomplete="postal-code" inputmode="numeric" maxlength="6" pattern="[1-9][0-9]{5}">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="state_code">State</label>
-            <select id="state_code" name="state_code" required autocomplete="address-level1">
-              <option value="">Choose&hellip;</option>
-            </select>
-            <p class="hint">Sets whether GST is charged as CGST + SGST or IGST.</p>
-          </div>
-        </div>
-
-        <fieldset class="addon">
-          <legend class="field-legend">GST invoice for a business</legend>
-          <label class="addon-toggle">
-            <input type="checkbox" id="is-business" name="is_business" value="yes">
-            <span class="addon-box">
-              <span class="addon-name">Add my GSTIN to the invoice</span>
-              <span class="addon-sub">So your business can claim input tax credit. The GSTIN must be registered in the delivery state.</span>
-            </span>
-          </label>
-          <div class="extra" data-addon="business" hidden>
-            <div class="field">
-              <label for="business_name">Business name</label>
-              <input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150">
+          <fieldset class="addon">
+            <legend class="field-legend">GST invoice for a business</legend>
+            <label class="addon-toggle">
+              <input type="checkbox" id="is-business">
+              <span class="addon-box"><span class="addon-name">Add my GSTIN to the invoice</span>
+                <span class="addon-sub">So your business can claim input tax credit. The GSTIN must be registered in the delivery state.</span></span>
+            </label>
+            <div class="extra" data-addon="business" hidden>
+              <div class="field"><label for="business_name">Business name</label><input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150"></div>
+              <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="29ABCDE1234F1Z5"></div>
             </div>
-            <div class="field">
-              <label for="gstin">GSTIN</label>
-              <input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="29ABCDE1234F1Z5">
-            </div>
-          </div>
-        </fieldset>
-
-        <div class="hp-field" aria-hidden="true">
-          <label for="hp-trap">Leave this empty</label>
-          <input type="text" id="hp-trap" name="hp_trap" tabindex="-1" autocomplete="off">
+          </fieldset>
+          <label class="check" style="margin-top:14px"><input type="checkbox" id="save-address" checked> Save this address to my account</label>
         </div>
+
+        <div class="hp-field" aria-hidden="true"><label for="hp-trap">Leave this empty</label><input type="text" id="hp-trap" name="hp_trap" tabindex="-1" autocomplete="off"></div>
 
         <div class="form-foot">
-          <button class="btn btn-solid btn-lg" type="submit" id="pay-btn" disabled>Loading prices&hellip;</button>
-          <p class="form-note">Payments by <b>Razorpay</b>. Questions first? <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></p>
+          <button class="btn btn-solid btn-lg" type="submit" id="pay-btn" disabled>Loading&hellip;</button>
+          <p class="form-note">Payments by <b>Razorpay</b>. <a href="/cart">Edit cart</a></p>
         </div>
         <p class="form-status" role="status" aria-live="polite"></p>
       </form>
 
       <aside class="summary" aria-labelledby="summary-h">
         <h2 class="field-legend" id="summary-h">Order summary</h2>
-        <p class="summary-item"><span id="sum-name">Warg Ghost</span> <span class="summary-qty">&times; <span id="sum-qty">1</span></span></p>
-        <p class="summary-offer" id="sum-offer" hidden></p>
+        <div id="sum-items"></div>
         <dl class="summary-lines">
-          <div><dt>Price</dt><dd id="sum-subtotal">&mdash;</dd></div>
+          <div><dt>Subtotal</dt><dd id="sum-subtotal">&mdash;</dd></div>
           <div class="tax-row"><dt>GST 18%</dt><dd>&mdash;</dd></div>
           <div class="summary-total"><dt>Total</dt><dd id="sum-total">&mdash;</dd></div>
         </dl>
@@ -187,7 +116,8 @@
   </div>
 </footer>
 
+<script src="site.js?v=20261026b" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-<script src="checkout.js?v=20261026a" defer></script>
+<script src="checkout.js?v=20261026b" defer></script>
 </body>
 </html>

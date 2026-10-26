@@ -1,6 +1,6 @@
 // Cloudflare Workers config for wargrobotics.com.
 //
-// Static site + a small backend for orders. Requests to /api/* run the Worker
+// Static site + a small backend for accounts, cart and orders. Requests to /api/* run the Worker
 // (src/worker.js); everything else is served straight from the static files.
 // What must NOT be published as a file (src/, tooling, this config) is listed
 // in .assetsignore. Setup steps and secrets: BACKEND.md.
@@ -47,6 +47,7 @@
     "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
     "EMAIL_REPLY_TO": "hello@wargrobotics.com",
     "ORDER_NOTIFY_EMAIL": "hello@wargrobotics.com",
+    "GOOGLE_CLIENT_ID": "REPLACE.apps.googleusercontent.com",
     "ZOHO_ORG_ID": "REPLACE",
     "ZOHO_TAX_ID_INTRA": "REPLACE",
     "ZOHO_TAX_ID_INTER": "REPLACE",
@@ -74,6 +75,7 @@
       "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
       "EMAIL_REPLY_TO": "hello@wargrobotics.com",
       "ORDER_NOTIFY_EMAIL": "",
+      "GOOGLE_CLIENT_ID": "",
       "ZOHO_ORG_ID": "",
       "ZOHO_TAX_ID_INTRA": "",
       "ZOHO_TAX_ID_INTER": "",

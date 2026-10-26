@@ -93,8 +93,7 @@ async function findOrCreateContact(env, order) {
 // Creates the invoice, marks it sent and records the Razorpay payment against it.
 // Returns { contactId, invoiceId, invoiceNumber }.
 export async function createPaidInvoice(env, order) {
-  const itemId = env[order.zohoItemVar];
-  if (!itemId) throw new Error(`${order.zohoItemVar} is not set`);
+  for (const it of order.items) if (!env[it.zohoItemVar]) throw new Error(`${it.zohoItemVar} is not set`);
   const taxId = order.tax_kind === 'intra' ? env.ZOHO_TAX_ID_INTRA : env.ZOHO_TAX_ID_INTER;
   if (!taxId) throw new Error(`ZOHO_TAX_ID_${order.tax_kind.toUpperCase()} is not set`);
 
@@ -125,13 +124,13 @@ export async function createPaidInvoice(env, order) {
           gst_treatment: order.gstin ? 'business_gst' : 'consumer',
           ...(order.gstin ? { gst_no: order.gstin } : {}),
           is_inclusive_tax: false,
-          line_items: [{
-            item_id: itemId,
-            quantity: order.quantity,
-            rate: order.unit_price_paise / 100,
+          line_items: order.items.map(it => ({
+            item_id: env[it.zohoItemVar],
+            quantity: it.quantity,
+            rate: it.unit_price_paise / 100,
             tax_id: taxId,
-            ...(order.price_type === 'offer' ? { description: 'Offer price' } : {}),
-          }],
+            ...(it.price_type === 'offer' ? { description: 'Offer price' } : {}),
+          })),
           notes: `Paid online via Razorpay (payment ${order.razorpay_payment_id}).`,
         },
       });
