@@ -26,8 +26,31 @@ checkout.html ─► POST /api/orders (cart + address) ─► D1 (order saved) �
                         ▼
                   Resend: confirmation + invoice PDF to buyer, copy to team
                         │
-admin.html ─► "Mark shipped" ─► dispatch email with tracking and delivery instructions
+Order portal (/admin) ─► Start processing ─► Ship ─► Delivered   (each step emails the customer)
 ```
+
+### Which emails go out, and what triggers them
+
+| Email | Sent when | Triggered by |
+|---|---|---|
+| Order confirmed (GST invoice PDF attached) | Payment is captured | Razorpay webhook or the checkout callback, automatically |
+| Invoice (on its own) | The invoice was created after the confirmation went out (Zoho was down) | 15-minute retry job, automatically |
+| New order (to the team) | Payment is captured | Automatically, to `ORDER_NOTIFY_EMAIL` |
+| We're preparing your order | Staff press **Mark as processing** | Order portal |
+| Shipped: tracking, expected date, delivery instructions | Staff press **Mark as shipped**, or save new tracking | Order portal |
+| Delivered: report damage within 48 h, get help | Staff press **Mark as delivered** | Order portal |
+| Order cancelled: refund on its way | Staff cancel a paid order | Order portal |
+| Service request received / updated | Customer opens a request / staff save an update | Account page / order portal |
+| Confirm email, reset password, password changed | Sign-up, *Forgot password*, a password change | Automatically |
+
+Every portal action has an **Email the customer** box (ticked by default) and
+an optional message that goes into the email. Every step, email and staff note
+goes on the order's timeline. The customer sees the status steps and messages
+in their account; staff notes stay internal.
+
+The portal can't know when the courier delivers, so staff mark that by hand.
+Courier tracking can be connected later (for example Shiprocket webhooks) to
+make *Shipped → Delivered* automatic.
 
 If Zoho or Resend fails, the buyer is still confirmed. A cron job retries
 every 15 minutes and sends the invoice on its own once it exists.
@@ -38,7 +61,8 @@ every 15 minutes and sends the invoice on its own once it exists.
 | Database schema | `migrations/0001_orders.sql`, `migrations/0002_accounts.sql` |
 | Prices, offer limit, GST rate, states | `src/config.js` |
 | Email wording | `src/email.js` |
-| Pages | `login.html`, `reset.html`, `cart.html`, `checkout.html`, `order.html`, `account.html`, `admin.html` |
+| Pages | `login.html`, `reset.html`, `cart.html`, `checkout.html`, `order.html`, `account.html`, `admin.html` (order portal: `portal.js`, `portal.css`) |
+| Order steps and their emails | `src/fulfilment.js`; portal API in `src/admin.js` |
 | Page scripts | `site.js` (header links, cart; on every page), `auth-page.js`, `cart-page.js`, `checkout.js`, `account-page.js` |
 | Settings and bindings | `wrangler.jsonc` |
 
@@ -81,9 +105,10 @@ npx wrangler d1 migrations apply wargrobotics-orders --remote
 npx wrangler d1 migrations apply wargrobotics-orders-preview --remote
 ```
 
-If you already applied the earlier version of `0001_orders.sql` (from the
-first orders patch), delete the database and create it again before applying.
-The order tables changed shape for carts, and nothing real has been stored yet.
+If you already applied an earlier version of these migrations (from the
+earlier patches), delete the database and create it again before applying:
+`npx wrangler d1 delete wargrobotics-orders`, then repeat the commands above.
+The tables changed shape, and nothing real has been stored yet.
 
 ### 2. Razorpay
 
@@ -169,16 +194,22 @@ Settings → Variables and Secrets** (type: Secret), or with
 | `ZOHO_REFRESH_TOKEN` | from `zoho-setup.mjs token` |
 | `RESEND_API_KEY` | Resend API key |
 | `ORDER_LINK_SECRET` | random string, at least 32 characters; signs buyers' order-page links (changing it breaks old links) |
-| `ADMIN_TOKEN` | random string, at least 24 characters; your login for `admin.html` |
+| `ADMIN_TOKEN` | optional: random string, at least 24 characters, for scripts calling the portal API with `Authorization: Bearer`. People don't need it; they sign in. |
 | `GOOGLE_CLIENT_SECRET` | from step 5 |
 | `AUTH_PEPPER` | random string, at least 32 characters, mixed into every password hash. **Never change it once accounts exist, or every password stops working.** |
 
 Generate random values with `openssl rand -hex 32`.
 
-For previews, set at least `RAZORPAY_KEY_SECRET` (test), `ORDER_LINK_SECRET`,
-`ADMIN_TOKEN` and `AUTH_PEPPER` with `npx wrangler preview secret put NAME`.
+For previews, set at least `RAZORPAY_KEY_SECRET` (test), `ORDER_LINK_SECRET`
+and `AUTH_PEPPER` with `npx wrangler preview secret put NAME`.
 Google sign-in won't work on preview addresses, because they aren't in
 Google's redirect list; use email sign-in there.
+
+**Staff access to the order portal:** put the staff email addresses in
+`ADMIN_EMAILS` in `wrangler.jsonc` (comma-separated; it starts as
+`hello@wargrobotics.com`). Each person signs in at `/login` with that address,
+by Google or by password, and opens `/admin`. The email must be confirmed.
+To remove someone, take them off the list and deploy.
 
 ### 8. Deploy and test
 
@@ -188,13 +219,14 @@ Push to `main`. Then, with Razorpay still in test mode:
    both with the password and with Google.
 2. Add a Ghost to the cart and buy it at `/checkout` with a Razorpay test card
    or UPI ID.
-2. Check that the order page says *Thank you*, the invoice appears in Zoho
+3. Check that the order page says *Thank you*, the invoice appears in Zoho
    Books as paid, and the confirmation email arrives with the PDF attached.
-3. Open `/account`: the order, its invoice download and *Buy again* should all
+4. Open `/account`: the order, its invoice download and *Buy again* should all
    work. Raise a service request.
-4. Open `/admin`, paste `ADMIN_TOKEN`, mark the order shipped, and update the
-   service request. Check that both emails arrive.
-5. Switch to live: put the live Key ID in `wrangler.jsonc`, update
+5. Sign in as a staff address and open `/admin`. Work the order through
+   *processing → shipped → delivered*, and update the service request. Check
+   that each email arrives.
+6. Switch to live: put the live Key ID in `wrangler.jsonc`, update
    `RAZORPAY_KEY_SECRET`, add the webhook again in live mode, and redeploy.
    Delete or void the test invoices in Zoho.
 
@@ -202,13 +234,38 @@ Push to `main`. Then, with Razorpay still in test mode:
 
 ## Running the business
 
-- **New order:** you get a "New order" email at `ORDER_NOTIFY_EMAIL`. The order
-  is also in `/admin`.
-- **Ship it:** in `/admin`, open the order and enter the courier, AWB and
-  tracking link, then click *Mark shipped*. The buyer gets the dispatch email.
-- **Invoice or email failed:** `/admin` shows the error. Fix the cause (for
-  example a Zoho ID), then click *Retry*. The cron also retries every 15 minutes,
-  up to 20 attempts.
+Day to day, everything happens in the **order portal** at `/admin`. Staff also
+see a *Portal* link in the site header.
+
+- **The top tiles** show how many orders are *To process* (paid, not started),
+  *Processing*, *Shipped* and *Needs attention* (invoice or email failed), plus
+  open service requests and this month's revenue. *To process* flags orders
+  waiting over 2 days, and *Shipped* flags orders past their expected delivery
+  date. Click a tile to filter the list.
+- **New order:** it appears under *To process*, and you also get a "New order"
+  email. Open it: you see the items, the address (*Copy shipping address* for the
+  courier booking), the payment, the invoice and the timeline.
+- **Start packing:** *Mark as processing*, with an optional note such as "testing
+  your unit today". The customer gets the "We're preparing your order" email.
+- **Ship it:** choose the courier, enter the AWB, the tracking link and the
+  expected delivery date, then *Mark as shipped*. The customer gets the tracking
+  and delivery-instructions email. If the tracking changes, edit it and *Save
+  tracking*; the customer is emailed again.
+- **Delivered:** *Mark as delivered* when the courier shows it delivered. The
+  customer gets the "Delivered" email, with how to report damage and get help.
+- **Cancel:** under *Cancel order*, with a reason the customer sees. This does
+  **not** refund the money: refund it in the Razorpay dashboard and add a credit
+  note in Zoho Books. The timeline keeps a reminder.
+- **Customer didn't get an email:** use *Resend an email…*.
+- **Invoice or email failed:** the order shows under *Needs attention* with the
+  error. Fix the cause (for example a Zoho ID), then click *Retry invoice and
+  emails*. The cron also retries every 15 minutes, up to 20 attempts.
+- **Notes:** *Add note* records internal notes (calls, packing details) on the
+  timeline. Customers never see these.
+- **Find an order:** search by order number, name, business, GSTIN, email,
+  phone, city, pincode, invoice or AWB, and filter by date.
+- **Records:** *Export CSV* downloads the current list (all fields, GST split,
+  timestamps) for accounts or a courier upload. It opens in Excel or Google Sheets.
 - **Service request:** you get a "Service SR-…" email at `ORDER_NOTIFY_EMAIL`.
   In `/admin`, under *Service requests*, set the status, write a note and save.
   The customer is emailed and sees the note in their account. If the customer
@@ -216,8 +273,8 @@ Push to `main`. Then, with Razorpay still in test mode:
 - **Customer can't sign in:** they can use *Forgot password* on `/login`. To
   change someone's email address, edit the `users` row in the D1 console
   (Workers & Pages → D1 → wargrobotics-orders → Console).
-- **Refund:** issue it in the Razorpay dashboard and a credit note in Zoho. The
-  order status isn't changed automatically yet.
+- **Refund without cancelling** (for example a partial refund): issue it in
+  Razorpay and Zoho, then *Add note* on the order so the timeline records it.
 - **Change a price or the offer:** edit `src/config.js` and the item rate in
   Zoho, then deploy.
 
@@ -226,8 +283,8 @@ Push to `main`. Then, with Razorpay still in test mode:
 ```bash
 npm install
 npm test                 # unit tests
-bash test/run-e2e.sh     # 31 end-to-end checks: accounts, Google, cart, checkout,
-                         # invoices, emails, service requests. Uses stand-ins for
+bash test/run-e2e.sh     # 36 end-to-end checks: accounts, Google, cart, checkout,
+                         # invoices, emails, order portal, service requests. Uses stand-ins for
                          # Razorpay, Zoho, Resend and Google, on a fresh local database.
 ```
 

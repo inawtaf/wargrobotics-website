@@ -48,6 +48,9 @@
     "EMAIL_REPLY_TO": "hello@wargrobotics.com",
     "ORDER_NOTIFY_EMAIL": "hello@wargrobotics.com",
     "GOOGLE_CLIENT_ID": "REPLACE.apps.googleusercontent.com",
+    // Staff who can open the order portal (/admin): comma-separated emails.
+    // They sign in with these addresses (Google or password), confirmed.
+    "ADMIN_EMAILS": "hello@wargrobotics.com",
     "ZOHO_ORG_ID": "REPLACE",
     "ZOHO_TAX_ID_INTRA": "REPLACE",
     "ZOHO_TAX_ID_INTER": "REPLACE",
@@ -76,6 +79,7 @@
       "EMAIL_REPLY_TO": "hello@wargrobotics.com",
       "ORDER_NOTIFY_EMAIL": "",
       "GOOGLE_CLIENT_ID": "",
+      "ADMIN_EMAILS": "",
       "ZOHO_ORG_ID": "",
       "ZOHO_TAX_ID_INTRA": "",
       "ZOHO_TAX_ID_INTER": "",

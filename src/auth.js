@@ -159,3 +159,8 @@ export function sameOrigin(request, env) {
     return o.host === self.host || o.host === site.host || o.host === `www.${site.host}`;
   } catch { return false; }
 }
+
+// ------------------------------------------------------------------ staff
+
+export const staffEmails = env => (env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+export const isStaff = (env, user) => Boolean(user && user.email_verified_at && staffEmails(env).includes(user.email));

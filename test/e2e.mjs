@@ -352,14 +352,105 @@ await step('order to a saved business address; Zoho down -> still confirmed; cro
 });
 
 // ------------------------------------------------------------------ shipping and service
-await step('admin ships: buyer emailed, tracking in the account', async () => {
-  await admin('POST', `/orders/${order1.order_number}/ship`, { courier: 'Delhivery', tracking_number: 'DL123', tracking_url: 'https://www.delhivery.com/track/package/DL123' });
-  const list = (await asha.call('GET', '/api/account/orders')).data.orders;
-  const o = list.find(x => x.order_number === order1.order_number);
-  assert.equal(o.status, 'shipped');
-  assert.equal(o.tracking_number, 'DL123');
-  const mail = (await mockCalls()).find(c => c.headers.idem === `${order1.order_number}-dispatch-DL123`);
-  assert.match(mail.body.html, /48 hours/);
+// ------------------------------------------------------------------ order portal
+const staff = new Browser();
+const portal = (m, p, b, h) => staff.call(m, '/api/admin' + p, b, h);
+
+await step('portal: only staff accounts (ADMIN_EMAILS, confirmed) get in', async () => {
+  assert.equal((await anon.call('GET', '/api/admin/summary')).status, 401);
+  assert.equal((await asha.call('GET', '/api/admin/summary')).status, 403, 'a customer is refused');
+  await googleSignIn(staff, { sub: 'g-staff', email: 'staff@example.com', name: 'Warg Staff' }, '/admin');
+  assert.equal((await staff.call('GET', '/api/me')).data.user.is_staff, true);
+  const s = await portal('GET', '/summary');
+  assert.equal(s.status, 200);
+  assert.equal(s.data.to_process, 2);
+  assert.ok(s.data.couriers.includes('Delhivery'));
+  const x = await portal('POST', `/orders/${order1.order_number}/note`, { message: 'x' }, { origin: 'https://evil.example' });
+  assert.equal(x.status, 403, 'cross-site write refused even for staff');
+});
+
+await step('portal: queue filters and search', async () => {
+  assert.equal((await portal('GET', '/orders?status=paid')).data.orders.length, 2);
+  const found = (await portal('GET', `/orders?status=&q=${encodeURIComponent('Rao Drones')}`)).data.orders;
+  assert.deepEqual(found.map(o => o.order_number), [order2.order_number], 'business name is searchable');
+  const byEmail = (await portal('GET', '/orders?status=&q=asha%40example')).data.orders;
+  assert.equal(byEmail.length, 2);
+  assert.equal((await portal('GET', '/orders?status=unpaid')).status, 200);
+});
+
+await step('process -> ship -> deliver, each emailed and on the timeline', async () => {
+  const n = order1.order_number;
+  const bad = await portal('POST', `/orders/${n}/deliver`, {});
+  assert.equal(bad.status, 409, 'cannot deliver a paid order');
+  let r = await portal('POST', `/orders/${n}/process`, { message: 'Your Greywind is on the test bench.' });
+  assert.equal(r.data.status, 'processing'); assert.equal(r.data.emailed, true);
+  assert.equal((await portal('POST', `/orders/${n}/process`, {})).status, 409, 'double click is harmless');
+  r = await portal('POST', `/orders/${n}/ship`, { courier: 'Delhivery', tracking_number: 'DL123', tracking_url: 'https://www.delhivery.com/track/package/DL123', expected_delivery: '2026-11-03' });
+  assert.equal(r.data.status, 'shipped'); assert.equal(r.data.emailed, true);
+  assert.equal((await portal('POST', `/orders/${n}/ship`, { courier: 'Delhivery', tracking_number: 'DL1', tracking_url: 'javascript:alert(1)' })).status, 422);
+  await portal('POST', `/orders/${n}/note`, { message: 'Packed by Kartik, box B2' });
+
+  const calls = await mockCalls();
+  const proc = calls.find(c => c.headers.idem === `${n}-processing`);
+  assert.match(proc.body.subject, /preparing/);
+  assert.match(proc.body.html, /test bench/);
+  const disp = calls.find(c => c.headers.idem === `${n}-dispatch-DL123`);
+  assert.match(disp.body.html, /Expected delivery:<\/b> Tue, 3 Nov/);
+  assert.match(disp.body.html, /48 hours/);
+
+  const mine = (await asha.call('GET', `/api/account/orders/${n}`)).data.order;
+  assert.equal(mine.status, 'shipped');
+  assert.equal(mine.expected_delivery, '2026-11-03');
+  const msgs = mine.timeline.map(e => e.message).join(' | ');
+  assert.match(msgs, /Payment received/);
+  assert.match(msgs, /test bench/);
+  assert.match(msgs, /Shipped with Delhivery/);
+  assert.ok(!/Packed by Kartik/.test(msgs), 'internal notes stay internal');
+  assert.ok(!mine.timeline.some(e => 'actor' in e), 'customer view has no staff names');
+
+  const full = (await portal('GET', `/orders/${n}`)).data;
+  assert.ok(full.timeline.find(e => e.message === 'Packed by Kartik, box B2' && e.actor === 'staff@example.com'));
+  assert.ok(full.timeline.find(e => e.kind === 'email' && /preparing/.test(e.message)));
+
+  r = await portal('POST', `/orders/${n}/deliver`, { notify: true });
+  assert.equal(r.data.status, 'delivered');
+  assert.ok((await mockCalls()).find(c => c.headers.idem === `${n}-delivered`));
+  assert.equal((await asha.call('GET', '/api/account/orders')).data.orders.find(o => o.order_number === n).status, 'delivered');
+});
+
+await step('resend an email on request', async () => {
+  const before = (await emailsTo('asha@example.com')).length;
+  assert.equal((await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'dispatch' })).status, 200);
+  assert.equal((await emailsTo('asha@example.com')).length, before + 1);
+});
+
+let order3;
+await step('cancel a paid order: customer told, refund reminder for staff', async () => {
+  await asha.call('POST', '/api/cart/add', { sku: 'ghost', quantity: 1 });
+  const home = (await asha.call('GET', '/api/account/addresses')).data.addresses.find(a => a.label === 'Home');
+  order3 = (await asha.call('POST', '/api/orders', { address_id: home.id })).data;
+  const pid = 'pay_C__' + order3.razorpay_order_id;
+  await asha.call('POST', `/api/orders/${order3.order_number}/confirm`, { razorpay_order_id: order3.razorpay_order_id, razorpay_payment_id: pid, razorpay_signature: hmac(KEY_SECRET, `${order3.razorpay_order_id}|${pid}`) });
+  assert.equal((await portal('POST', `/orders/${order3.order_number}/cancel`, {})).status, 422, 'reason required');
+  const r = await portal('POST', `/orders/${order3.order_number}/cancel`, { reason: 'Out of stock this week, sorry.' });
+  assert.equal(r.data.status, 'cancelled'); assert.equal(r.data.refund_needed, true); assert.equal(r.data.emailed, true);
+  const mail = (await mockCalls()).find(c => c.headers.idem === `${order3.order_number}-cancelled`);
+  assert.match(mail.body.html, /Out of stock/); assert.match(mail.body.html, /refund/);
+  const t = (await portal('GET', `/orders/${order3.order_number}`)).data.timeline;
+  assert.ok(t.find(e => /Refund still to do/.test(e.message)));
+  assert.equal((await portal('POST', `/orders/${order3.order_number}/process`, {})).status, 409);
+});
+
+await step('CSV export: one row per order, spreadsheet formulas neutralised', async () => {
+  const res = await staff.raw('GET', '/api/admin/orders.csv?status=');
+  assert.equal(res.headers.get('content-type'), 'text/csv; charset=utf-8');
+  const text = await res.text();
+  const lines = text.replace(/^﻿/, '').trim().split('\r\n');
+  assert.match(lines[0], /^Order,Status,Paid at,Items/);
+  assert.equal(lines.length, 1 + 3);
+  assert.ok(lines.some(l => l.includes('Warg Ghost x1; Warg Greywind x2')));
+  assert.ok(!lines.some(l => /,=/.test(l)));
+  assert.equal((await anon.raw('GET', '/api/admin/orders.csv')).status, 401);
 });
 
 await step('service request: created, team and customer emailed, admin update shown in account', async () => {

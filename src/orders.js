@@ -4,6 +4,7 @@ import { nowIso, nowSec, newOrderNumber, orderToken } from './util.js';
 import * as razorpay from './razorpay.js';
 import * as zoho from './zoho.js';
 import * as email from './email.js';
+import { addEvent } from './fulfilment.js';
 
 const sellerState = env => env.SELLER_STATE || 'KA';
 
@@ -11,7 +12,7 @@ const sellerState = env => env.SELLER_STATE || 'KA';
 export async function soldAtOffer(env) {
   const { results } = await env.DB.prepare(`SELECT i.sku, COALESCE(SUM(i.quantity),0) AS n
     FROM order_items i JOIN orders o ON o.id = i.order_id
-    WHERE i.price_type = 'offer' AND o.status IN ('paid','shipped','delivered') GROUP BY i.sku`).all();
+    WHERE i.price_type = 'offer' AND o.status IN ('paid','processing','shipped','delivered') GROUP BY i.sku`).all();
   return Object.fromEntries(results.map(r => [r.sku, r.n]));
 }
 
@@ -75,6 +76,7 @@ export async function markPaid(env, order, { paymentId, amountPaise }) {
     "UPDATE orders SET status = 'paid', razorpay_payment_id = ?, paid_at = ?, updated_at = ? WHERE id = ? AND status = 'created'"
   ).bind(paymentId, nowIso(), nowIso(), order.id).run();
   if (r.meta.changes !== 1) return false;
+  await addEvent(env, order.id, { status: 'paid', message: `Payment received (Razorpay ${paymentId}).`, visible: true });
   // Bought: empty the cart of the products in this order.
   if (order.user_id) {
     await env.DB.prepare('DELETE FROM cart_items WHERE user_id = ? AND sku IN (SELECT sku FROM order_items WHERE order_id = ?)')
@@ -123,6 +125,7 @@ export async function fulfil(env, orderId) {
         await setFields(env, o.id, { zoho_contact_id: inv.contactId, zoho_invoice_id: inv.invoiceId, invoice_number: inv.invoiceNumber, invoice_error: null });
         Object.assign(o, { zoho_contact_id: inv.contactId, zoho_invoice_id: inv.invoiceId, invoice_number: inv.invoiceNumber });
         result.invoice = inv.invoiceNumber;
+        await addEvent(env, o.id, { kind: 'note', message: `GST invoice ${inv.invoiceNumber} created in Zoho Books.` });
       } catch (e) {
         console.error(`invoice failed for ${o.order_number}:`, e.message);
         await setFields(env, o.id, { invoice_error: e.message.slice(0, 500) });
@@ -147,6 +150,7 @@ export async function fulfil(env, orderId) {
         await setFields(env, o.id, fields);
         Object.assign(o, fields);
         result.confirmation = 'sent';
+        await addEvent(env, o.id, { kind: 'email', message: `Emailed: ${m.subject}${pdf ? ' (invoice attached)' : ''}` });
       } catch (e) {
         console.error(`confirmation email failed for ${o.order_number}:`, e.message);
         await setFields(env, o.id, { email_error: e.message.slice(0, 500) });
@@ -185,25 +189,13 @@ export async function fulfil(env, orderId) {
 // Gives up after 20 attempts so a permanent error doesn't loop for ever.
 export async function retryUnfinished(env) {
   const { results } = await env.DB.prepare(`SELECT id FROM orders
-    WHERE status IN ('paid','shipped','delivered') AND fulfil_attempts < 20
+    WHERE status IN ('paid','processing','shipped','delivered') AND fulfil_attempts < 20
       AND (zoho_invoice_id IS NULL OR confirmation_sent_at IS NULL OR invoice_sent_at IS NULL
            OR (team_notified_at IS NULL AND ? = 1))
     ORDER BY id LIMIT 20`).bind(env.ORDER_NOTIFY_EMAIL ? 1 : 0).all();
   const out = [];
   for (const r of results) out.push({ id: r.id, ...(await fulfil(env, r.id)) });
   return out;
-}
-
-export async function markShipped(env, order, { courier, tracking_number, tracking_url }) {
-  await setFields(env, order.id, { status: 'shipped', courier, tracking_number, tracking_url: tracking_url || null, shipped_at: nowIso() });
-  const o = await loadFull(env, order.id);
-  const m = email.dispatchEmail(env, o);
-  await email.sendEmail(env, { to: o.email, ...m, idempotencyKey: `${o.order_number}-dispatch-${tracking_number}` });
-  await setFields(env, order.id, { dispatch_sent_at: nowIso() });
-}
-
-export async function markDelivered(env, order) {
-  await setFields(env, order.id, { status: 'delivered', delivered_at: nowIso() });
 }
 
 // What the buyer may see: no internal ids, no errors.
@@ -231,9 +223,13 @@ export function publicView(o, items) {
     courier: o.courier,
     tracking_number: o.tracking_number,
     tracking_url: o.tracking_url,
+    expected_delivery: o.expected_delivery,
+    cancel_reason: o.cancel_reason,
     created_at: o.created_at,
     paid_at: o.paid_at,
+    processing_at: o.processing_at,
     shipped_at: o.shipped_at,
     delivered_at: o.delivered_at,
+    cancelled_at: o.cancelled_at,
   };
 }

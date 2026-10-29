@@ -7,7 +7,7 @@ CREATE TABLE orders (
   order_number          TEXT NOT NULL UNIQUE,          -- WR-261026-K7Q2, shown to the buyer
   user_id               INTEGER REFERENCES users(id),  -- account that placed it (see 0002)
   status                TEXT NOT NULL DEFAULT 'created'
-                        CHECK (status IN ('created','paid','shipped','delivered','cancelled','refunded')),
+                        CHECK (status IN ('created','paid','processing','shipped','delivered','cancelled','refunded')),
 
   -- totals across all items (lines are in order_items)
   item_count            INTEGER NOT NULL,              -- total units, 1..9
@@ -49,12 +49,16 @@ CREATE TABLE orders (
   dispatch_sent_at      TEXT,
   email_error           TEXT,
 
-  -- shipping
+  -- fulfilment
+  processing_at         TEXT,                          -- team started packing
   courier               TEXT,
   tracking_number       TEXT,
   tracking_url          TEXT,
+  expected_delivery     TEXT,                          -- YYYY-MM-DD, shown to the buyer
   shipped_at            TEXT,
   delivered_at          TEXT,
+  cancelled_at          TEXT,
+  cancel_reason         TEXT,
 
   -- housekeeping
   fulfil_lock_until     INTEGER,                       -- unix seconds; stops two runs at once
@@ -80,6 +84,20 @@ CREATE TABLE order_items (
 );
 CREATE INDEX idx_order_items_order ON order_items (order_id);
 CREATE INDEX idx_order_items_sku   ON order_items (sku, price_type);
+
+-- Order timeline: every status change, email and staff note.
+-- visible = 1 rows are shown to the buyer in their account.
+CREATE TABLE order_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id    INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  kind        TEXT NOT NULL,          -- status | note | email
+  status      TEXT,                   -- new status, for kind = status
+  message     TEXT,                   -- what happened, or the note
+  actor       TEXT NOT NULL,          -- 'system', 'customer' or the staff email
+  visible     INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+CREATE INDEX idx_order_events_order ON order_events (order_id, id);
 
 -- Every payment event we receive, for audit and debugging.
 CREATE TABLE payment_events (

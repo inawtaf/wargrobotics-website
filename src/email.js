@@ -117,14 +117,15 @@ export function invoiceEmail(env, o) {
   return { subject: `Invoice ${o.invoice_number} – order ${o.order_number}`, html, text: `Your GST invoice ${o.invoice_number} for order ${o.order_number} is attached.` };
 }
 
-export function dispatchEmail(env, o) {
+export function dispatchEmail(env, o, { message } = {}) {
   const first = h(o.customer_name.split(' ')[0]);
   const track = o.tracking_url
     ? btn(o.tracking_url, 'Track your parcel')
     : '';
   const html = layout(`Your order ${o.order_number} has shipped`, [
     p(`Hi ${first}, your order (${h(o.summary)}) is on its way.`),
-    p(`<b>Courier:</b> ${h(o.courier)}<br><b>Tracking number:</b> ${h(o.tracking_number)}`),
+    p(`<b>Courier:</b> ${h(o.courier)}<br><b>Tracking number:</b> ${h(o.tracking_number)}${o.expected_delivery ? `<br><b>Expected delivery:</b> ${h(niceDate(o.expected_delivery))}` : ''}`),
+    note(message),
     track,
     p('<b>Delivering to</b>'),
     addressBlock(o),
@@ -143,7 +144,7 @@ export function dispatchEmail(env, o) {
   const text = `Your order ${o.order_number} has shipped.
 
 Courier: ${o.courier}
-Tracking number: ${o.tracking_number}
+Tracking number: ${o.tracking_number}${o.expected_delivery ? `\nExpected delivery: ${niceDate(o.expected_delivery)}` : ''}${message ? `\n\n${message}` : ''}
 ${o.tracking_url ? `Track: ${o.tracking_url}\n` : ''}
 When the parcel arrives:
 1. Keep your phone on; the courier may call or ask for an OTP.
@@ -172,6 +173,54 @@ export function teamEmail(env, o) {
     subject: `New order ${o.order_number} – ${o.summary}`,
     html: `<pre style="font:14px/1.6 ui-monospace,monospace">${h(lines.join('\n'))}</pre>`,
     text: lines.join('\n'),
+  };
+}
+
+// ---------------------------------------------------------------- fulfilment
+
+const niceDate = d => new Date(`${d}T00:00:00+05:30`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+// A personal line from the team, shown as a quote when staff add one.
+const note = m => (m ? `<p style="margin:0 0 14px;padding:12px 14px;background:#f4f5f7;border-left:3px solid #2a00ff;font-size:15px;line-height:1.6">${h(m).replace(/\n/g, '<br>')}</p>` : '');
+
+export function processingEmail(env, o, { message } = {}) {
+  const first = h(o.customer_name.split(' ')[0]);
+  return {
+    subject: `We're preparing order ${o.order_number} – Warg Robotics`,
+    html: layout(`We're preparing your order`, [
+      p(`Hi ${first}, your order ${h(o.order_number)} (${h(o.summary)}) is being tested and packed.`),
+      note(message),
+      p('We email you the courier and tracking number as soon as it ships.'),
+      btn(orderLink(env, o), 'View your order'),
+    ].join('')),
+    text: `Your order ${o.order_number} (${o.summary}) is being tested and packed. We will email tracking when it ships.${message ? `\n\n${message}` : ''}\n\n${orderLink(env, o)}`,
+  };
+}
+
+export function deliveredEmail(env, o, { message } = {}) {
+  const first = h(o.customer_name.split(' ')[0]);
+  return {
+    subject: `Delivered: order ${o.order_number} – Warg Robotics`,
+    html: layout('Your order was delivered', [
+      p(`Hi ${first}, your order ${h(o.order_number)} (${h(o.summary)}) has been delivered.`),
+      note(message),
+      p('If anything is damaged or missing, tell us within 48 hours by replying to this email. For setup help or a repair, open a service request from your account.'),
+      btn(`${site(env)}/account#service`, 'Get help'),
+    ].join('')),
+    text: `Your order ${o.order_number} has been delivered.${message ? `\n\n${message}` : ''}\nReport damage or missing items within 48 hours by replying. Help: ${site(env)}/account#service`,
+  };
+}
+
+export function cancelledEmail(env, o, { message } = {}) {
+  const first = h(o.customer_name.split(' ')[0]);
+  return {
+    subject: `Order ${o.order_number} cancelled – Warg Robotics`,
+    html: layout(`Order ${o.order_number} cancelled`, [
+      p(`Hi ${first}, your order ${h(o.order_number)} (${h(o.summary)}) has been cancelled.`),
+      note(message),
+      p(`A full refund of ${inr(o.total_paise)} goes back to the account you paid from. Banks usually show it within 5–7 working days.`),
+      p('Reply to this email if you have questions.'),
+    ].join('')),
+    text: `Your order ${o.order_number} has been cancelled.${message ? `\n\n${message}` : ''}\nA full refund of ${inr(o.total_paise)} goes back to the account you paid from, usually within 5–7 working days.`,
   };
 }
 

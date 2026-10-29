@@ -5,7 +5,7 @@
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function date(s) { return s ? new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
-  var STATUS = { created: 'Awaiting payment', paid: 'Paid', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled', refunded: 'Refunded',
+  var STATUS = { created: 'Awaiting payment', paid: 'Paid', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled', refunded: 'Refunded',
     open: 'Open', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' };
   var KIND = { repair: 'Repair', warranty: 'Warranty claim', return: 'Return', setup: 'Setup help', other: 'Other' };
   function pill(status) { return el('span', 'pill ' + status, STATUS[status] || status); }
@@ -15,8 +15,9 @@
     opts = opts || {};
     box.innerHTML = '';
     var steps = el('ol', 'order-steps');
-    var reached = ['paid', 'shipped', 'delivered'].indexOf(o.status);
-    ['Paid', 'Shipped', 'Delivered'].forEach(function (s, i) { var li = el('li', i <= reached ? 'done' : '', s); steps.appendChild(li); });
+    var reached = ['paid', 'processing', 'shipped', 'delivered'].indexOf(o.status);
+    ['Paid', 'Processing', 'Shipped', 'Delivered'].forEach(function (s, i) { var li = el('li', i <= reached ? 'done' : '', s); steps.appendChild(li); });
+    if (o.status === 'cancelled') steps = el('p', 'banner', 'This order was cancelled' + (o.cancel_reason ? ': ' + o.cancel_reason : '.') + ' A full refund goes back to the account you paid from.');
 
     var wrap = el('div', 'checkout');
     var left = el('div');
@@ -25,6 +26,7 @@
       var t = el('div', 'order-ship');
       t.appendChild(el('h2', 'field-legend', 'Tracking'));
       t.appendChild(el('p', '', o.courier + ' · ' + o.tracking_number));
+      if (o.expected_delivery && o.status === 'shipped') t.appendChild(el('p', '', 'Expected by ' + new Date(o.expected_delivery + 'T00:00:00+05:30').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })));
       if (o.tracking_url) { var a = el('a', 'btn btn-line', 'Track your parcel'); a.href = o.tracking_url; a.target = '_blank'; a.rel = 'noopener'; t.appendChild(a); }
       left.appendChild(t);
     }
@@ -43,6 +45,17 @@
     }
     if (!opts.signedIn) { var lg = el('a', 'btn btn-line', 'Sign in to see invoices and service'); lg.href = '/login?next=' + encodeURIComponent('/account#orders'); actions.appendChild(lg); }
     left.appendChild(actions);
+    if (o.timeline && o.timeline.length) {
+      left.appendChild(el('h2', 'field-legend', 'Updates'));
+      var ol = el('ol', 'order-timeline');
+      o.timeline.slice().reverse().forEach(function (e) {
+        var li = el('li');
+        li.appendChild(el('time', '', new Date(e.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })));
+        li.appendChild(el('span', '', e.message || STATUS[e.status] || ''));
+        ol.appendChild(li);
+      });
+      left.appendChild(ol);
+    }
     if (opts.service && opts.service.length) {
       left.appendChild(el('h2', 'field-legend', 'Service requests'));
       opts.service.forEach(function (s) { var p = el('p', 't-body'); p.appendChild(pill(s.status)); p.appendChild(document.createTextNode(' ' + s.request_number + ' · ' + s.subject)); left.appendChild(p); });
@@ -92,8 +105,9 @@
         if (tries++ < 20) setTimeout(load, 3000);
         return;
       }
-      $('order-h').textContent = o.status === 'paid' ? 'Thank you, ' + first : o.status === 'shipped' ? 'On its way' : o.status === 'delivered' ? 'Delivered' : 'Order ' + STATUS[o.status].toLowerCase();
+      $('order-h').textContent = o.status === 'paid' ? 'Thank you, ' + first : o.status === 'processing' ? 'Being prepared' : o.status === 'shipped' ? 'On its way' : o.status === 'delivered' ? 'Delivered' : 'Order ' + STATUS[o.status].toLowerCase();
       $('order-lede').textContent = o.status === 'paid' ? 'Order ' + o.order_number + ' is confirmed. Your GST invoice is on its way by email. We email tracking when it ships.'
+        : o.status === 'processing' ? 'We are testing and packing your order. Tracking follows by email when it ships.'
         : o.status === 'shipped' ? 'Delivery instructions are in your email.' : '';
     };
     load();

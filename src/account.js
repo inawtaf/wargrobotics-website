@@ -9,6 +9,7 @@ import * as google from './google.js';
 import * as orders from './orders.js';
 import * as zoho from './zoho.js';
 import * as email from './email.js';
+import { events as orderEvents } from './fulfilment.js';
 
 const VERIFY_TTL = 24 * 3600;
 const RESET_TTL = 3600;
@@ -88,7 +89,7 @@ export async function logoutAll(request, env, ctx, user) {
 export async function me(request, env, ctx, user) {
   if (!user) return json({ user: null });
   const cart = await env.DB.prepare('SELECT COALESCE(SUM(quantity),0) AS n FROM cart_items WHERE user_id = ?').bind(user.id).first();
-  return json({ user: publicUser(user), cart_count: cart.n });
+  return json({ user: { ...publicUser(user), is_staff: auth.isStaff(env, user) }, cart_count: cart.n });
 }
 
 // GET /api/auth/verify?token=  (the link in the email) -> back to the account page
@@ -375,7 +376,7 @@ async function ownOrder(env, user, n) {
 
 export async function listOrders(request, env, ctx, user) {
   const { results } = await env.DB.prepare(`SELECT id, order_number, status, summary, item_count, total_paise, invoice_number,
-      courier, tracking_number, tracking_url, created_at, paid_at, shipped_at, delivered_at
+      courier, tracking_number, tracking_url, expected_delivery, created_at, paid_at, processing_at, shipped_at, delivered_at, cancelled_at
     FROM orders WHERE user_id = ? AND status != 'created' ORDER BY id DESC LIMIT 100`).bind(user.id).all();
   return json({ orders: results.map(({ id, ...o }) => o) });
 }
@@ -384,7 +385,10 @@ export async function getOrder(request, env, ctx, user, n) {
   const o = await ownOrder(env, user, n);
   if (!o) return json({ error: 'not found' }, 404);
   const service = await env.DB.prepare('SELECT request_number, kind, subject, status, updated_at FROM service_requests WHERE order_id = ? ORDER BY id DESC').bind(o.id).all();
-  return json({ order: { ...orders.publicView(o, await orders.getItems(env, o.id)), invoice_available: Boolean(o.zoho_invoice_id) }, service_requests: service.results });
+  return json({
+    order: { ...orders.publicView(o, await orders.getItems(env, o.id)), invoice_available: Boolean(o.zoho_invoice_id), timeline: await orderEvents(env, o.id, { visibleOnly: true }) },
+    service_requests: service.results,
+  });
 }
 
 export async function invoicePdf(request, env, ctx, user, n) {

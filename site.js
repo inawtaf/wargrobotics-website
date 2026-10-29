@@ -104,7 +104,10 @@
     if (!bar.querySelector('.nav-links')) box.classList.add('push');
     setCount(localCount());
     whoami().then(function (d) {
-      if (d.user) { acct.href = '/account'; acct.textContent = 'Account'; setCount(d.cart_count || 0); }
+      if (d.user) {
+        acct.href = '/account'; acct.textContent = 'Account'; setCount(d.cart_count || 0);
+        if (d.user.is_staff) { var portal = document.createElement('a'); portal.href = '/admin'; portal.textContent = 'Portal'; box.insertBefore(portal, acct); }
+      }
       else {
         acct.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
         setCount(localCount());

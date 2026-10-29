@@ -21,8 +21,9 @@
 //   POST /api/orders/:n/confirm              checkout success callback
 //   GET  /api/account/orders[/:n];  GET .../:n/invoice;  POST .../:n/reorder
 //   GET/POST /api/account/service
-// Admin (Authorization: Bearer ADMIN_TOKEN)
-//   GET /api/admin/orders[/:n];  POST /api/admin/orders/:n/ship|deliver|retry
+// Order portal (staff account in ADMIN_EMAILS, or Authorization: Bearer ADMIN_TOKEN)
+//   GET /api/admin/summary | orders[?status=&q=&from=&to=&page=] | orders.csv | orders/:n
+//   POST /api/admin/orders/:n/process|ship|deliver|cancel|note|resend|retry
 //   GET /api/admin/service;  POST /api/admin/service/:sr
 
 import { PRODUCTS, STATES, MAX_QUANTITY, GST_RATE_BP } from './config.js';
@@ -32,12 +33,8 @@ import * as auth from './auth.js';
 import * as razorpay from './razorpay.js';
 import * as orders from './orders.js';
 import * as account from './account.js';
-
-function isAdmin(request, env) {
-  const h = request.headers.get('authorization') || '';
-  const token = h.startsWith('Bearer ') ? h.slice(7) : '';
-  return Boolean(env.ADMIN_TOKEN) && env.ADMIN_TOKEN.length >= 24 && safeEqual(token, env.ADMIN_TOKEN);
-}
+import * as adminApi from './admin.js';
+import { events as orderEvents } from './fulfilment.js';
 
 // --------------------------------------------------------------------- public
 
@@ -68,7 +65,7 @@ async function orderByToken(env, n, token) {
   const order = await orders.getByNumber(env, n);
   if (!order || !token || !safeEqual(await orderToken(env, order.order_number), token)) return json({ error: 'not found' }, 404);
   const { phone, address_line1, address_line2, gstin, ...view } = orders.publicView(order, await orders.getItems(env, order.id));
-  return json({ order: view });
+  return json({ order: { ...view, timeline: await orderEvents(env, order.id, { visibleOnly: true }) } });
 }
 
 async function webhookHandler(request, env, ctx) {
@@ -149,58 +146,6 @@ async function confirmHandler(request, env, ctx, user, n) {
   return json({ status: 'paid' });
 }
 
-// --------------------------------------------------------------------- admin
-
-async function admin(request, env, ctx, seg) {
-  if (!isAdmin(request, env)) return json({ error: 'unauthorised' }, 401);
-  const [kind, id, action] = seg;          // /api/admin/<kind>/<id>/<action>
-  const m = request.method;
-
-  if (kind === 'service') {
-    if (m === 'GET' && !id) return account.adminListService(request, env);
-    if (m === 'POST' && id) return account.adminUpdateService(request, env, ctx, id);
-    return json({ error: 'not found' }, 404);
-  }
-  if (kind !== 'orders') return json({ error: 'not found' }, 404);
-
-  if (m === 'GET' && !id) {
-    const status = new URL(request.url).searchParams.get('status');
-    const stmt = status
-      ? env.DB.prepare('SELECT * FROM orders WHERE status = ? ORDER BY id DESC LIMIT 200').bind(status)
-      : env.DB.prepare("SELECT * FROM orders WHERE status != 'created' OR created_at > datetime('now','-2 days') ORDER BY id DESC LIMIT 200");
-    return json({ orders: (await stmt.all()).results });
-  }
-  const order = id && (await orders.getByNumber(env, id));
-  if (!order) return json({ error: 'not found' }, 404);
-  if (m === 'GET' && !action) {
-    const ev = await env.DB.prepare('SELECT source, event, payment_id, amount_paise, received_at FROM payment_events WHERE order_id = ? ORDER BY id').bind(order.id).all();
-    return json({ order: { ...order, items: await orders.getItems(env, order.id) }, payment_events: ev.results });
-  }
-  if (m !== 'POST') return json({ error: 'method not allowed' }, 405);
-
-  if (action === 'ship') {
-    if (!['paid', 'shipped'].includes(order.status)) return json({ error: `order is ${order.status}` }, 409);
-    const b = await readJson(request);
-    const courier = String(b.courier || '').trim().slice(0, 60);
-    const tracking_number = String(b.tracking_number || '').trim().slice(0, 60);
-    const tracking_url = String(b.tracking_url || '').trim().slice(0, 300);
-    if (!courier || !tracking_number) return json({ error: 'courier and tracking_number are required' }, 422);
-    if (tracking_url && !/^https:\/\//.test(tracking_url)) return json({ error: 'tracking_url must start with https://' }, 422);
-    await orders.markShipped(env, order, { courier, tracking_number, tracking_url });
-    return json({ ok: true, status: 'shipped' });
-  }
-  if (action === 'deliver') {
-    if (order.status !== 'shipped') return json({ error: `order is ${order.status}` }, 409);
-    await orders.markDelivered(env, order);
-    return json({ ok: true, status: 'delivered' });
-  }
-  if (action === 'retry') {
-    await env.DB.prepare('UPDATE orders SET fulfil_attempts = 0 WHERE id = ?').bind(order.id).run();
-    return json({ ok: true, result: await orders.fulfil(env, order.id) });
-  }
-  return json({ error: 'unknown action' }, 404);
-}
-
 // --------------------------------------------------------------------- routing
 
 const WRITE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -211,9 +156,10 @@ async function route(request, env, ctx) {
   const m = request.method;
   const [a, b, c, d] = seg;
 
-  // Machine-to-machine and admin first: they don't use cookies.
+  // Machine-to-machine first: it doesn't use cookies.
   if (a === 'webhooks' && b === 'razorpay' && m === 'POST') return webhookHandler(request, env, ctx);
-  if (a === 'admin') return admin(request, env, ctx, seg.slice(1));
+  // Order portal: staff session (with its own Origin check) or ADMIN_TOKEN.
+  if (a === 'admin') return adminApi.route(request, env, ctx, seg.slice(1), await auth.currentUser(env, request));
 
   // Anything that changes state must come from our own pages (CSRF guard).
   if (WRITE.has(m) && !auth.sameOrigin(request, env)) return json({ error: 'Cross-site request refused.' }, 403);
