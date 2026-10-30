@@ -35,6 +35,7 @@ import * as orders from './orders.js';
 import * as account from './account.js';
 import * as adminApi from './admin.js';
 import { events as orderEvents } from './fulfilment.js';
+import { ensureSchema } from './schema.js';
 
 // --------------------------------------------------------------------- public
 
@@ -231,6 +232,7 @@ export default {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
+      await ensureSchema(env);   // creates any missing tables (first request after a deploy)
       return await route(request, env, ctx);
     } catch (e) {
       if (!e.status) console.error(`${request.method} ${url.pathname}:`, e.stack || e.message);
@@ -242,6 +244,7 @@ export default {
   // and tidy expired sessions and links.
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
+      await ensureSchema(env);
       const r = await orders.retryUnfinished(env);
       if (r.length) console.log('retried', JSON.stringify(r));
       const now = Math.floor(Date.now() / 1000);

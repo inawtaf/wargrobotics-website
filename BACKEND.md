@@ -96,19 +96,23 @@ after a test order has gone through end to end.
 
 ### 1. Database (Cloudflare D1)
 
-```bash
-npm install
-npx wrangler login
-npx wrangler d1 create wargrobotics-orders            # copy database_id into wrangler.jsonc
-npx wrangler d1 create wargrobotics-orders-preview    # copy into the "previews" block
-npx wrangler d1 migrations apply wargrobotics-orders --remote
-npx wrangler d1 migrations apply wargrobotics-orders-preview --remote
-```
+1. In the Cloudflare dashboard, in the account that has the `wargrobotics-website`
+   Worker, go to **Storage & Databases → D1 → Create** and make
+   `wargrobotics-orders` and `wargrobotics-orders-preview`.
+2. Paste their IDs into `wrangler.jsonc`: the top `database_id`, and the one
+   inside `"previews"`.
 
-If you already applied an earlier version of these migrations (from the
-earlier patches), delete the database and create it again before applying:
-`npx wrangler d1 delete wargrobotics-orders`, then repeat the commands above.
-The tables changed shape, and nothing real has been stored yet.
+That's all. **The Worker creates its own tables**: on the first `/api` request
+after a deploy, `src/schema.js` applies any migration in `migrations/` that
+hasn't run yet. It records them in `d1_migrations` exactly as
+`wrangler d1 migrations apply` does, so both methods stay compatible. A branch
+preview sets up the preview database the same way.
+
+To change the database later, add `migrations/0003_….sql` **and** list it in
+`MIGRATIONS` in `src/schema.js`; the next deploy applies it.
+
+The terminal commands still work if Wrangler is logged in to the same account as
+the Worker: `npm run db:whoami`, `npm run db:migrate`, `npm run db:migrate:preview`.
 
 ### 2. Razorpay
 
