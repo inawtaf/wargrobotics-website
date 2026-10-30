@@ -23,6 +23,7 @@ migrations
 test
 package.json
 package-lock.json
+.nvmrc
 BACKEND.md
 .dev.vars
 .dev.vars.*

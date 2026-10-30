@@ -1,7 +1,11 @@
 // Run: npm test   (Node 20+, no dependencies)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac, createHash } from 'node:crypto';
+import { createHmac, createHash, webcrypto } from 'node:crypto';
+
+// Cloudflare Workers always have Web Crypto as a global. Node only does from
+// v20 on, so provide it here for older Node (the site code itself is unchanged).
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 import { quoteCart, unitPrice } from '../src/pricing.js';
 import { PRODUCTS } from '../src/config.js';
