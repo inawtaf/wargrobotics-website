@@ -28,7 +28,7 @@
     {
       "binding": "DB",
       "database_name": "wargrobotics-orders",
-      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "database_id": "dc971bf5-1d2f-4a78-9b77-18b4664a039d",
       "migrations_dir": "migrations"
     }
   ],
@@ -67,7 +67,7 @@
       {
         "binding": "DB",
         "database_name": "wargrobotics-orders-preview",
-        "database_id": "REPLACE_WITH_PREVIEW_DATABASE_ID",
+        "database_id": "4602eb80-8199-41ea-b4fd-eeaa204c3514",
         "migrations_dir": "migrations"
       }
     ],
