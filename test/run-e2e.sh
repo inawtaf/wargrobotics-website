@@ -9,7 +9,7 @@ export NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost WRANGLER_SEND_M
 [ -f .dev.vars ] || cp .dev.vars.example .dev.vars
 
 rm -rf .wrangler/state
-$WRANGLER d1 migrations apply wargrobotics-orders --local >/dev/null
+mkdir -p .wrangler   # no migration step: the Worker creates its own tables (src/schema.js)
 
 node test/mock-services.mjs 8899 > .wrangler/mock.log 2>&1 & MOCK=$!
 $WRANGLER dev --port 8787 --ip 127.0.0.1 --test-scheduled > .wrangler/dev.log 2>&1 & DEV=$!
