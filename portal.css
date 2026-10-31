@@ -113,3 +113,18 @@
   .p-timeline li{ grid-template-columns:1fr; gap:2px; }
   .p-search input[type="search"]{ width:100%; }
 }
+
+/* setup check */
+.p-health{ margin-top:14px; }
+.p-health .p-h{ margin:18px 0 6px; font-size:14px; letter-spacing:.04em; text-transform:uppercase; }
+.p-health td{ vertical-align:top; padding:6px 8px; font-size:13.5px; }
+.p-health td:first-child{ width:24px; font-weight:700; text-align:center; }
+.p-good{ color:#1d7a3e; } .p-bad{ color:#b3261e; } .p-info{ color:var(--ink-3); }
+.p-ok{ padding:10px 12px; background:#e5f4e4; color:#1d5e2f; font-size:14px; }
+.p-token{ margin-top:22px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.p-token input{ min-width:260px; padding:10px; border:1px solid var(--line, #ccc); }
+.p-token .p-muted{ width:100%; margin:0; }
+.p-health table{ width:100%; }
+.p-health td:nth-child(2){ width:230px; white-space:nowrap; }
+.p-health td:last-child{ text-align:left; color:var(--ink-2, #333); }
+@media (max-width:700px){ .p-health td:nth-child(2){ width:auto; white-space:normal; } }

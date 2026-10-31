@@ -1,12 +1,13 @@
-/* Checkout: signed-in only. Cart from the account, address from the address
-   book (or a new one), price quote from the server, then Razorpay Checkout.
+/* Checkout: signed-in only. Cart from the account; delivery and billing
+   addresses from the address book (or new ones); optional GSTIN, which belongs
+   to the billing address; price quote from the server; then Razorpay Checkout.
    The server sets every price; nothing the browser sends can change it. */
 (function () {
   var form = document.getElementById('checkout-form');
   if (!form) return;
   var api = window.WargApi, F = window.WargForm;
   var btn = document.getElementById('pay-btn');
-  var addresses = [], user = null, quote = null, busy = false;
+  var addresses = [], user = null, quote = null, busy = false, states = {};
   function $(id) { return document.getElementById(id); }
   function track(n, p) { if (window.wargTrack) window.wargTrack(n, p); }
 
@@ -15,15 +16,31 @@
     user = d.user;
     if (!user.email_verified) { $('verify-banner').hidden = false; $('vb-email').textContent = user.email; }
     return Promise.all([api('/products'), api('/account/addresses')]).then(function (r) {
-      var sel = $('state_code');
-      r[0].states.forEach(function (s) { var o = document.createElement('option'); o.value = s.code; o.textContent = s.name; sel.appendChild(o); });
+      ['state_code', 'b_state_code'].forEach(function (id) {
+        var sel = $(id);
+        r[0].states.forEach(function (s) { var o = document.createElement('option'); o.value = s.code; o.textContent = s.name; sel.appendChild(o); });
+      });
+      states = {}; r[0].states.forEach(function (s) { states[s.code] = s.name; });
       addresses = r[1].addresses;
-      if (user.name) $('name').value = user.name;
+      if (user.name) { $('name').value = user.name; $('b_name').value = user.name; }
       if (user.phone) $('phone').value = user.phone;
       renderAddresses();
+      // A saved default billing address that isn't the delivery one: bill it.
+      var defBill = addresses.find(function (a) { return a.is_default_billing; });
+      if (defBill && String(defBill.id) !== choice()) { $('billing-same').checked = false; }
+      renderBilling();
+      syncGstFromSaved();
       refresh();
     });
   }).catch(function () { F.status(form, 'Could not load checkout. Please refresh.', 'bad'); });
+
+  // Confirmed the email in another tab? Notice when they come back, no refresh needed.
+  window.addEventListener('focus', function () {
+    if (!user || user.email_verified) return;
+    api('/me').then(function (d) {
+      if (d.user && d.user.email_verified) { user.email_verified = true; $('verify-banner').hidden = true; F.status(form, ''); setBusy(false); }
+    }).catch(function () {});
+  });
 
   $('vb-resend').onclick = function () {
     api('/auth/resend-verification', { method: 'POST' })
@@ -35,35 +52,70 @@
   function addrText(a) {
     return [a.business_name, a.address_line1, a.address_line2, a.city + ' ' + a.pincode, a.phone].filter(Boolean).join(', ');
   }
-  function renderAddresses() {
-    var box = $('addr-list');
+  // One radio list per address kind: delivery (address_choice) and billing (billing_choice).
+  function renderPick(box, name, isDefault, newLabel) {
     box.innerHTML = '';
+    var anyDefault = addresses.some(isDefault);
     addresses.forEach(function (a, i) {
       var l = document.createElement('label');
-      l.innerHTML = '<input type="radio" name="address_choice"><span><b></b><br><span class="t-small"></span></span>';
-      var r = l.querySelector('input'); r.value = a.id; r.checked = Boolean(a.is_default) || i === 0;
+      l.innerHTML = '<input type="radio"><span><b></b><br><span class="t-small"></span></span>';
+      var r = l.querySelector('input'); r.name = name; r.value = a.id; r.checked = anyDefault ? Boolean(isDefault(a)) : i === 0;
       l.querySelector('b').textContent = (a.label ? a.label + ' · ' : '') + a.name;
       l.querySelector('.t-small').textContent = addrText(a);
       box.appendChild(l);
     });
     var n = document.createElement('label');
-    n.innerHTML = '<input type="radio" name="address_choice" value="new"><span><b>Deliver to a new address</b></span>';
+    n.innerHTML = '<input type="radio" value="new"><span><b></b></span>';
+    n.querySelector('input').name = name;
+    n.querySelector('b').textContent = newLabel;
     if (!addresses.length) n.querySelector('input').checked = true;
     box.appendChild(n);
+  }
+  function renderAddresses() {
+    renderPick($('addr-list'), 'address_choice', function (a) { return a.is_default; }, 'Deliver to a new address');
     syncNew();
   }
-  function choice() { var c = form.querySelector('input[name="address_choice"]:checked'); return c ? c.value : 'new'; }
+  function renderBilling() {
+    renderPick($('bill-list'), 'billing_choice', function (a) { return a.is_default_billing; }, 'A new billing address');
+    syncBilling();
+  }
+  function picked(name) { var c = form.querySelector('input[name="' + name + '"]:checked'); return c ? c.value : 'new'; }
+  function choice() { return picked('address_choice'); }
+  function billChoice() { return picked('billing_choice'); }
+  function saved(id) { return addresses.find(function (x) { return String(x.id) === String(id); }); }
   function syncNew() { $('new-address').hidden = choice() !== 'new'; }
-  function stateCode() {
-    var c = choice();
-    if (c === 'new') return $('state_code').value;
-    var a = addresses.find(function (x) { return String(x.id) === c; });
-    return a ? a.state_code : '';
+  function syncBilling() {
+    var same = $('billing-same').checked;
+    $('billing-box').hidden = same;
+    $('new-billing').hidden = same || billChoice() !== 'new';
+  }
+  function deliveryState() {
+    if (choice() === 'new') return $('state_code').value;
+    var a = saved(choice()); return a ? a.state_code : '';
+  }
+  function billingState() {
+    if ($('billing-same').checked) return deliveryState();
+    if (billChoice() === 'new') return $('b_state_code').value;
+    var a = saved(billChoice()); return a ? a.state_code : '';
+  }
+  function hasGst() { return $('is-business').checked && $('gstin').value.trim().length === 15; }
+  // GST place of supply: the GSTIN's (billing) state for a business invoice, else the delivery state.
+  function stateCode() { return hasGst() ? billingState() : deliveryState(); }
+  // Picking a saved address that carries a GSTIN fills in the GST box.
+  function syncGstFromSaved() {
+    var id = $('billing-same').checked ? choice() : billChoice();
+    var a = saved(id);
+    if (a && a.gstin) {
+      $('is-business').checked = true; $('gstin').value = a.gstin; $('business_name').value = a.business_name || '';
+      form.querySelector('[data-addon="business"]').hidden = false;
+    }
   }
   form.addEventListener('change', function (e) {
-    if (e.target.name === 'address_choice') { syncNew(); refresh(); }
-    if (e.target.id === 'state_code') refresh();
-    if (e.target.id === 'is-business') form.querySelector('[data-addon="business"]').hidden = !e.target.checked;
+    var t = e.target;
+    if (t.name === 'address_choice') { syncNew(); syncGstFromSaved(); refresh(); }
+    if (t.name === 'billing_choice' || t.id === 'billing-same') { syncBilling(); syncGstFromSaved(); refresh(); }
+    if (t.id === 'state_code' || t.id === 'b_state_code' || t.id === 'gstin') refresh();
+    if (t.id === 'is-business') { form.querySelector('[data-addon="business"]').hidden = !t.checked; refresh(); }
   });
 
   // ---------------------------------------------------------------- summary
@@ -90,6 +142,7 @@
         row.appendChild(dt); row.appendChild(dd); total.parentNode.insertBefore(row, total);
       });
       $('sum-total').textContent = window.inr(quote.totalPaise);
+      $('tax-note').textContent = sc ? 'GST place of supply: ' + (states[sc] || sc) + (hasGst() ? ' (state of your GSTIN).' : ' (delivery state).') : '';
       if (!busy) setBusy(false);
     });
   }
@@ -110,19 +163,41 @@
       return;
     }
     var body = { hp_trap: $('hp-trap').value };
+    var v = F.values(form);
     if (choice() === 'new') {
-      var v = F.values(form);
-      body.address = { name: v.name, phone: v.phone, address_line1: v.address_line1, address_line2: v.address_line2, city: v.city, state_code: v.state_code, pincode: v.pincode };
-      if ($('is-business').checked) { body.address.gstin = v.gstin; body.address.business_name = v.business_name; }
-      body.save_address = $('save-address').checked;
+      body.delivery_address = { name: v.name, phone: v.phone, address_line1: v.address_line1, address_line2: v.address_line2, city: v.city, state_code: v.state_code, pincode: v.pincode };
+      body.save_delivery = $('save-address').checked;
     } else {
-      body.address_id = Number(choice());
+      body.delivery_address_id = Number(choice());
     }
+    body.billing_same = $('billing-same').checked;
+    if (!body.billing_same) {
+      if (billChoice() === 'new') {
+        body.billing_address = {};
+        Array.prototype.forEach.call(form.querySelectorAll('[data-b]'), function (i) { body.billing_address[i.getAttribute('data-b')] = i.value; });
+        body.save_billing = $('save-billing').checked;
+      } else {
+        body.billing_address_id = Number(billChoice());
+      }
+    }
+    body.gstin = $('is-business').checked ? $('gstin').value : '';
+    body.business_name = $('is-business').checked ? $('business_name').value : '';
     setBusy(true, 'Creating your order…');
     api('/orders', { method: 'POST', body: body }).then(openRazorpay).catch(function (err) {
       setBusy(false);
       F.fail(form, err);
-      if (err.data && err.data.fields && err.data.fields.address_id) F.status(form, err.data.fields.address_id, 'bad');
+      var f = err.data && err.data.fields;
+      if (f) {
+        // Billing errors come back as billing_<field>; show them next to the b_<field> inputs.
+        Object.keys(f).forEach(function (k) {
+          if (k.indexOf('billing_') === 0 && k !== 'billing_address_id') {
+            var input = $('b_' + k.slice(8));
+            if (input) { var p = document.createElement('p'); p.className = 'err'; p.textContent = f[k]; input.setAttribute('aria-invalid', 'true'); input.parentNode.appendChild(p); }
+          }
+        });
+        var top = f.address_id || f.billing_address_id || f.gstin;
+        if (top) F.status(form, top, 'bad');
+      }
     });
   });
 

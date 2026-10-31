@@ -56,34 +56,60 @@
 
         <div id="new-address" hidden>
           <div class="field-row">
-            <div class="field"><label for="name">Receiver's name</label><input type="text" id="name" name="name" autocomplete="name" maxlength="100"></div>
-            <div class="field"><label for="phone">Mobile number</label><input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" placeholder="98450 12345">
+            <div class="field"><label for="name">Receiver's name</label><input type="text" id="name" name="name" autocomplete="shipping name" maxlength="100"></div>
+            <div class="field"><label for="phone">Mobile number</label><input type="tel" id="phone" name="phone" autocomplete="shipping tel" inputmode="tel" placeholder="98450 12345">
               <p class="hint">For the courier.</p></div>
           </div>
-          <div class="field"><label for="address_line1">House, building, street</label><input type="text" id="address_line1" name="address_line1" autocomplete="address-line1" maxlength="150"></div>
-          <div class="field"><label for="address_line2">Area, landmark</label><input type="text" id="address_line2" name="address_line2" autocomplete="address-line2" maxlength="150"><p class="hint">Optional.</p></div>
+          <div class="field"><label for="address_line1">House, building, street</label><input type="text" id="address_line1" name="address_line1" autocomplete="shipping address-line1" maxlength="150"></div>
+          <div class="field"><label for="address_line2">Area, landmark</label><input type="text" id="address_line2" name="address_line2" autocomplete="shipping address-line2" maxlength="150"><p class="hint">Optional.</p></div>
           <div class="field-row">
-            <div class="field"><label for="city">City or town</label><input type="text" id="city" name="city" autocomplete="address-level2" maxlength="80"></div>
-            <div class="field"><label for="pincode">Pincode</label><input type="text" id="pincode" name="pincode" autocomplete="postal-code" inputmode="numeric" maxlength="6"></div>
+            <div class="field"><label for="city">City or town</label><input type="text" id="city" name="city" autocomplete="shipping address-level2" maxlength="80"></div>
+            <div class="field"><label for="pincode">Pincode</label><input type="text" id="pincode" name="pincode" autocomplete="shipping postal-code" inputmode="numeric" maxlength="6"></div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="state_code">State</label><select id="state_code" name="state_code" autocomplete="address-level1"><option value="">Choose&hellip;</option></select>
-              <p class="hint">Sets whether GST is CGST + SGST or IGST.</p></div>
+            <div class="field"><label for="state_code">State</label><select id="state_code" name="state_code" autocomplete="shipping address-level1"><option value="">Choose&hellip;</option></select></div>
           </div>
-          <fieldset class="addon">
-            <legend class="field-legend">GST invoice for a business</legend>
-            <label class="addon-toggle">
-              <input type="checkbox" id="is-business">
-              <span class="addon-box"><span class="addon-name">Add my GSTIN to the invoice</span>
-                <span class="addon-sub">So your business can claim input tax credit. The GSTIN must be registered in the delivery state.</span></span>
-            </label>
-            <div class="extra" data-addon="business" hidden>
-              <div class="field"><label for="business_name">Business name</label><input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150"></div>
-              <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="29ABCDE1234F1Z5"></div>
-            </div>
-          </fieldset>
           <label class="check" style="margin-top:14px"><input type="checkbox" id="save-address" checked> Save this address to my account</label>
         </div>
+
+        <fieldset class="intents" style="margin-top:28px">
+          <legend class="field-legend">Billing address</legend>
+          <label class="check"><input type="checkbox" id="billing-same" checked> Same as the delivery address</label>
+          <div id="billing-box" hidden>
+            <p class="hint">The name and address printed on your GST invoice.</p>
+            <div class="addr-pick" id="bill-list"></div>
+            <div id="new-billing" hidden>
+              <div class="field-row">
+                <div class="field"><label for="b_name">Name on the invoice</label><input type="text" id="b_name" data-b="name" autocomplete="billing name" maxlength="100"></div>
+                <div class="field"><label for="b_phone">Phone</label><input type="tel" id="b_phone" data-b="phone" autocomplete="billing tel" inputmode="tel"><p class="hint">Optional.</p></div>
+              </div>
+              <div class="field"><label for="b_address_line1">House, building, street</label><input type="text" id="b_address_line1" data-b="address_line1" autocomplete="billing address-line1" maxlength="150"></div>
+              <div class="field"><label for="b_address_line2">Area, landmark</label><input type="text" id="b_address_line2" data-b="address_line2" autocomplete="billing address-line2" maxlength="150"><p class="hint">Optional.</p></div>
+              <div class="field-row">
+                <div class="field"><label for="b_city">City or town</label><input type="text" id="b_city" data-b="city" autocomplete="billing address-level2" maxlength="80"></div>
+                <div class="field"><label for="b_pincode">Pincode</label><input type="text" id="b_pincode" data-b="pincode" autocomplete="billing postal-code" inputmode="numeric" maxlength="6"></div>
+              </div>
+              <div class="field-row">
+                <div class="field"><label for="b_state_code">State</label><select id="b_state_code" data-b="state_code" autocomplete="billing address-level1"><option value="">Choose&hellip;</option></select></div>
+              </div>
+              <label class="check" style="margin-top:14px"><input type="checkbox" id="save-billing" checked> Save this billing address to my account</label>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="addon">
+          <legend class="field-legend">GST invoice for a business</legend>
+          <label class="addon-toggle">
+            <input type="checkbox" id="is-business">
+            <span class="addon-box"><span class="addon-name">Add my GSTIN to the invoice</span>
+              <span class="addon-sub">So your business can claim input tax credit. The GSTIN must be registered in the state of the billing address.</span></span>
+          </label>
+          <div class="extra" data-addon="business" hidden>
+            <div class="field"><label for="business_name">Business name</label><input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150"></div>
+            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="30ABCDE1234F1Z5"></div>
+          </div>
+        </fieldset>
+        <p class="hint" id="tax-note"></p>
 
         <div class="hp-field" aria-hidden="true"><label for="hp-trap">Leave this empty</label><input type="text" id="hp-trap" name="hp_trap" tabindex="-1" autocomplete="off"></div>
 
@@ -111,13 +137,13 @@
 <footer class="foot">
   <div class="wrap">
     <div class="foot-base">
-      <span>&copy; 2026 Warg Robotics &middot; Indiranagar, Bengaluru &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
+      <span>&copy; 2026 Warg Robotics &middot; Panaji, Goa &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
     </div>
   </div>
 </footer>
 
-<script src="site.js?v=20261029a" defer></script>
+<script src="site.js?v=20261031a" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-<script src="checkout.js?v=20261026b" defer></script>
+<script src="checkout.js?v=20261031a" defer></script>
 </body>
 </html>

@@ -57,7 +57,9 @@ async function googleSignIn(b, claims, next = '/account', mode) {
 }
 
 const asha = new Browser();
-const ADDR = { name: 'Asha Rao', phone: '9845012345', address_line1: '12, 3rd Cross, Indiranagar', city: 'Bengaluru', state_code: 'KA', pincode: '560038' };
+// The seller is in Goa (SELLER_STATE=GA): a Goa address is CGST+SGST, anywhere else IGST.
+const ADDR = { name: 'Asha Rao', phone: '9845012345', address_line1: '4, Rua de Ourem, Fontainhas', city: 'Panaji', state_code: 'GA', pincode: '403001' };
+const KA_ADDR = { name: 'Asha Rao', phone: '9845012345', address_line1: '12, 3rd Cross, Indiranagar', city: 'Bengaluru', state_code: 'KA', pincode: '560038' };
 let order1;
 
 // ------------------------------------------------------------------ public
@@ -482,6 +484,154 @@ await step('offer counter counts paid units across carts', async () => {
   // order 1 and order 2 (the reorder) each had Ghost x1 + Greywind x2
   assert.equal(ghost.offer_units_left, 98);
   assert.equal(grey.offer_units_left, 96);
+});
+
+// ------------------------------------------------------------------ billing addresses (31 Oct)
+const payByWebhook = async (o, tag) => {
+  const pid = `pay_${tag}__` + o.razorpay_order_id;
+  const evt = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: pid, order_id: o.razorpay_order_id, amount: o.amount_paise, status: 'captured' } } } });
+  await anon.call('POST', '/api/webhooks/razorpay', evt, { 'x-razorpay-signature': hmac(WEBHOOK_SECRET, evt) });
+  let row;
+  for (let i = 0; i < 20; i++) { row = (await admin('GET', `/orders/${o.order_number}`)).data.order; if (row.confirmation_sent_at && row.zoho_invoice_id) break; await sleep(300); }
+  return row;
+};
+const BILL_MH = { name: 'Accounts, Rao Drones', address_line1: 'Plot 7, MIDC Bhosari', city: 'Pune', state_code: 'MH', pincode: '411026' };
+
+await step('checkout: separate billing address; the GSTIN state is the place of supply', async () => {
+  await asha.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+  const r = await asha.call('POST', '/api/orders', {
+    delivery_address: KA_ADDR, save_delivery: false,
+    billing_same: false, billing_address: BILL_MH, save_billing: true,
+    gstin: '27ABCDE1234F1Z5', business_name: 'Rao Drones LLP',
+  });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  assert.equal(r.data.quote.taxKind, 'inter');
+  const o = await payByWebhook(r.data, 'BILL');
+  assert.equal(o.state_code, 'KA');
+  assert.equal(o.billing_state_code, 'MH');
+  assert.equal(o.billing_city, 'Pune');
+  assert.equal(o.place_of_supply, 'MH');
+  assert.equal(o.gstin, '27ABCDE1234F1Z5');
+  // Saved: the billing address (with its GSTIN) became the default billing address; delivery wasn't saved.
+  const book = (await asha.call('GET', '/api/account/addresses')).data.addresses;
+  const pune = book.find(a => a.address_line1 === BILL_MH.address_line1);
+  assert.equal(pune.gstin, '27ABCDE1234F1Z5');
+  assert.equal(pune.is_default_billing, 1);
+  assert.equal(book.filter(a => a.city === 'Bengaluru').length, 0);
+  // Zoho: the existing business contact is reused, its bill-to and ship-to updated before the invoice.
+  const contacts = await (await fetch(MOCK + '/__contacts')).json();
+  const biz = contacts.filter(c => c.gst_no === '27ABCDE1234F1Z5');
+  assert.equal(biz.length, 1, 'no duplicate business contact');
+  assert.equal(biz[0].billing_address.city, 'Pune');
+  assert.equal(biz[0].shipping_address.state, 'Karnataka');
+  const inv = (await mockCalls()).filter(c => c.path === '/zoho/invoices' && c.method === 'POST').pop();
+  assert.equal(inv.body.place_of_supply, 'MH');
+  assert.equal(inv.body.line_items[0].tax_id, 'tax_inter');
+  const conf = (await mockCalls()).find(c => c.headers.idem === `${o.order_number}-confirmation`);
+  assert.match(conf.body.html, /Billed to/);
+  assert.match(conf.body.html, /GSTIN 27ABCDE1234F1Z5/);
+  const view = (await asha.call('GET', `/api/account/orders/${o.order_number}`)).data.order;
+  assert.equal(view.billing.city, 'Pune');
+  assert.equal(view.billing.same, false);
+  const link = await anon.call('GET', `/api/orders/${o.order_number}?t=${r.data.token}`);
+  assert.equal(link.data.order.billing, undefined, 'emailed link hides the billing address');
+  const csv = await (await fetch(SITE + '/api/admin/orders.csv', { headers: { authorization: 'Bearer ' + ADMIN } })).text();
+  assert.match(csv.split('\r\n')[0], /Billing address,Billing state,Place of supply/);
+});
+
+await step('checkout: GSTIN must belong to the billing state; billing errors are labelled', async () => {
+  await asha.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+  const wrongState = await asha.call('POST', '/api/orders', { delivery_address: ADDR, billing_same: false, billing_address: { ...BILL_MH, city: 'Margao', state_code: 'GA', pincode: '403601' }, gstin: '27ABCDE1234F1Z5', business_name: 'Rao Drones LLP' });
+  assert.equal(wrongState.status, 422);
+  assert.match(wrongState.data.fields.gstin, /registered in Maharashtra, but the billing address is in Goa/);
+  const badBill = await asha.call('POST', '/api/orders', { delivery_address: ADDR, billing_same: false, billing_address: { ...BILL_MH, pincode: 'x' } });
+  assert.equal(badBill.status, 422);
+  assert.ok(badBill.data.fields.billing_pincode, JSON.stringify(badBill.data));
+  // No GSTIN: tax follows the delivery address, wherever the bill goes.
+  const consumer = await asha.call('POST', '/api/orders', { delivery_address: ADDR, billing_same: false, billing_address: BILL_MH, gstin: '' });
+  assert.equal(consumer.status, 201, JSON.stringify(consumer.data));
+  assert.equal(consumer.data.quote.taxKind, 'intra');
+  // Same as delivery + GSTIN of the delivery state works as before.
+  const same = await asha.call('POST', '/api/orders', { delivery_address: KA_ADDR, billing_same: true, gstin: '29ABCDE1234F1Z5', business_name: 'Rao Drones LLP' });
+  assert.equal(same.status, 201, JSON.stringify(same.data));
+  assert.equal(same.data.quote.taxKind, 'inter');
+  const sameRow = (await admin('GET', `/orders/${same.data.order_number}`)).data.order;
+  assert.equal(sameRow.billing_city, 'Bengaluru');
+  assert.equal(sameRow.place_of_supply, 'KA');
+});
+
+await step('address book: default delivery and default billing are separate', async () => {
+  let book = (await asha.call('GET', '/api/account/addresses')).data.addresses;
+  const home = book.find(a => a.label === 'Home');
+  const deliveryDefault = book.find(a => a.is_default).id;
+  assert.equal((await asha.call('POST', `/api/account/addresses/${home.id}/default?for=billing`)).status, 200);
+  book = (await asha.call('GET', '/api/account/addresses')).data.addresses;
+  assert.deepEqual(book.filter(a => a.is_default_billing).map(a => a.id), [home.id]);
+  assert.equal(book.find(a => a.is_default).id, deliveryDefault, 'delivery default untouched');
+  const eve = new Browser();
+  await eve.call('POST', '/api/auth/register', { name: 'Eve Example', email: 'eve@example.com', password: 'correct horse battery' });
+  assert.equal((await eve.call('POST', `/api/account/addresses/${home.id}/default`)).status, 404, "can't touch someone else's address");
+  book = (await asha.call('GET', '/api/account/addresses')).data.addresses;
+  assert.equal(book.find(a => a.is_default).id, deliveryDefault, "someone else's request didn't clear Asha's default");
+});
+
+await step('Zoho: a second customer with the same name gets their own contact', async () => {
+  const twin = new Browser();
+  await googleSignIn(twin, { sub: 'g-twin', email: 'asha.r@example.org', name: 'Asha Rao' });
+  await twin.call('POST', '/api/cart/add', { sku: 'ghost', quantity: 1 });
+  const r = await twin.call('POST', '/api/orders', { delivery_address: ADDR });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  const o = await payByWebhook(r.data, 'TWIN');
+  assert.ok(o.zoho_invoice_id, o.invoice_error);
+  const names = (await (await fetch(MOCK + '/__contacts')).json()).map(c => c.contact_name);
+  assert.ok(names.includes('Asha Rao'));
+  assert.ok(names.includes('Asha Rao (asha.r@example.org)'), names.join(' | '));
+});
+
+// ------------------------------------------------------------------ email failures and the setup check (31 Oct)
+await step('email failures are reported to the customer, not hidden', async () => {
+  await fetch(MOCK + '/__fail-resend?msg=' + encodeURIComponent('The wargrobotics.com domain is not verified.'));
+  const b = new Browser();
+  const r = await b.call('POST', '/api/auth/register', { name: 'Mail Fail', email: 'mailfail@example.com', password: 'correct horse battery' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.verification_sent, false);
+  assert.match(r.data.verification_error, /could not send/);
+  const again = await b.call('POST', '/api/auth/resend-verification');
+  assert.equal(again.status, 502);
+  assert.match(again.data.error, /could not send/);
+  const t = await admin('POST', '/test-email', { to: 'staff@example.com' });
+  assert.equal(t.status, 502);
+  assert.match(t.data.error, /domain is not verified/);
+  const h = (await admin('GET', '/health')).data;
+  assert.equal(h.ok, false);
+  const fail = h.sections.email.find(x => x.name === 'Last email failure');
+  assert.match(fail.detail, /domain is not verified/);
+  await fetch(MOCK + '/__fail-resend');
+  const ok = await admin('POST', '/test-email', { to: 'staff@example.com' });
+  assert.equal(ok.status, 200);
+  assert.ok((await emailsTo('staff@example.com')).find(m => m.body.subject === 'Warg Robotics test email'));
+  const sent = await b.call('POST', '/api/auth/resend-verification');
+  assert.equal(sent.status, 200);
+  assert.equal(sent.data.sent_to, 'mailfail@example.com');
+});
+
+await step('setup check: staff only, every service answers, no secret values shown', async () => {
+  assert.equal((await asha.call('GET', '/api/admin/health')).status, 403);
+  const r = await admin('GET', '/health');
+  assert.equal(r.status, 200);
+  const h = r.data;
+  const bad = Object.values(h.sections).flat().filter(x => x.ok === false);
+  assert.equal(h.ok, true, JSON.stringify(bad));
+  assert.equal(h.sections.database.length, 3);
+  assert.ok(h.sections.google.find(x => x.name === 'Client ID and secret').ok);
+  assert.match(h.sections.google.find(x => x.name === 'Redirect URI').detail, /\/api\/auth\/google\/callback/);
+  assert.match(h.sections.razorpay[0].detail, /TEST mode/);
+  assert.ok(h.sections.zoho.every(x => x.ok));
+  assert.equal(h.sections.email[0].ok, true);
+  const text = JSON.stringify(h);
+  for (const secret of ['rzp_test_secret', 'google-secret', 'local-pepper', 'whsec_test', 'local-order-link-secret', 're_test']) assert.ok(!text.includes(secret), secret);
+  // Staff signed in with Google can run it too.
+  assert.equal((await portal('GET', '/health')).status, 200);
 });
 
 await step('sign out everywhere', async () => {

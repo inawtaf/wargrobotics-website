@@ -13,10 +13,12 @@
 
 import m0001 from '../migrations/0001_orders.sql';
 import m0002 from '../migrations/0002_accounts.sql';
+import m0003 from '../migrations/0003_billing.sql';
 
 export const MIGRATIONS = [
   { name: '0001_orders.sql', sql: m0001 },
   { name: '0002_accounts.sql', sql: m0002 },
+  { name: '0003_billing.sql', sql: m0003 },
 ];
 
 // Same table definition wrangler uses.

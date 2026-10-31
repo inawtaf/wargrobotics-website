@@ -41,3 +41,6 @@ export async function verifyWebhookSignature(env, rawBody, signature) {
   const expected = await hmacSha256Hex(env.RAZORPAY_WEBHOOK_SECRET, rawBody);
   return safeEqual(expected, signature);
 }
+
+// Setup check: a harmless read that fails if the key pair is wrong.
+export const ping = env => call(env, 'GET', '/orders?count=1');

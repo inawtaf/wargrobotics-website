@@ -30,6 +30,10 @@
   window.WargMe().then(function (d) { if (d.user) go(); });
 
   $('google-btn').href = '/api/auth/google?next=' + encodeURIComponent(next);
+  // Hide Google where it isn't set up (e.g. branch previews) instead of failing after the click.
+  api('/products').then(function (p) {
+    if (p.google_enabled === false) { $('google-btn').hidden = true; document.querySelector('.or-rule').hidden = true; }
+  }).catch(function () {});
   if (q.get('error')) show(q.get('error'));
   if (next === '/checkout') show('Sign in or create an account to place your order. Your cart is kept.', true);
 
@@ -62,12 +66,27 @@
   register.addEventListener('submit', function (e) {
     e.preventDefault(); F.clear(register); busy(register, true);
     api('/auth/register', { method: 'POST', body: F.values(register) })
-      .then(function () {
+      .then(function (d) {
         if (window.wargTrack) window.wargTrack('sign_up', { method: 'email' });
-        location.href = next + (next.indexOf('?') < 0 ? '?' : '&') + 'welcome=1';
+        // Stay on this page and ask them to confirm the email before going on.
+        var panel = $('verify-panel');
+        register.hidden = true; signin.hidden = true; forgot.hidden = true;
+        document.querySelector('.auth-tabs').hidden = true;
+        $('google-btn').hidden = true; document.querySelector('.or-rule').hidden = true;
+        panel.hidden = false;
+        $('vp-text').textContent = d.verification_sent === false ? '' : 'We have sent a confirmation link to ' + d.user.email + '. It can take a minute; check spam too.';
+        if (d.verification_sent === false) F.status(panel, d.verification_error, 'bad');
+        $('vp-continue').href = next + (next.indexOf('?') < 0 ? '?' : '&') + 'welcome=1';
       })
       .catch(function (err) { busy(register, false); F.fail(register, err); });
   });
+
+  $('vp-resend').onclick = function () {
+    var panel = $('verify-panel');
+    api('/auth/resend-verification', { method: 'POST' })
+      .then(function (d) { F.status(panel, 'Sent again to ' + (d.sent_to || 'your email') + '. Check your inbox and spam folder.', 'ok'); })
+      .catch(function (err) { F.status(panel, err.message, 'bad'); });
+  };
 
   forgot.addEventListener('submit', function (e) {
     e.preventDefault(); F.clear(forgot); busy(forgot, true);

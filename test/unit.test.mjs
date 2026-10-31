@@ -124,7 +124,7 @@ test('Google: redirects stay on our site; ID token payload decodes', async () =>
 test('GSTIN must be well-formed, match the state, and come with a business name', () => {
   assert.equal(validateAddress({ ...good, gstin: '29ABCDE1234F1Z5' }).errors.business_name !== undefined, true);
   assert.ok(validateAddress({ ...good, gstin: '29ABCDE1234F1Z5', business_name: 'Rao Drones' }).ok);
-  assert.match(validateAddress({ ...good, gstin: '27ABCDE1234F1Z5', business_name: 'X' }).errors.gstin, /outside Karnataka/);
+  assert.match(validateAddress({ ...good, gstin: '27ABCDE1234F1Z5', business_name: 'X' }).errors.gstin, /registered in Maharashtra, but the billing address is in Karnataka/);
   assert.ok(validateAddress({ ...good, gstin: 'ABC', business_name: 'X' }).errors.gstin);
 });
 
@@ -182,4 +182,95 @@ test('emails render the order, escape buyer text and include the order link', ()
   assert.match(d.html, /DL123/);
   assert.match(d.text, /48 hours/);
   assert.equal(inr(2_359_882), '₹23,598.82');
+});
+
+// ------------------------------------------------------------------ 31 Oct: billing, Goa seller, setup fixes
+import { checkoutAddresses, validateGst } from '../src/validate.js';
+import { billingOf, placeOfSupply } from '../src/billing.js';
+import { configured as googleConfigured, redirectUri, clientId } from '../src/google.js';
+import { readFileSync, readdirSync } from 'node:fs';
+
+const goa = { name: 'Asha Rao', phone: '+919845012345', address_line1: '4, Rua de Ourem', city: 'Panaji', state_code: 'GA', pincode: '403001' };
+const pune = { name: 'Rao Drones', phone: null, address_line1: 'Plot 7, MIDC Bhosari', city: 'Pune', state_code: 'MH', pincode: '411026' };
+
+test('Goa seller: Goa buyer pays CGST+SGST, a Karnataka buyer pays IGST', () => {
+  assert.equal(quote({ sku: 'ghost', quantity: 1, unitsSoldAtOffer: 0, buyerState: 'GA', sellerState: 'GA' }).taxKind, 'intra');
+  assert.equal(quote({ sku: 'ghost', quantity: 1, unitsSoldAtOffer: 0, buyerState: 'KA', sellerState: 'GA' }).taxKind, 'inter');
+});
+
+test('billing same as delivery: copies the delivery address; place of supply is the delivery state', () => {
+  const r = checkoutAddresses({ delivery: goa, billingSame: true });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.billing.city, 'Panaji');
+  assert.equal(r.value.billingSame, true);
+  assert.equal(r.value.gstin, null);
+  assert.equal(r.value.place_of_supply, 'GA');
+});
+
+test('separate billing without a GSTIN: tax still follows the delivery state', () => {
+  const r = checkoutAddresses({ delivery: goa, billing: pune, billingSame: false });
+  assert.equal(r.value.billing.city, 'Pune');
+  assert.equal(r.value.place_of_supply, 'GA');
+});
+
+test('separate billing with a GSTIN: place of supply is the GSTIN (billing) state', () => {
+  const r = checkoutAddresses({ delivery: goa, billing: pune, billingSame: false, gstin: '27abcde1234f1z5', businessName: 'Rao Drones LLP' });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.gstin, '27ABCDE1234F1Z5', 'upper-cased');
+  assert.equal(r.value.place_of_supply, 'MH');
+  assert.equal(r.value.delivery.gstin, null, 'GSTIN never sits on the delivery address');
+});
+
+test('GSTIN from another state than the billing address is refused, naming both states', () => {
+  const r = checkoutAddresses({ delivery: goa, billingSame: true, gstin: '27ABCDE1234F1Z5', businessName: 'X' });
+  assert.equal(r.ok, false);
+  assert.match(r.errors.gstin, /registered in Maharashtra, but the billing address is in Goa/);
+  assert.match(validateGst('30ABCDE1234F1Z5', '', 'GA').errors.business_name, /business name/);
+  assert.deepEqual(validateGst('', 'Ignored Ltd', 'GA'), { errors: {}, gstin: null, business_name: null });
+  assert.equal(validateGst('30 ABCDE 1234F1Z5', 'Goa Co', 'GA').gstin, '30ABCDE1234F1Z5', 'spaces removed');
+});
+
+test('billing address may leave out the phone; delivery may not', () => {
+  const { phone, ...noPhone } = { ...good };
+  assert.equal(validateAddress(noPhone).ok, false);
+  assert.equal(validateAddress(noPhone, { phoneRequired: false }).ok, true);
+  assert.ok(validateAddress({ ...noPhone, phone: '12' }, { phoneRequired: false }).errors.phone, 'a wrong phone is still refused');
+});
+
+test('orders from before billing addresses bill the delivery address', () => {
+  const old = { customer_name: 'Asha', phone: '+91', address_line1: 'a', address_line2: null, city: 'Panaji', state_code: 'GA', pincode: '403001' };
+  assert.deepEqual(billingOf(old), { name: 'Asha', phone: '+91', address_line1: 'a', address_line2: null, city: 'Panaji', state_code: 'GA', pincode: '403001', same: true });
+  assert.equal(placeOfSupply(old), 'GA');
+  const split = { ...old, billing_name: 'Rao Drones', billing_line1: 'Plot 7', billing_city: 'Pune', billing_state_code: 'MH', billing_pincode: '411026', place_of_supply: 'MH' };
+  assert.equal(billingOf(split).same, false);
+  assert.equal(placeOfSupply(split), 'MH');
+});
+
+test('Google settings: stray spaces trimmed, placeholder means "not set up"', () => {
+  assert.equal(clientId({ GOOGLE_CLIENT_ID: ' abc.apps.googleusercontent.com\n' }), 'abc.apps.googleusercontent.com');
+  assert.equal(googleConfigured({ GOOGLE_CLIENT_ID: 'REPLACE.apps.googleusercontent.com' }), false);
+  assert.equal(googleConfigured({ GOOGLE_CLIENT_ID: '' }), false);
+  assert.equal(googleConfigured({ GOOGLE_CLIENT_ID: 'abc.apps.googleusercontent.com' }), true);
+  assert.equal(redirectUri({ SITE_URL: 'https://wargrobotics.com/ ' }), 'https://wargrobotics.com/api/auth/google/callback');
+});
+
+test('confirmation email: Panaji address in the footer; "Billed to" only when it differs or has a GSTIN', () => {
+  const base = { order_number: 'WR-311026-ABCD', customer_name: 'Asha Rao', email: 'a@b.co', phone: '+919845012345', address_line1: '4, Rua de Ourem', city: 'Panaji', state_code: 'GA', pincode: '403001',
+    items: [{ product_name: 'Warg Ghost', quantity: 1, price_type: 'offer', unit_price_paise: 1999900, subtotal_paise: 1999900 }],
+    subtotal_paise: 1999900, gst_paise: 359982, total_paise: 2359882, tax_kind: 'intra', link_token: 't' };
+  const plain = confirmationEmail({}, base, { hasInvoice: false }).html;
+  assert.match(plain, /Panaji, Goa/);
+  assert.doesNotMatch(plain, /Bengaluru|Indiranagar/);
+  assert.doesNotMatch(plain, /Billed to/);
+  const billed = confirmationEmail({}, { ...base, billing_name: 'Rao Drones', billing_line1: 'Plot 7', billing_city: 'Pune', billing_state_code: 'MH', billing_pincode: '411026', gstin: '27ABCDE1234F1Z5', business_name: 'Rao Drones LLP' }, { hasInvoice: false }).html;
+  assert.match(billed, /Billed to/);
+  assert.match(billed, /Pune, Maharashtra 411026/);
+  assert.match(billed, /GSTIN 27ABCDE1234F1Z5/);
+});
+
+test('no page, script or email still shows the old Bengaluru address', () => {
+  const root = new URL('..', import.meta.url);
+  const files = readdirSync(root).filter(f => /\.(html|js)$/.test(f)).map(f => new URL(f, root))
+    .concat(readdirSync(new URL('src/', root)).map(f => new URL('src/' + f, root)));
+  for (const f of files) assert.doesNotMatch(readFileSync(f, 'utf8'), /Indiranagar|Bengaluru/, f.pathname);
 });
