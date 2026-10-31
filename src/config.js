@@ -71,3 +71,30 @@ export const STATES = [
 ];
 
 export const STATE_BY_CODE = Object.fromEntries(STATES.map(s => [s.code, s]));
+
+// Which pincodes belong to which state, by their first three digits (inclusive
+// ranges). India Post assigns pincodes by postal circle, so this is a
+// plausibility check, deliberately generous at the borders: it catches a
+// Karnataka pincode with "Goa" picked as the state, not every typo.
+export const PIN_PREFIXES = {
+  AN: [[744, 744]], AP: [[515, 535]], AR: [[790, 792]], AS: [[781, 788]], BR: [[800, 855]], CH: [[160, 160]],
+  CG: [[490, 497]], DN: [[362, 362], [396, 396]], DL: [[110, 110]], GA: [[403, 403]], GJ: [[360, 396]],
+  HR: [[121, 136]], HP: [[171, 177]], JK: [[180, 194]], JH: [[813, 835]], KA: [[560, 591]], KL: [[670, 695]],
+  LA: [[194, 194]], LD: [[682, 682]], MP: [[450, 488]], MH: [[400, 402], [404, 445]], MN: [[795, 795]], ML: [[793, 794]],
+  MZ: [[796, 796]], NL: [[797, 798]], OR: [[751, 770]], PY: [[533, 533], [605, 605], [607, 607], [609, 609], [673, 673]],
+  PB: [[140, 160]], RJ: [[301, 345]], SK: [[737, 737]], TN: [[600, 643]], TS: [[500, 509]], TR: [[799, 799]],
+  UP: [[201, 285]], UK: [[244, 263]], WB: [[700, 736], [738, 743]],
+};
+
+export function pincodeFitsState(pincode, stateCode) {
+  const ranges = PIN_PREFIXES[stateCode];
+  if (!ranges) return true;
+  const p = Number(String(pincode).slice(0, 3));
+  return ranges.some(([a, b]) => p >= a && p <= b);
+}
+
+// The state(s) a pincode most likely belongs to, for the error message.
+export function statesForPincode(pincode) {
+  const p = Number(String(pincode).slice(0, 3));
+  return Object.entries(PIN_PREFIXES).filter(([, rs]) => rs.some(([a, b]) => p >= a && p <= b)).map(([c]) => c);
+}

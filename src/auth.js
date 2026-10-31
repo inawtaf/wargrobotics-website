@@ -113,8 +113,11 @@ export const endAllSessions = (env, userId, exceptHash = null) =>
 
 export async function issueToken(env, userId, purpose, ttlSeconds) {
   const token = randomUrlToken(32);
-  // One live link per purpose: a new one replaces the old.
-  await env.DB.prepare('DELETE FROM auth_tokens WHERE user_id = ? AND purpose = ?').bind(userId, purpose).run();
+  // Reset: one live link, a new one replaces the old. Verify: earlier links
+  // keep working until they expire, so clicking the first email after asking
+  // for another one still confirms the address.
+  if (purpose === 'reset') await env.DB.prepare('DELETE FROM auth_tokens WHERE user_id = ? AND purpose = ?').bind(userId, purpose).run();
+  else await env.DB.prepare('DELETE FROM auth_tokens WHERE user_id = ? AND purpose = ? AND expires_at < ?').bind(userId, purpose, nowSec()).run();
   await env.DB.prepare('INSERT INTO auth_tokens (token_hash, user_id, purpose, expires_at) VALUES (?,?,?,?)')
     .bind(await sha256Hex(token), userId, purpose, nowSec() + ttlSeconds).run();
   return token;
@@ -127,6 +130,15 @@ export async function consumeToken(env, token, purpose) {
   const r = await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND purpose = ? AND used_at IS NULL AND expires_at > ? RETURNING user_id')
     .bind(nowSec(), hash, purpose, nowSec()).first();
   return r ? r.user_id : null;
+}
+
+// Looks a token up without the single-use rule: { userId, expired } or null.
+// Used for email confirmation, which is safe to repeat (mail scanners often
+// open links before the person does, which would otherwise "use" the link).
+export async function findToken(env, token, purpose) {
+  if (typeof token !== 'string' || token.length < 20 || token.length > 100) return null;
+  const r = await env.DB.prepare('SELECT user_id, expires_at FROM auth_tokens WHERE token_hash = ? AND purpose = ?').bind(await sha256Hex(token), purpose).first();
+  return r ? { userId: r.user_id, expired: r.expires_at <= nowSec() } : null;
 }
 
 // ------------------------------------------------------------------ throttling

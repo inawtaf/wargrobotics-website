@@ -7,8 +7,8 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261031a">
-<link rel="stylesheet" href="portal.css?v=20261031b">
+<link rel="stylesheet" href="warg.css?v=20261031e">
+<link rel="stylesheet" href="portal.css?v=20261031e">
 </head>
 <body class="portal">
 
@@ -38,6 +38,7 @@
       <button role="tab" data-tab="orders" aria-selected="true">Orders</button>
       <button role="tab" data-tab="service" aria-selected="false">Service requests</button>
       <button role="tab" data-tab="carts" aria-selected="false">Carts</button>
+      <button role="tab" data-tab="customers" aria-selected="false">Customers</button>
       <button role="tab" data-tab="setup" aria-selected="false">Setup check</button>
     </nav>
 
@@ -148,6 +149,27 @@
       <p class="p-muted">Signed-in customers only: a visitor who isn't signed in keeps their cart in their own browser until they sign in. "Last activity" is the last time they changed the cart. Value is before GST, at today's prices.</p>
     </section>
 
+    <!-- ================= customers ================= -->
+    <section data-panel="customers" hidden>
+      <div class="p-bar">
+        <div class="p-chips" role="group" aria-label="Customer filter">
+          <button data-cust="" aria-pressed="true">All</button>
+          <button data-cust="unverified" aria-pressed="false">Email not confirmed</button>
+          <button data-cust="verified" aria-pressed="false">Confirmed</button>
+        </div>
+        <form class="p-search" id="cust-search"><input type="search" id="cust-q" placeholder="Name, email, phone…" aria-label="Search customers"><button class="btn btn-line" type="submit">Search</button></form>
+      </div>
+      <p class="p-muted" id="cust-sum"></p>
+      <p class="p-flash" id="cust-flash" role="status" hidden></p>
+      <div class="p-list">
+        <table class="p-table" id="customers">
+          <thead><tr><th>Customer</th><th>Email</th><th>Signs in with</th><th>Signed up</th><th>Paid orders</th><th>In cart</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="p-empty" id="cust-empty" hidden>No customers match.</p>
+      </div>
+    </section>
+
     <!-- ================= setup check ================= -->
     <section data-panel="setup" hidden>
       <div class="p-bar">
@@ -219,7 +241,7 @@
   </div>
 </template>
 
-<script src="site.js?v=20261031b" defer></script>
-<script src="portal.js?v=20261031b" defer></script>
+<script src="site.js?v=20261031e" defer></script>
+<script src="portal.js?v=20261031e" defer></script>
 </body>
 </html>

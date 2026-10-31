@@ -104,6 +104,7 @@
     if (name === 'service') loadService();
     if (name === 'setup' && !healthRan) runHealth();
     if (name === 'carts') loadCarts();
+    if (name === 'customers') loadCustomers();
   }
   Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (b) { b.addEventListener('click', function () { tab(b.getAttribute('data-tab')); }); });
 
@@ -196,7 +197,8 @@
       o.gstin ? 'GSTIN ' + o.gstin : null,
       'Place of supply: ' + (o.place_of_supply || o.state_code) + (o.tax_kind === 'intra' ? ' (CGST+SGST)' : ' (IGST)')
     ].filter(function (l) { return l !== null && l !== undefined; }).join('\n').replace(/\n{3,}/g, '\n\n');
-    $('d-repeat').textContent = d.customer_other_orders ? 'Repeat customer: ' + d.customer_other_orders + ' other order(s).' : '';
+    $('d-repeat').textContent = (d.account ? 'Account email ' + (d.account.email_verified ? 'confirmed' : 'NOT confirmed') + '. ' : '') +
+      (d.customer_other_orders ? 'Repeat customer: ' + d.customer_other_orders + ' other order(s).' : '');
     $('copy-addr').onclick = function () {
       var text = [o.customer_name, o.address_line1, o.address_line2, o.city + ' ' + o.pincode, o.state_code, o.phone].filter(Boolean).join('\n');
       navigator.clipboard.writeText(text).then(function () { flash('Address copied.'); });
@@ -419,4 +421,49 @@
       loadCarts();
     };
   });
+
+  // ---------------------------------------------------------------- customers
+  var custFilter = '';
+  function loadCustomers() {
+    var tb = $('customers').querySelector('tbody');
+    var qs = [];
+    if (custFilter) qs.push('filter=' + custFilter);
+    if ($('cust-q').value.trim()) qs.push('q=' + encodeURIComponent($('cust-q').value.trim()));
+    api('/admin/customers' + (qs.length ? '?' + qs.join('&') : '')).then(function (d) {
+      tb.innerHTML = '';
+      $('cust-sum').textContent = d.totals.accounts + ' accounts · ' + d.totals.verified + ' confirmed · ' + d.totals.unverified + ' not confirmed (they cannot pay until they confirm)';
+      $('cust-empty').hidden = d.customers.length > 0;
+      d.customers.forEach(function (c) {
+        var tr = el('tr');
+        var who = el('td'); who.appendChild(el('div', '', c.name)); var mail = el('a', 'p-muted', c.email); mail.href = 'mailto:' + c.email; who.appendChild(mail);
+        if (c.phone) who.appendChild(el('div', 'p-muted', c.phone));
+        tr.appendChild(who);
+        var st = el('td'); st.appendChild(el('span', 'p-stage ' + (c.email_verified ? 'cart' : 'unverified'), c.email_verified ? 'Confirmed' : 'Not confirmed'));
+        if (!c.email_verified) {
+          var b = el('button', 'link-btn', 'Send confirmation email'); b.type = 'button';
+          b.onclick = function () {
+            b.disabled = true;
+            api('/admin/customers/' + c.id + '/send-verification', { method: 'POST' })
+              .then(function (r) { healthFlash($('cust-flash'), r.message); })
+              .catch(function (e) { healthFlash($('cust-flash'), e.message, true); b.disabled = false; });
+          };
+          st.appendChild(el('br')); st.appendChild(b);
+        }
+        tr.appendChild(st);
+        tr.appendChild(el('td', '', [c.has_google && 'Google', c.has_password && 'Password'].filter(Boolean).join(' + ') || '—'));
+        tr.appendChild(el('td', '', when(c.created_at)));
+        tr.appendChild(el('td', '', c.paid_orders ? c.paid_orders + ' · ' + inr(c.spent_paise).replace(/\.\d\d$/, '') : '0'));
+        tr.appendChild(el('td', '', c.cart_units ? c.cart_units + ' units' : ''));
+        tb.appendChild(tr);
+      });
+    }).catch(function (e) { tb.innerHTML = ''; $('cust-sum').textContent = 'Could not load customers: ' + e.message; });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cust]'), function (b) {
+    b.onclick = function () {
+      custFilter = b.getAttribute('data-cust');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-cust]'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      loadCustomers();
+    };
+  });
+  $('cust-search').onsubmit = function (e) { e.preventDefault(); loadCustomers(); };
 })();

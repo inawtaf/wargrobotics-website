@@ -128,15 +128,20 @@ await step('checkout refused until the email is confirmed', async () => {
   assert.equal(r.data.code, 'unverified');
 });
 
-await step('confirmation link verifies the email (once)', async () => {
+await step('confirmation link verifies the email; opening it again still says confirmed', async () => {
   const mail = (await emailsTo('asha@example.com')).find(m => /Confirm your email/.test(m.body.subject));
   const token = linkToken(mail.body.html, /verify\?token=([^"&]+)/);
   const r = await anon.raw('GET', `/api/auth/verify?token=${encodeURIComponent(token)}`);
   assert.equal(r.status, 302);
   assert.match(r.headers.get('location'), /verify=done/);
   assert.equal((await asha.call('GET', '/api/me')).data.user.email_verified, true);
+  assert.match(r.headers.get('location'), /\/login\?verify=done/, 'opened without a session: sign-in page says confirmed');
   const again = await anon.raw('GET', `/api/auth/verify?token=${encodeURIComponent(token)}`);
-  assert.match(again.headers.get('location'), /verify=expired/);
+  assert.match(again.headers.get('location'), /verify=done/, 'a mail scanner opening it first must not spoil it');
+  const mine = await asha.raw('GET', `/api/auth/verify?token=${encodeURIComponent(token)}`);
+  assert.match(mine.headers.get('location'), /\/account\?verify=done/, 'signed in: account page');
+  const junk = await anon.raw('GET', '/api/auth/verify?token=' + 'x'.repeat(40));
+  assert.match(junk.headers.get('location'), /verify=expired/);
 });
 
 // ------------------------------------------------------------------ sign in / out
@@ -217,13 +222,17 @@ await step('account: order list, detail, invoice download, reorder', async () =>
   assert.equal((await asha.call('GET', '/api/cart')).data.items.length, 2);
 });
 
-await step('order link from email works without sign-in but hides the address', async () => {
+await step('order link from email needs the buyer signed in', async () => {
   const r = await anon.call('GET', `/api/orders/${order1.order_number}?t=${order1.token}`);
-  assert.equal(r.status, 200);
-  assert.equal(r.data.order.items.length, 2);
-  assert.equal(r.data.order.address_line1, undefined);
-  assert.equal(r.data.order.phone, undefined);
-  assert.equal((await anon.call('GET', `/api/orders/${order1.order_number}?t=wrong`)).status, 404);
+  assert.equal(r.status, 401, 'not signed in: refused even with the right link');
+  const own = await asha.call('GET', `/api/orders/${order1.order_number}?t=${order1.token}`);
+  assert.equal(own.status, 200);
+  assert.equal(own.data.order.items.length, 2);
+  assert.equal((await asha.call('GET', `/api/orders/${order1.order_number}?t=wrong`)).status, 404);
+  const other = new Browser();
+  await other.call('POST', '/api/auth/register', { name: 'Other Person', email: 'other@example.com', password: 'correct horse battery' });
+  assert.equal((await other.call('GET', `/api/orders/${order1.order_number}?t=${order1.token}`)).status, 404, "someone else's account can't open it");
+  assert.equal((await fetch(SITE + `/order?n=${order1.order_number}&t=${order1.token}`)).status, 200, 'the page itself loads (and sends the visitor to sign in)');
 });
 
 // ------------------------------------------------------------------ Google
@@ -322,10 +331,14 @@ await step('profile and address book', async () => {
   assert.equal(add.status, 201);
   let list = (await asha.call('GET', '/api/account/addresses')).data.addresses;
   assert.equal(list.length, 2);
-  assert.equal(list[0].label, 'Office');
+  assert.equal(list[1].label, 'Office', 'stable order: oldest first, defaults do not jump to the top');
   assert.equal(list.filter(a => a.is_default).length, 1);
   const home = list.find(a => a.label !== 'Office');
-  assert.equal((await asha.call('PUT', `/api/account/addresses/${home.id}`, { ...ADDR, label: 'Home', pincode: '560008' })).data.address.pincode, '560008');
+  assert.equal((await asha.call('PUT', `/api/account/addresses/${home.id}`, { ...ADDR, label: 'Home', pincode: '403002' })).data.address.pincode, '403002');
+  const wrongPin = await asha.call('POST', '/api/account/addresses', { ...ADDR, label: 'Typo', pincode: '560038' });
+  assert.equal(wrongPin.status, 422);
+  assert.match(wrongPin.data.fields.pincode, /560038 is not a Goa pincode \(it looks like Karnataka\)/);
+  assert.match((await asha.call('POST', '/api/account/addresses', { ...ADDR, pincode: '912345' })).data.fields.pincode, /valid 6-digit Indian pincode/);
   assert.equal((await ravi.call('DELETE', `/api/account/addresses/${home.id}`)).status, 404, "can't delete someone else's");
 });
 
@@ -533,8 +546,7 @@ await step('checkout: separate billing address; the GSTIN state is the place of 
   const view = (await asha.call('GET', `/api/account/orders/${o.order_number}`)).data.order;
   assert.equal(view.billing.city, 'Pune');
   assert.equal(view.billing.same, false);
-  const link = await anon.call('GET', `/api/orders/${o.order_number}?t=${r.data.token}`);
-  assert.equal(link.data.order.billing, undefined, 'emailed link hides the billing address');
+  assert.equal((await anon.call('GET', `/api/orders/${o.order_number}?t=${r.data.token}`)).status, 401, 'emailed link needs sign-in');
   const csv = await (await fetch(SITE + '/api/admin/orders.csv', { headers: { authorization: 'Bearer ' + ADMIN } })).text();
   assert.match(csv.split('\r\n')[0], /Billing address,Billing state,Place of supply/);
 });
@@ -660,6 +672,81 @@ await step('portal: open carts show who has not bought, and why', async () => {
   await asha.call('POST', '/api/cart/add', { sku: 'greywind', quantity: 1 });
   const again = (await admin('GET', '/carts')).data.carts.find(c => c.email === 'asha@example.com');
   assert.equal(again.stage, 'cart');
+});
+
+// ------------------------------------------------------------------ step 11 fixes (31 Oct evening)
+await step('passwords must be typed twice the same (sign-up, reset, change)', async () => {
+  const b = new Browser();
+  const r = await b.call('POST', '/api/auth/register', { name: 'Typo Person', email: 'typo@example.com', password: 'correct horse battery', password_confirm: 'correct horse batteyr' });
+  assert.equal(r.status, 422);
+  assert.match(r.data.fields.password_confirm, /do not match/);
+  assert.equal((await b.call('POST', '/api/auth/register', { name: 'Typo Person', email: 'typo@example.com', password: 'correct horse battery', password_confirm: 'correct horse battery' })).status, 200);
+  const ch = await b.call('POST', '/api/account/password', { current_password: 'correct horse battery', new_password: 'another long phrase', new_password_confirm: 'another long phrasE' });
+  assert.equal(ch.status, 422);
+  assert.ok(ch.data.fields.new_password_confirm);
+  await anon.call('POST', '/api/auth/forgot', { email: 'typo@example.com' });
+  const mail = (await emailsTo('typo@example.com')).filter(m => /password/i.test(m.body.subject)).pop();
+  const token = linkToken(mail.body.html, /reset\?token=([^"&]+)/);
+  const bad = await anon.call('POST', '/api/auth/reset', { token, password: 'brand new phrase here', password_confirm: 'brand new phrase hera' });
+  assert.equal(bad.status, 422);
+  const good = await anon.call('POST', '/api/auth/reset', { token, password: 'brand new phrase here', password_confirm: 'brand new phrase here' });
+  assert.equal(good.status, 200, 'the link still works after a mismatch');
+});
+
+await step('review step: checked and priced, nothing created or charged', async () => {
+  await asha.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+  const before = (await mockCalls()).filter(c => c.path === '/rzp/orders' && c.method === 'POST').length;
+  const r = await asha.call('POST', '/api/orders', { dry_run: true, delivery_address: KA_ADDR, billing_same: false, billing_address: BILL_MH, gstin: '27ABCDE1234F1Z5', business_name: 'Rao Drones LLP' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.review.delivery.city, 'Bengaluru');
+  assert.equal(r.data.review.billing.city, 'Pune');
+  assert.equal(r.data.review.place_of_supply, 'MH');
+  assert.equal(r.data.review.quote.taxKind, 'inter');
+  assert.equal(r.data.review.email, 'asha@example.com');
+  assert.equal((await mockCalls()).filter(c => c.path === '/rzp/orders' && c.method === 'POST').length, before, 'no Razorpay order');
+  const bad = await asha.call('POST', '/api/orders', { dry_run: true, delivery_address: { ...ADDR, pincode: '560038' } });
+  assert.equal(bad.status, 422);
+  assert.match(bad.data.fields.pincode, /not a Goa pincode/);
+});
+
+await step('address book: the second address can be default for both delivery and billing', async () => {
+  const b = new Browser();
+  await googleSignIn(b, { sub: 'g-addr', email: 'addr@example.org', name: 'Addr Test' });
+  const first = (await b.call('POST', '/api/account/addresses', { ...ADDR, label: 'First' })).data.address;
+  const second = (await b.call('POST', '/api/account/addresses', { ...KA_ADDR, label: 'Second' })).data.address;
+  assert.equal(first.is_default, 1);
+  // via the buttons
+  await b.call('POST', `/api/account/addresses/${second.id}/default`);
+  await b.call('POST', `/api/account/addresses/${second.id}/default?for=billing`);
+  let list = (await b.call('GET', '/api/account/addresses')).data.addresses;
+  assert.deepEqual(list.map(a => [a.label, a.is_default, a.is_default_billing]), [['First', 0, 0], ['Second', 1, 1]]);
+  // via the edit form, both ticks at once, back to the first
+  await b.call('PUT', `/api/account/addresses/${first.id}`, { ...ADDR, label: 'First', is_default: true, is_default_billing: true });
+  list = (await b.call('GET', '/api/account/addresses')).data.addresses;
+  assert.deepEqual(list.map(a => [a.label, a.is_default, a.is_default_billing]), [['First', 1, 1], ['Second', 0, 0]]);
+  // a new address saved with both ticks
+  await b.call('POST', '/api/account/addresses', { ...ADDR, label: 'Third', pincode: '403002', is_default: true, is_default_billing: true });
+  list = (await b.call('GET', '/api/account/addresses')).data.addresses;
+  assert.deepEqual(list.map(a => [a.label, a.is_default, a.is_default_billing]), [['First', 0, 0], ['Second', 0, 0], ['Third', 1, 1]]);
+});
+
+await step('portal: customers list shows who has confirmed their email', async () => {
+  const r = await admin('GET', '/customers?filter=unverified');
+  assert.equal(r.status, 200);
+  const cart = r.data.customers.find(c => c.email === 'cartonly@example.com');
+  assert.ok(cart && !cart.email_verified);
+  assert.ok(r.data.customers.every(c => !c.email_verified));
+  const all = (await admin('GET', '/customers?q=asha@example.com')).data;
+  assert.equal(all.customers[0].email_verified, true);
+  assert.equal(all.customers[0].has_password, true);
+  assert.ok(all.customers[0].paid_orders >= 2);
+  assert.equal(all.totals.accounts, all.totals.verified + all.totals.unverified);
+  const send = await admin('POST', `/customers/${cart.id}/send-verification`);
+  assert.equal(send.status, 200);
+  assert.match(send.data.message, /sent to cartonly@example.com/);
+  const d = (await admin('GET', `/orders/${order1.order_number}`)).data;
+  assert.equal(d.account.email_verified, true);
+  assert.equal((await asha.call('GET', '/api/admin/customers')).status, 403);
 });
 
 await step('sign out everywhere', async () => {

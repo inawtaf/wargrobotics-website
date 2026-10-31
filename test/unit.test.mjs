@@ -274,3 +274,25 @@ test('no page, script or email still shows the old Bengaluru address', () => {
     .concat(readdirSync(new URL('src/', root)).map(f => new URL('src/' + f, root)));
   for (const f of files) assert.doesNotMatch(readFileSync(f, 'utf8'), /Indiranagar|Bengaluru/, f.pathname);
 });
+
+// ------------------------------------------------------------------ 31 Oct evening: pincode ↔ state
+import { pincodeFitsState, statesForPincode } from '../src/config.js';
+
+test('pincodes must belong to the chosen state', () => {
+  for (const [pin, st] of [['403001', 'GA'], ['560038', 'KA'], ['411026', 'MH'], ['110001', 'DL'], ['600001', 'TN'], ['500001', 'TS'], ['700001', 'WB'], ['160017', 'CH'], ['781001', 'AS'], ['682001', 'KL']]) {
+    assert.ok(pincodeFitsState(pin, st), `${pin} ${st}`);
+  }
+  assert.equal(pincodeFitsState('560038', 'GA'), false);
+  assert.equal(pincodeFitsState('403001', 'MH'), false);
+  assert.deepEqual(statesForPincode('560038'), ['KA']);
+  const v = validateAddress({ ...good, state_code: 'GA', pincode: '560038' });
+  assert.match(v.errors.pincode, /not a Goa pincode \(it looks like Karnataka\)/);
+  assert.match(validateAddress({ ...good, pincode: '056003' }).errors.pincode, /valid 6-digit/);
+  assert.match(validateAddress({ ...good, pincode: '912345' }).errors.pincode, /valid 6-digit/, 'army postal pincodes are not delivery addresses');
+  assert.equal(validateAddress({ ...good, pincode: '560 038' }).value.pincode, '560038', 'spaces removed');
+});
+
+test('sign-up checks the confirmation password', () => {
+  assert.match(validateRegistration({ name: 'Asha', email: 'a@b.co', password: 'correct horse battery', password_confirm: 'nope nope nope' }).errors.password_confirm, /do not match/);
+  assert.equal(validateRegistration({ name: 'Asha', email: 'a@b.co', password: 'correct horse battery', password_confirm: 'correct horse battery' }).ok, true);
+});
