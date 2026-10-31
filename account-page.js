@@ -315,7 +315,7 @@
       api('/account/google/unlink', { method: 'POST' }).then(function () { me.google_linked = false; googleState(); })
         .catch(function (e) { $('side-status').textContent = e.message; });
     };
-    $('signout').onclick = function () { api('/auth/logout', { method: 'POST' }).then(function () { location.href = '/'; }); };
+    $('signout').onclick = $('signout-top').onclick = function () { window.WargSignOut(); };
     $('signout-all').onclick = function () { api('/auth/logout-all', { method: 'POST' }).then(function () { location.href = '/login'; }); };
   }
   function googleState() {

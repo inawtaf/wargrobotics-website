@@ -1416,3 +1416,5 @@ sup.fn a:hover{ text-decoration:underline; }
 @media (max-width:520px){ .order-steps li{ padding:12px 8px; font-size:9.5px; letter-spacing:.06em; } .order-timeline li{ grid-template-columns:1fr; gap:0; } }
 .pill.processing{ background:#FFF3D6; color:#7A5300; }
 .pill.cancelled,.pill.refunded{ background:#F3E3E3; color:#8A2C2C; }
+/* Header "Sign out": on small phones it lives on the account page only. */
+@media (max-width:520px){ .nav-signout{ display:none; } }

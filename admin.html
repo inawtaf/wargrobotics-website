@@ -7,8 +7,8 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261029a">
-<link rel="stylesheet" href="portal.css?v=20261031a">
+<link rel="stylesheet" href="warg.css?v=20261031a">
+<link rel="stylesheet" href="portal.css?v=20261031b">
 </head>
 <body class="portal">
 
@@ -30,12 +30,14 @@
       <button class="p-tile" data-go="shipped"><span class="p-v" id="t-shipped">–</span><span class="p-k">Shipped</span><span class="p-s" id="t-overdue"></span></button>
       <button class="p-tile" data-go="attention"><span class="p-v" id="t-attention">–</span><span class="p-k">Needs attention</span><span class="p-s">invoice or email failed</span></button>
       <button class="p-tile" data-tab="service"><span class="p-v" id="t-service">–</span><span class="p-k">Open service</span></button>
+      <button class="p-tile" data-tab="carts"><span class="p-v" id="t-carts">–</span><span class="p-k">Open carts</span><span class="p-s">not bought yet</span></button>
       <div class="p-tile p-tile-static"><span class="p-v" id="t-revenue">–</span><span class="p-k">Paid this month</span><span class="p-s" id="t-month"></span></div>
     </section>
 
     <nav class="p-tabs" role="tablist">
       <button role="tab" data-tab="orders" aria-selected="true">Orders</button>
       <button role="tab" data-tab="service" aria-selected="false">Service requests</button>
+      <button role="tab" data-tab="carts" aria-selected="false">Carts</button>
       <button role="tab" data-tab="setup" aria-selected="false">Setup check</button>
     </nav>
 
@@ -125,6 +127,27 @@
       <div id="service" class="p-service"></div>
     </section>
 
+    <!-- ================= carts ================= -->
+    <section data-panel="carts" hidden>
+      <div class="p-bar">
+        <div class="p-chips" role="group" aria-label="Cart activity">
+          <button data-cdays="0" aria-pressed="true">All</button>
+          <button data-cdays="1" aria-pressed="false">Last 24 hours</button>
+          <button data-cdays="7" aria-pressed="false">Last 7 days</button>
+          <button data-cdays="30" aria-pressed="false">Last 30 days</button>
+        </div>
+      </div>
+      <p class="p-muted" id="carts-sum"></p>
+      <div class="p-list">
+        <table class="p-table" id="carts">
+          <thead><tr><th>Customer</th><th>In cart</th><th>Value</th><th>Stage</th><th>Last activity</th><th>Paid orders</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="p-empty" id="carts-empty" hidden>No open carts.</p>
+      </div>
+      <p class="p-muted">Signed-in customers only: a visitor who isn't signed in keeps their cart in their own browser until they sign in. "Last activity" is the last time they changed the cart. Value is before GST, at today's prices.</p>
+    </section>
+
     <!-- ================= setup check ================= -->
     <section data-panel="setup" hidden>
       <div class="p-bar">
@@ -196,7 +219,7 @@
   </div>
 </template>
 
-<script src="site.js?v=20261031a" defer></script>
-<script src="portal.js?v=20261031a" defer></script>
+<script src="site.js?v=20261031b" defer></script>
+<script src="portal.js?v=20261031b" defer></script>
 </body>
 </html>
