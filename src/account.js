@@ -24,14 +24,17 @@ const publicUser = u => ({
 const getUserById = (env, id) => env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
 const getUserByEmail = (env, e) => env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(e).first();
 
+// Returns true if the email was handed to Resend.
 async function sendSafely(env, msg) {
-  try { await email.sendEmail(env, msg); } catch (e) { console.error('email failed:', e.message); }
+  try { await email.sendEmail(env, msg); return true; } catch (e) { console.error('email failed:', e.message); return false; }
 }
 
 async function sendVerification(env, user) {
   const token = await auth.issueToken(env, user.id, 'verify', VERIFY_TTL);
-  await sendSafely(env, { to: user.email, ...email.verifyEmail(env, user, token) });
+  return sendSafely(env, { to: user.email, ...email.verifyEmail(env, user, token) });
 }
+
+const SEND_FAILED = 'We could not send the confirmation email just now. Try "Send it again" in a few minutes, or write to hello@wargrobotics.com.';
 
 // Sign in: create the session and hand back the cookie.
 async function signedIn(env, request, user, body = {}) {
@@ -53,8 +56,8 @@ export async function register(request, env) {
   }
   const hash = await auth.hashPassword(env, password);
   const user = await env.DB.prepare('INSERT INTO users (email, name, password_hash) VALUES (?,?,?) RETURNING *').bind(addr, name, hash).first();
-  await sendVerification(env, user);
-  return signedIn(env, request, user, { verification_sent: true });
+  const sent = await sendVerification(env, user);
+  return signedIn(env, request, user, { verification_sent: sent, ...(sent ? {} : { verification_error: SEND_FAILED }) });
 }
 
 export async function login(request, env) {
@@ -104,8 +107,8 @@ export async function verify(request, env) {
 export async function resendVerification(request, env, ctx, user) {
   if (user.email_verified_at) return json({ ok: true, already: true });
   if (!(await auth.throttle(env, `verify-send:${user.id}`, 5, 3600))) throw httpError(429, 'We have sent several links already. Check your spam folder, or try again in an hour.');
-  await sendVerification(env, user);
-  return json({ ok: true });
+  if (!(await sendVerification(env, user))) throw httpError(502, SEND_FAILED);
+  return json({ ok: true, sent_to: user.email });
 }
 
 // Always answers the same way, so it can't be used to find out who has an account.
@@ -145,7 +148,13 @@ export async function reset(request, env) {
 export async function googleStart(request, env, ctx, user) {
   const url = new URL(request.url);
   const mode = url.searchParams.get('mode') === 'link' && user ? 'link' : 'login';
-  const { location, setCookie } = await google.startGoogle(env, { next: url.searchParams.get('next'), mode });
+  let started;
+  try { started = await google.startGoogle(env, { next: url.searchParams.get('next'), mode }); }
+  catch (e) {
+    if (!e.notConfigured) throw e;
+    return new Response(null, { status: 302, headers: { location: `${url.origin}/login?error=${encodeURIComponent(e.message)}`, 'cache-control': 'no-store' } });
+  }
+  const { location, setCookie } = started;
   return new Response(null, { status: 302, headers: { location, 'set-cookie': setCookie, 'cache-control': 'no-store' } });
 }
 
@@ -245,28 +254,34 @@ export async function unlinkGoogle(request, env, ctx, user) {
 
 // ===================================================================== addresses
 
-const addressCols = 'id, label, name, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name, is_default';
+const addressCols = 'id, label, name, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name, is_default, is_default_billing';
 
 export async function listAddresses(request, env, ctx, user) {
-  const { results } = await env.DB.prepare(`SELECT ${addressCols} FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC`).bind(user.id).all();
+  const { results } = await env.DB.prepare(`SELECT ${addressCols} FROM addresses WHERE user_id = ? ORDER BY is_default DESC, is_default_billing DESC, id DESC`).bind(user.id).all();
   return json({ addresses: results });
 }
 
-export async function saveAddress(env, user, a, { makeDefault = false } = {}) {
-  const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM addresses WHERE user_id = ?').bind(user.id).first();
+// makeDefault: default delivery address. makeDefaultBilling: default billing
+// address. billing: this is being saved as a billing address (becomes the
+// default billing one if there is none yet).
+export async function saveAddress(env, user, a, { makeDefault = false, makeDefaultBilling = false, billing = false } = {}) {
+  const count = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(is_default_billing),0) AS nb FROM addresses WHERE user_id = ?').bind(user.id).first();
   if (count.n >= MAX_ADDRESSES) throw httpError(409, `You can save up to ${MAX_ADDRESSES} addresses. Delete one first.`);
   const first = count.n === 0;
+  const isDefault = first || makeDefault;
+  const isDefaultBilling = makeDefaultBilling || (billing && count.nb === 0);
   if (makeDefault && !first) await env.DB.prepare('UPDATE addresses SET is_default = 0 WHERE user_id = ?').bind(user.id).run();
-  return env.DB.prepare(`INSERT INTO addresses (user_id, label, name, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name, is_default)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING ${addressCols}`)
-    .bind(user.id, a.label, a.name, a.phone, a.address_line1, a.address_line2, a.city, a.state_code, a.pincode, a.gstin, a.business_name, first || makeDefault ? 1 : 0).first();
+  if (isDefaultBilling && count.nb > 0) await env.DB.prepare('UPDATE addresses SET is_default_billing = 0 WHERE user_id = ?').bind(user.id).run();
+  return env.DB.prepare(`INSERT INTO addresses (user_id, label, name, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name, is_default, is_default_billing)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING ${addressCols}`)
+    .bind(user.id, a.label ?? null, a.name, a.phone, a.address_line1, a.address_line2 ?? null, a.city, a.state_code, a.pincode, a.gstin ?? null, a.business_name ?? null, isDefault ? 1 : 0, isDefaultBilling ? 1 : 0).first();
 }
 
 export async function createAddress(request, env, ctx, user) {
   const b = await readJson(request);
   const v = validateAddress(b);
   if (!v.ok) return json({ error: 'validation', fields: v.errors }, 422);
-  return json({ address: await saveAddress(env, user, v.value, { makeDefault: Boolean(b.is_default) }) }, 201);
+  return json({ address: await saveAddress(env, user, v.value, { makeDefault: Boolean(b.is_default), makeDefaultBilling: Boolean(b.is_default_billing) }) }, 201);
 }
 
 export async function updateAddress(request, env, ctx, user, id) {
@@ -279,18 +294,26 @@ export async function updateAddress(request, env, ctx, user, id) {
     .bind(a.label, a.name, a.phone, a.address_line1, a.address_line2, a.city, a.state_code, a.pincode, a.gstin, a.business_name, id, user.id).first();
   if (!row) return json({ error: 'not found' }, 404);
   if (b.is_default) await setDefault(env, user, id);
-  return json({ address: { ...row, is_default: b.is_default ? 1 : row.is_default } });
+  if (b.is_default_billing) await setDefault(env, user, id, 'is_default_billing');
+  return json({ address: { ...row, is_default: b.is_default ? 1 : row.is_default, is_default_billing: b.is_default_billing ? 1 : row.is_default_billing } });
 }
 
-async function setDefault(env, user, id) {
+async function setDefault(env, user, id, col = 'is_default') {
+  if (col !== 'is_default' && col !== 'is_default_billing') throw new Error('bad column');
+  const own = await env.DB.prepare('SELECT 1 FROM addresses WHERE id = ? AND user_id = ?').bind(id, user.id).first();
+  if (!own) return false;
   await env.DB.batch([
-    env.DB.prepare('UPDATE addresses SET is_default = 0 WHERE user_id = ?').bind(user.id),
-    env.DB.prepare('UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?').bind(id, user.id),
+    env.DB.prepare(`UPDATE addresses SET ${col} = 0 WHERE user_id = ?`).bind(user.id),
+    env.DB.prepare(`UPDATE addresses SET ${col} = 1 WHERE id = ? AND user_id = ?`).bind(id, user.id),
   ]);
+  return true;
 }
 
+// POST /api/account/addresses/:id/default            -> default delivery address
+// POST /api/account/addresses/:id/default?for=billing -> default billing address
 export async function makeDefaultAddress(request, env, ctx, user, id) {
-  await setDefault(env, user, id);
+  const billing = new URL(request.url).searchParams.get('for') === 'billing';
+  if (!(await setDefault(env, user, id, billing ? 'is_default_billing' : 'is_default'))) return json({ error: 'not found' }, 404);
   return json({ ok: true });
 }
 
@@ -300,6 +323,7 @@ export async function deleteAddress(request, env, ctx, user, id) {
   if (r.is_default) {
     await env.DB.prepare('UPDATE addresses SET is_default = 1 WHERE id = (SELECT id FROM addresses WHERE user_id = ? ORDER BY id DESC LIMIT 1)').bind(user.id).run();
   }
+  // A deleted default billing address isn't replaced: billing falls back to "same as delivery".
   return json({ ok: true });
 }
 

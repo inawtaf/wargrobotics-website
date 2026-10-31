@@ -8,7 +8,7 @@
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="warg.css?v=20261029a">
-<link rel="stylesheet" href="portal.css?v=20261029a">
+<link rel="stylesheet" href="portal.css?v=20261031a">
 </head>
 <body class="portal">
 
@@ -36,6 +36,7 @@
     <nav class="p-tabs" role="tablist">
       <button role="tab" data-tab="orders" aria-selected="true">Orders</button>
       <button role="tab" data-tab="service" aria-selected="false">Service requests</button>
+      <button role="tab" data-tab="setup" aria-selected="false">Setup check</button>
     </nav>
 
     <!-- ================= orders ================= -->
@@ -123,6 +124,19 @@
       </div>
       <div id="service" class="p-service"></div>
     </section>
+
+    <!-- ================= setup check ================= -->
+    <section data-panel="setup" hidden>
+      <div class="p-bar">
+        <button class="btn btn-solid" type="button" id="run-health">Run setup check</button>
+        <form class="p-search" id="test-email-form">
+          <input type="email" id="test-email-to" placeholder="Send a test email to…" aria-label="Test email address">
+          <button class="btn btn-line" type="submit">Send test email</button>
+        </form>
+      </div>
+      <p class="p-flash" id="health-flash" role="status" hidden></p>
+      <div id="health" class="p-health"><p class="p-muted">Checks every setting and secret, and asks Google, Resend, Razorpay and Zoho whether they accept them. Nothing secret is shown.</p></div>
+    </section>
   </div>
 </main>
 
@@ -182,7 +196,7 @@
   </div>
 </template>
 
-<script src="site.js?v=20261029a" defer></script>
-<script src="portal.js?v=20261029a" defer></script>
+<script src="site.js?v=20261031a" defer></script>
+<script src="portal.js?v=20261031a" defer></script>
 </body>
 </html>

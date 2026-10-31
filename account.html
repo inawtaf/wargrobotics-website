@@ -80,12 +80,12 @@
 
       <div data-panel="addresses" hidden>
         <div class="checkout">
-          <div><div id="address-list" class="cards"></div></div>
+          <div><p class="t-body">Save your delivery and billing addresses here. At checkout you pick where to deliver and who the invoice is for.</p><div id="address-list" class="cards"></div></div>
           <form class="form summary" id="address-form" novalidate>
             <h2 class="field-legend" id="af-h">Add an address</h2>
             <input type="hidden" name="id">
             <div class="field"><label for="af-label">Label</label><input id="af-label" name="label" maxlength="30" placeholder="Home, Office"></div>
-            <div class="field"><label for="af-name">Receiver's name</label><input id="af-name" name="name" maxlength="100" autocomplete="name"></div>
+            <div class="field"><label for="af-name">Name</label><input id="af-name" name="name" maxlength="100" autocomplete="name"></div>
             <div class="field"><label for="af-phone">Mobile number</label><input id="af-phone" name="phone" type="tel" autocomplete="tel"></div>
             <div class="field"><label for="af-l1">House, building, street</label><input id="af-l1" name="address_line1" maxlength="150" autocomplete="address-line1"></div>
             <div class="field"><label for="af-l2">Area, landmark</label><input id="af-l2" name="address_line2" maxlength="150" autocomplete="address-line2"></div>
@@ -93,8 +93,9 @@
             <div class="field"><label for="af-pin">Pincode</label><input id="af-pin" name="pincode" maxlength="6" inputmode="numeric" autocomplete="postal-code"></div>
             <div class="field"><label for="af-state">State</label><select id="af-state" name="state_code"><option value="">Choose&hellip;</option></select></div>
             <div class="field"><label for="af-biz">Business name (for GST invoice)</label><input id="af-biz" name="business_name" maxlength="150"></div>
-            <div class="field"><label for="af-gstin">GSTIN</label><input id="af-gstin" name="gstin" maxlength="15" autocapitalize="characters"><p class="hint">Optional, for business purchases.</p></div>
-            <label class="check"><input type="checkbox" name="is_default" value="1"> Use as my default address</label>
+            <div class="field"><label for="af-gstin">GSTIN</label><input id="af-gstin" name="gstin" maxlength="15" autocapitalize="characters"><p class="hint">Optional, for business invoices. Must be registered in this address's state.</p></div>
+            <label class="check"><input type="checkbox" name="is_default" value="1"> Default delivery address</label>
+            <label class="check"><input type="checkbox" name="is_default_billing" value="1"> Default billing address (for invoices)</label>
             <div class="form-foot"><button class="btn btn-solid" type="submit">Save address</button><button class="link-btn" type="button" id="af-cancel" hidden>Cancel</button></div>
             <p class="form-status" role="status" aria-live="polite"></p>
           </form>
@@ -139,12 +140,12 @@
 <footer class="foot">
   <div class="wrap">
     <div class="foot-base">
-      <span>&copy; 2026 Warg Robotics &middot; Indiranagar, Bengaluru &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
+      <span>&copy; 2026 Warg Robotics &middot; Panaji, Goa &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
     </div>
   </div>
 </footer>
 
-<script src="site.js?v=20261029a" defer></script>
-<script src="account-page.js?v=20261029a" defer></script>
+<script src="site.js?v=20261031a" defer></script>
+<script src="account-page.js?v=20261031a" defer></script>
 </body>
 </html>

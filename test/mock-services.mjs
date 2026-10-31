@@ -3,7 +3,7 @@
 import http from 'node:http';
 
 const port = Number(process.argv[2] || 8899);
-const state = { calls: [], orders: {}, failZohoInvoices: false, invoices: [], nextInvoice: 1 };
+const state = { calls: [], orders: {}, failZohoInvoices: false, invoices: [], nextInvoice: 1, contacts: [], failResend: null };
 
 const send = (res, status, body, type = 'application/json') => {
   res.writeHead(status, { 'content-type': type });
@@ -24,6 +24,8 @@ http.createServer((req, res) => {
 
     // test control
     if (p === '/__calls') return send(res, 200, state.calls);
+    if (p === '/__fail-resend') { state.failResend = url.searchParams.get('msg') || null; return send(res, 200, { ok: true }); }
+    if (p === '/__contacts') return send(res, 200, state.contacts);
     if (p === '/__fail-zoho') { state.failZohoInvoices = url.searchParams.get('on') === '1'; return send(res, 200, { ok: true }); }
 
     // Razorpay
@@ -31,6 +33,10 @@ http.createServer((req, res) => {
       const id = 'order_' + Math.random().toString(36).slice(2, 10);
       state.orders[id] = body.amount;
       return send(res, 200, { id, amount: body.amount, currency: 'INR', receipt: body.receipt, status: 'created' });
+    }
+    if (p === '/rzp/orders' && req.method === 'GET') {
+      if (req.headers.authorization !== 'Basic ' + Buffer.from('rzp_test_local:rzp_test_secret').toString('base64')) return send(res, 401, { error: { description: 'Authentication failed' } });
+      return send(res, 200, { count: 0, items: [] });
     }
     if (p.startsWith('/rzp/payments/')) {
       const id = p.split('/').pop();
@@ -41,8 +47,24 @@ http.createServer((req, res) => {
     // Zoho
     if (p === '/zaccounts/oauth/v2/token') return send(res, 200, { access_token: 'zoho_tok', expires_in: 3600 });
     if (p.startsWith('/zoho/') && req.headers.authorization !== 'Zoho-oauthtoken zoho_tok') return send(res, 401, { code: 57, message: 'bad token' });
-    if (p === '/zoho/contacts' && req.method === 'GET') return send(res, 200, { code: 0, contacts: [] });
-    if (p === '/zoho/contacts' && req.method === 'POST') return send(res, 201, { code: 0, contact: { contact_id: 'c_' + state.calls.length } });
+    if (p === '/zoho/contacts' && req.method === 'GET') {
+      return send(res, 200, { code: 0, contacts: state.contacts.filter(c => c.email === url.searchParams.get('email')) });
+    }
+    if (p === '/zoho/contacts' && req.method === 'POST') {
+      if (state.contacts.some(c => c.contact_name === body.contact_name)) return send(res, 400, { code: 3062, message: 'The contact name already exists. Please specify a different name.' });
+      const c = { contact_id: 'c_' + (state.contacts.length + 1), contact_name: body.contact_name, email: body.contact_persons?.[0]?.email, gst_no: body.gst_no || '', billing_address: body.billing_address, shipping_address: body.shipping_address };
+      state.contacts.push(c);
+      return send(res, 201, { code: 0, contact: { contact_id: c.contact_id } });
+    }
+    if (/^\/zoho\/contacts\/[^/]+$/.test(p) && req.method === 'PUT') {
+      const c = state.contacts.find(x => x.contact_id === p.split('/').pop());
+      if (!c) return send(res, 404, { code: 1002, message: 'Contact does not exist.' });
+      if (!body.contact_name) return send(res, 400, { code: 4, message: 'contact_name is mandatory' });
+      Object.assign(c, { billing_address: body.billing_address, shipping_address: body.shipping_address });
+      return send(res, 200, { code: 0, contact: c });
+    }
+    if (p === '/zoho/settings/taxes') return send(res, 200, { code: 0, taxes: [{ tax_id: 'tax_intra' }, { tax_id: 'tax_inter' }] });
+    if (p === '/zoho/items' && req.method === 'GET') return send(res, 200, { code: 0, items: [{ item_id: 'item_ghost' }, { item_id: 'item_greywind' }] });
     if (p === '/zoho/invoices' && req.method === 'GET') {
       return send(res, 200, { code: 0, invoices: state.invoices.filter(i => i.reference_number === url.searchParams.get('reference_number')) });
     }
@@ -61,7 +83,8 @@ http.createServer((req, res) => {
     // Google: the test passes the claims it wants back, base64url-encoded, as the "code".
     if (p === '/google/token' && req.method === 'POST') {
       const form = new URLSearchParams(raw);
-      if (!form.get('code_verifier') || form.get('client_secret') !== 'google-secret') return send(res, 400, { error: 'invalid_grant' });
+      if (form.get('client_secret') !== 'google-secret') return send(res, 401, { error: 'invalid_client', error_description: 'Unauthorized' });
+      if (!form.get('code_verifier')) return send(res, 400, { error: 'invalid_grant' });
       let claims;
       try { claims = JSON.parse(Buffer.from(form.get('code'), 'base64url').toString()); } catch { return send(res, 400, { error: 'invalid_grant' }); }
       const b = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -69,7 +92,11 @@ http.createServer((req, res) => {
     }
 
     // Resend
-    if (p === '/resend/emails') return send(res, 200, { id: 'em_' + state.calls.length });
+    if (p === '/resend/emails') {
+      if (state.failResend) return send(res, 403, { name: 'validation_error', message: state.failResend });
+      return send(res, 200, { id: 'em_' + state.calls.length });
+    }
+    if (p === '/resend/domains') return send(res, 200, { data: [{ name: 'wargrobotics.com', status: 'verified' }] });
 
     send(res, 404, { error: 'mock: no route ' + req.method + ' ' + p });
   });

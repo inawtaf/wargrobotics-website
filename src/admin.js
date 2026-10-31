@@ -8,6 +8,7 @@ import * as orders from './orders.js';
 import * as fulfil from './fulfilment.js';
 import * as account from './account.js';
 import { sameOrigin, isStaff } from './auth.js';
+import * as health from './health.js';
 
 function bearerOk(request, env) {
   const h = request.headers.get('authorization') || '';
@@ -94,6 +95,10 @@ export async function csv(request, env) {
     ['Invoice', 'invoice_number'], ['Customer', 'customer_name'], ['Business', 'business_name'], ['GSTIN', 'gstin'],
     ['Email', 'email'], ['Phone', 'phone'], ['Address', r => [r.address_line1, r.address_line2].filter(Boolean).join(', ')],
     ['City', 'city'], ['State', r => STATE_BY_CODE[r.state_code]?.name || r.state_code], ['Pincode', 'pincode'],
+    ['Billing name', r => r.billing_name || r.customer_name],
+    ['Billing address', r => (r.billing_line1 ? [r.billing_line1, r.billing_line2, r.billing_city, r.billing_pincode].filter(Boolean).join(', ') : 'same as delivery')],
+    ['Billing state', r => (r.billing_state_code ? STATE_BY_CODE[r.billing_state_code]?.name || r.billing_state_code : '')],
+    ['Place of supply', r => STATE_BY_CODE[r.place_of_supply || r.state_code]?.name || r.place_of_supply || r.state_code],
     ['Courier', 'courier'], ['Tracking', 'tracking_number'], ['Expected delivery', 'expected_delivery'],
     ['Processing at', 'processing_at'], ['Shipped at', 'shipped_at'], ['Delivered at', 'delivered_at'],
     ['Cancelled at', 'cancelled_at'], ['Cancel reason', 'cancel_reason'], ['Razorpay payment', 'razorpay_payment_id'],
@@ -128,6 +133,8 @@ export async function route(request, env, ctx, seg, user) {
   const m = request.method;
 
   if (kind === 'me' && m === 'GET') return json({ actor });
+  if (kind === 'health' && m === 'GET') return health.health(env);
+  if (kind === 'test-email' && m === 'POST') return health.testEmail(request, env, actor);
   if (kind === 'summary' && m === 'GET') return summary(env);
   if (kind === 'orders.csv' && m === 'GET') return csv(request, env);
   if (kind === 'service') {

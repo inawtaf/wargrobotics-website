@@ -24,3 +24,4 @@ GOOGLE_TOKEN_URL=http://127.0.0.1:8899/google/token
 GOOGLE_AUTH_URL=http://127.0.0.1:8899/google/auth
 AUTH_PEPPER=local-pepper
 ADMIN_EMAILS=staff@example.com
+SELLER_STATE=GA

@@ -5,8 +5,10 @@ import * as razorpay from './razorpay.js';
 import * as zoho from './zoho.js';
 import * as email from './email.js';
 import { addEvent } from './fulfilment.js';
+import { billingOf, placeOfSupply } from './billing.js';
+export { billingOf, placeOfSupply };
 
-const sellerState = env => env.SELLER_STATE || 'KA';
+const sellerState = env => env.SELLER_STATE || 'GA';
 
 // Units already sold at the offer price, per product. Unpaid orders don't count.
 export async function soldAtOffer(env) {
@@ -26,20 +28,24 @@ export const getItems = async (env, orderId) =>
   (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
 
 // Saves the order and its lines, then asks Razorpay for an order to pay against.
-// user: the signed-in account; items: validated cart lines; addr: validated address.
-export async function createOrder(env, user, items, addr) {
-  const q = await quoteItems(env, items, addr.state_code);
+// user: the signed-in account; items: validated cart lines;
+// a: checkoutAddresses() result { delivery, billing, gstin, business_name, place_of_supply }.
+export async function createOrder(env, user, items, a) {
+  const { delivery: d, billing: bl } = a;
+  const q = await quoteItems(env, items, a.place_of_supply);
   let orderNumber, orderId;
   for (let i = 0; i < 5; i++) {
     orderNumber = newOrderNumber();
     try {
       const row = await env.DB.prepare(`INSERT INTO orders (
           order_number, user_id, item_count, summary, subtotal_paise, gst_rate_bp, gst_paise, total_paise, tax_kind,
-          customer_name, email, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`).bind(
+          customer_name, email, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name,
+          billing_name, billing_phone, billing_line1, billing_line2, billing_city, billing_state_code, billing_pincode, place_of_supply)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`).bind(
         orderNumber, user.id, q.itemCount, q.summary, q.subtotalPaise, q.gstRateBp, q.gstPaise, q.totalPaise, q.taxKind,
-        addr.name, user.email, addr.phone, addr.address_line1, addr.address_line2, addr.city, addr.state_code, addr.pincode,
-        addr.gstin, addr.business_name
+        d.name, user.email, d.phone, d.address_line1, d.address_line2 ?? null, d.city, d.state_code, d.pincode,
+        a.gstin ?? null, a.business_name ?? null,
+        bl.name, bl.phone ?? null, bl.address_line1, bl.address_line2 ?? null, bl.city, bl.state_code, bl.pincode, a.place_of_supply
       ).first();
       orderId = row.id;
       break;
@@ -219,6 +225,8 @@ export function publicView(o, items) {
     pincode: o.pincode,
     gstin: o.gstin,
     business_name: o.business_name,
+    billing: billingOf(o),
+    place_of_supply: placeOfSupply(o),
     invoice_number: o.invoice_number,
     courier: o.courier,
     tracking_number: o.tracking_number,

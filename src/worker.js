@@ -27,13 +27,14 @@
 //   GET /api/admin/service;  POST /api/admin/service/:sr
 
 import { PRODUCTS, STATES, MAX_QUANTITY, GST_RATE_BP } from './config.js';
-import { validateAddress, validateItems } from './validate.js';
+import { validateAddress, validateItems, checkoutAddresses } from './validate.js';
 import { json, safeEqual, orderToken, readJson, httpError } from './util.js';
 import * as auth from './auth.js';
 import * as razorpay from './razorpay.js';
 import * as orders from './orders.js';
 import * as account from './account.js';
 import * as adminApi from './admin.js';
+import * as google from './google.js';
 import { events as orderEvents } from './fulfilment.js';
 import { ensureSchema } from './schema.js';
 
@@ -48,8 +49,8 @@ async function products(env) {
       offer_units_left: Math.max(0, p.offerUnits - (sold[p.sku] || 0)),
     })),
     gst_rate_bp: GST_RATE_BP, max_quantity: MAX_QUANTITY,
-    seller_state: env.SELLER_STATE || 'KA', razorpay_key_id: env.RAZORPAY_KEY_ID || null,
-    google_enabled: Boolean(env.GOOGLE_CLIENT_ID),
+    seller_state: env.SELLER_STATE || 'GA', razorpay_key_id: env.RAZORPAY_KEY_ID || null,
+    google_enabled: google.configured(env),
     states: STATES.map(({ code, name }) => ({ code, name })),
   }, 200, { 'cache-control': 'public, max-age=60' });
 }
@@ -65,7 +66,7 @@ async function quoteHandler(request, env) {
 async function orderByToken(env, n, token) {
   const order = await orders.getByNumber(env, n);
   if (!order || !token || !safeEqual(await orderToken(env, order.order_number), token)) return json({ error: 'not found' }, 404);
-  const { phone, address_line1, address_line2, gstin, ...view } = orders.publicView(order, await orders.getItems(env, order.id));
+  const { phone, address_line1, address_line2, gstin, billing, ...view } = orders.publicView(order, await orders.getItems(env, order.id));
   return json({ order: { ...view, timeline: await orderEvents(env, order.id, { visibleOnly: true }) } });
 }
 
@@ -100,21 +101,41 @@ async function createOrderHandler(request, env, ctx, user) {
   const items = validateItems(results);
   if (!items.ok) return json({ error: items.errors.items }, 422);
 
-  let addr;
-  if (b.address_id) {
-    addr = await env.DB.prepare('SELECT * FROM addresses WHERE id = ? AND user_id = ?').bind(Number(b.address_id), user.id).first();
-    if (!addr) return json({ error: 'validation', fields: { address_id: 'Choose a delivery address.' } }, 422);
-  } else {
-    const v = validateAddress(b.address);
-    if (!v.ok) return json({ error: 'validation', fields: v.errors }, 422);
-    addr = v.value;
-    if (b.save_address) {
-      try { await account.saveAddress(env, user, addr); } catch (e) { /* address book full: still place the order */ }
+  // Delivery: a saved address or a new one. (address_id / address / save_address
+  // are the older field names, still accepted.)
+  const savedOrNew = async (id, raw, save, opts, field) => {
+    if (id) {
+      const row = await env.DB.prepare('SELECT * FROM addresses WHERE id = ? AND user_id = ?').bind(Number(id), user.id).first();
+      if (!row) return { errors: { [field]: field === 'billing_address_id' ? 'Choose a billing address.' : 'Choose a delivery address.' } };
+      return { value: row };
     }
+    const v = validateAddress(raw, opts);
+    if (!v.ok) return { errors: v.errors };
+    return { value: v.value, save };
+  };
+  const del = await savedOrNew(b.delivery_address_id ?? b.address_id, b.delivery_address ?? b.address, b.save_delivery ?? b.save_address, {}, 'address_id');
+  if (del.errors) return json({ error: 'validation', fields: del.errors }, 422);
+  const billingSame = b.billing_same !== false;
+  let bill = null;
+  if (!billingSame) {
+    bill = await savedOrNew(b.billing_address_id, b.billing_address, b.save_billing, { phoneRequired: false }, 'billing_address_id');
+    if (bill.errors) return json({ error: 'validation', fields: Object.fromEntries(Object.entries(bill.errors).map(([k, v]) => [k.startsWith('billing_') ? k : `billing_${k}`, v])) }, 422);
   }
+  // GSTIN: sent on its own by the checkout; older clients put it on the address.
+  const gstSource = 'gstin' in b ? b : (bill?.value || del.value);
+  const c = checkoutAddresses({ delivery: del.value, billing: bill?.value, billingSame, gstin: gstSource.gstin, businessName: gstSource.business_name });
+  if (!c.ok) return json({ error: 'validation', fields: c.errors }, 422);
+
   if (!(await auth.throttle(env, `checkout:${user.id}`, 20, 3600))) throw httpError(429, 'Too many checkout attempts. Try again later.');
 
-  const created = await orders.createOrder(env, user, items.value, addr);
+  // Save new addresses to the address book (if asked), with the GSTIN on the billing one.
+  try {
+    if (del.save) await account.saveAddress(env, user, { ...del.value, ...(billingSame ? { gstin: c.value.gstin, business_name: c.value.business_name } : { gstin: null, business_name: null }) }, { billing: billingSame });
+    // Saved addresses need a phone; a billing address given without one borrows the delivery phone.
+    if (bill?.save) await account.saveAddress(env, user, { ...bill.value, phone: bill.value.phone || c.value.delivery.phone, gstin: c.value.gstin, business_name: c.value.business_name }, { makeDefaultBilling: true });
+  } catch (e) { console.error('saving checkout address:', e.message); /* e.g. address book full: still place the order */ }
+
+  const created = await orders.createOrder(env, user, items.value, c.value);
   return json({
     order_number: created.orderNumber,
     token: created.token,
@@ -122,7 +143,7 @@ async function createOrderHandler(request, env, ctx, user) {
     razorpay_key_id: env.RAZORPAY_KEY_ID,
     amount_paise: created.quote.totalPaise,
     quote: created.quote,
-    prefill: { name: user.name, email: user.email, contact: addr.phone },
+    prefill: { name: user.name, email: user.email, contact: c.value.delivery.phone },
   }, 201);
 }
 

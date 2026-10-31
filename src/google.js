@@ -14,8 +14,12 @@ import { sha256Hex, safeEqual } from './util.js';
 const AUTH_URL = env => env.GOOGLE_AUTH_URL || 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = env => env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token';
 const STATE_COOKIE = 'wr_oauth';
+// Pasted values often carry a stray space or line break: trim them.
+export const clientId = env => String(env.GOOGLE_CLIENT_ID || '').trim();
+const clientSecret = env => String(env.GOOGLE_CLIENT_SECRET || '').trim();
+export const configured = env => Boolean(clientId(env) && !/REPLACE/.test(clientId(env)));
 
-const redirectUri = env => `${env.SITE_URL || 'https://wargrobotics.com'}/api/auth/google/callback`;
+export const redirectUri = env => `${String(env.SITE_URL || 'https://wargrobotics.com').trim().replace(/\/+$/, '')}/api/auth/google/callback`;
 
 const b64urlFromBytes = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 async function pkceChallenge(verifier) {
@@ -29,12 +33,12 @@ export function safeNext(next) {
 }
 
 export async function startGoogle(env, { next, mode }) {
-  if (!env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID is not set');
+  if (!configured(env)) throw Object.assign(new Error('Google sign-in is not available right now. Please use email.'), { notConfigured: true });
   const state = randomUrlToken(24);
   const nonce = randomUrlToken(24);
   const verifier = randomUrlToken(48);
   const params = new URLSearchParams({
-    client_id: env.GOOGLE_CLIENT_ID,
+    client_id: clientId(env),
     redirect_uri: redirectUri(env),
     response_type: 'code',
     scope: 'openid email profile',
@@ -63,7 +67,15 @@ function decodeJwtPayload(jwt) {
 // Returns { sub, email, name, next, mode } or throws with a user-safe message.
 export async function finishGoogle(env, request) {
   const url = new URL(request.url);
-  if (url.searchParams.get('error')) throw new Error('Google sign-in was cancelled.');
+  const gErr = url.searchParams.get('error');
+  if (gErr) {
+    console.error('Google sign-in: Google returned error', gErr, url.searchParams.get('error_description') || '');
+    throw new Error(gErr === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google could not sign you in. Please try again, or use email.');
+  }
+  if (!clientSecret(env)) {
+    console.error('Google sign-in: GOOGLE_CLIENT_SECRET is not set');
+    throw new Error('Google sign-in is not available right now. Please use email.');
+  }
   const raw = readCookie(request, STATE_COOKIE);
   if (!raw) throw new Error('Your sign-in took too long. Please try again.');
   let st;
@@ -75,20 +87,25 @@ export async function finishGoogle(env, request) {
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code: url.searchParams.get('code') || '',
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
+      client_id: clientId(env),
+      client_secret: clientSecret(env),
       redirect_uri: redirectUri(env),
       grant_type: 'authorization_code',
       code_verifier: st.v,
     }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.id_token) throw new Error('Google did not complete the sign-in. Please try again.');
+  if (!res.ok || !data.id_token) {
+    // invalid_client = wrong GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET pair;
+    // redirect_uri_mismatch = the callback URL isn't listed on the Google client.
+    console.error('Google sign-in: token exchange failed', res.status, data.error || '', data.error_description || '');
+    throw new Error('Google did not complete the sign-in. Please try again.');
+  }
 
   const claims = decodeJwtPayload(data.id_token);
   const now = Math.floor(Date.now() / 1000);
   if (!['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss)) throw new Error('Sign-in failed (issuer).');
-  if (claims.aud !== env.GOOGLE_CLIENT_ID) throw new Error('Sign-in failed (audience).');
+  if (claims.aud !== clientId(env)) throw new Error('Sign-in failed (audience).');
   if (!(claims.exp > now)) throw new Error('Sign-in failed (expired).');
   if (claims.nonce !== st.n) throw new Error('Sign-in failed. Please try again.');
   if (!claims.email || claims.email_verified !== true) throw new Error('Your Google account email is not verified.');
@@ -100,6 +117,25 @@ export async function finishGoogle(env, request) {
     next: safeNext(st.next),
     mode: st.mode,
   };
+}
+
+// Setup check: trade a dummy code. Google answers invalid_grant when the client
+// id and secret are right (only the code is bad), invalid_client when they're wrong.
+export async function checkCredentials(env) {
+  if (!configured(env)) return { ok: false, detail: 'GOOGLE_CLIENT_ID is not set in wrangler.jsonc.' };
+  if (!clientSecret(env)) return { ok: false, detail: 'GOOGLE_CLIENT_SECRET secret is missing.' };
+  const res = await fetch(TOKEN_URL(env), {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ code: 'setup-check', client_id: clientId(env), client_secret: clientSecret(env), redirect_uri: redirectUri(env), grant_type: 'authorization_code', code_verifier: 'x'.repeat(43) }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (data.error === 'invalid_grant') return { ok: true, detail: 'Client ID and secret accepted by Google.' };
+  if (data.error === 'invalid_client' || data.error === 'unauthorized_client') {
+    return { ok: false, detail: 'Google rejected the client ID / secret pair. Copy the client secret again from Google Cloud (same OAuth client as the ID) into GOOGLE_CLIENT_SECRET.' };
+  }
+  if (data.error === 'redirect_uri_mismatch') return { ok: false, detail: `Add ${redirectUri(env)} under "Authorised redirect URIs" on the Google OAuth client.` };
+  return { ok: false, detail: `Unexpected answer from Google: ${data.error || res.status} ${data.error_description || ''}`.trim() };
 }
 
 export const _test = { decodeJwtPayload, pkceChallenge, sha256Hex };

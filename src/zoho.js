@@ -7,6 +7,7 @@
 
 import { nowSec } from './util.js';
 import { STATE_BY_CODE } from './config.js';
+import { billingOf, placeOfSupply } from './billing.js';
 
 const apiBase = env => env.ZOHO_API_BASE || 'https://www.zohoapis.in/books/v3';
 const accountsBase = env => env.ZOHO_ACCOUNTS_BASE || 'https://accounts.zoho.in';
@@ -56,38 +57,54 @@ async function call(env, method, path, { body, query = {}, raw = false } = {}) {
   return data;
 }
 
-// Reuse a customer by email so repeat buyers don't get duplicate contacts.
-async function findOrCreateContact(env, order) {
-  const found = await call(env, 'GET', '/contacts', { query: { email: order.email, contact_type: 'customer' } });
-  const existing = found.contacts?.find(c => (c.email || '').toLowerCase() === order.email);
-  if (existing && !order.gstin) return existing.contact_id;
+const zohoAddress = (a, attention) => ({
+  attention: attention || a.name,
+  address: a.address_line1,
+  street2: a.address_line2 || '',
+  city: a.city,
+  state: STATE_BY_CODE[a.state_code]?.name || a.state_code,
+  zip: a.pincode,
+  country: 'India',
+  phone: a.phone || '',
+});
 
+// Reuse a customer by email (and GSTIN, for business invoices) so repeat buyers
+// don't get duplicate contacts. The contact's billing and shipping addresses are
+// set to this order's before the invoice is made, because Zoho copies them from
+// the contact onto the invoice.
+async function findOrCreateContact(env, order) {
+  const bill = billingOf(order);
   const isBusiness = Boolean(order.gstin);
-  const address = {
-    attention: order.customer_name,
-    address: order.address_line1,
-    street2: order.address_line2 || '',
-    city: order.city,
-    state: STATE_BY_CODE[order.state_code]?.name || order.state_code,
-    zip: order.pincode,
-    country: 'India',
-    phone: order.phone,
+  const billing_address = zohoAddress(bill, isBusiness ? order.business_name : bill.name);
+  const shipping_address = zohoAddress({ ...order, name: order.customer_name });
+
+  const found = await call(env, 'GET', '/contacts', { query: { email: order.email, contact_type: 'customer' } });
+  const sameEmail = (found.contacts || []).filter(c => (c.email || '').toLowerCase() === order.email);
+  const existing = sameEmail.find(c => (c.gst_no || '').toUpperCase() === (order.gstin || '')) || (!isBusiness && sameEmail.find(c => !c.gst_no));
+  if (existing) {
+    await call(env, 'PUT', `/contacts/${existing.contact_id}`, { body: { contact_name: existing.contact_name, billing_address, shipping_address } });
+    return existing.contact_id;
+  }
+
+  const [first, ...rest] = bill.name.split(' ');
+  const body = {
+    contact_name: isBusiness ? order.business_name : bill.name,
+    company_name: isBusiness ? order.business_name : '',
+    contact_type: 'customer',
+    gst_treatment: isBusiness ? 'business_gst' : 'consumer',
+    ...(isBusiness ? { gst_no: order.gstin } : {}),
+    place_of_contact: placeOfSupply(order),
+    billing_address,
+    shipping_address,
+    contact_persons: [{ first_name: first, last_name: rest.join(' '), email: order.email, phone: order.phone, is_primary_contact: true }],
   };
-  const [first, ...rest] = order.customer_name.split(' ');
-  const created = await call(env, 'POST', '/contacts', {
-    body: {
-      contact_name: isBusiness ? order.business_name : order.customer_name,
-      company_name: isBusiness ? order.business_name : '',
-      contact_type: 'customer',
-      gst_treatment: isBusiness ? 'business_gst' : 'consumer',
-      ...(isBusiness ? { gst_no: order.gstin } : {}),
-      place_of_contact: order.state_code,
-      billing_address: address,
-      shipping_address: address,
-      contact_persons: [{ first_name: first, last_name: rest.join(' '), email: order.email, phone: order.phone, is_primary_contact: true }],
-    },
-  });
-  return created.contact.contact_id;
+  try {
+    return (await call(env, 'POST', '/contacts', { body })).contact.contact_id;
+  } catch (e) {
+    // Contact names are unique in Zoho: a second "Rahul Sharma" needs telling apart.
+    if (!/already exists/i.test(e.message)) throw e;
+    return (await call(env, 'POST', '/contacts', { body: { ...body, contact_name: `${body.contact_name} (${order.email})` } })).contact.contact_id;
+  }
 }
 
 // Creates the invoice, marks it sent and records the Razorpay payment against it.
@@ -120,7 +137,7 @@ export async function createPaidInvoice(env, order) {
           customer_id: contactId,
           reference_number: order.order_number,
           date: today,
-          place_of_supply: order.state_code,
+          place_of_supply: placeOfSupply(order),
           gst_treatment: order.gstin ? 'business_gst' : 'consumer',
           ...(order.gstin ? { gst_no: order.gstin } : {}),
           is_inclusive_tax: false,
@@ -171,4 +188,20 @@ async function settleInvoice(env, order, contactId, invoiceId, invoiceTotal, dat
 export async function invoicePdf(env, invoiceId) {
   const res = await call(env, 'GET', `/invoices/${invoiceId}`, { query: { accept: 'pdf' }, raw: true });
   return new Uint8Array(await res.arrayBuffer());
+}
+
+// Setup check: token refresh, organisation, and the configured tax and item ids.
+export async function check(env) {
+  const out = [];
+  const taxes = (await call(env, 'GET', '/settings/taxes')).taxes || [];
+  const taxIds = new Set(taxes.map(t => String(t.tax_id)));
+  for (const k of ['ZOHO_TAX_ID_INTRA', 'ZOHO_TAX_ID_INTER']) {
+    out.push({ name: k, ok: taxIds.has(String(env[k] || '').trim()), detail: taxIds.has(String(env[k] || '').trim()) ? 'found in Zoho' : 'not found among this organisation\'s taxes (run scripts/zoho-setup.mjs ids)' });
+  }
+  const items = (await call(env, 'GET', '/items')).items || [];
+  const itemIds = new Set(items.map(i => String(i.item_id)));
+  for (const k of ['ZOHO_ITEM_ID_GHOST', 'ZOHO_ITEM_ID_GREYWIND']) {
+    out.push({ name: k, ok: itemIds.has(String(env[k] || '').trim()), detail: itemIds.has(String(env[k] || '').trim()) ? 'found in Zoho' : 'not found among this organisation\'s items' });
+  }
+  return out;
 }

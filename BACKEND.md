@@ -85,7 +85,7 @@ every 15 minutes and sends the invoice on its own once it exists.
   emails the customer.
 
 Prices exclude GST; 18% is added at checkout. CGST + SGST applies within
-Karnataka (`SELLER_STATE`), IGST elsewhere. Delivery is free.
+Goa (`SELLER_STATE`), IGST elsewhere. Delivery is free.
 
 ---
 
@@ -130,7 +130,7 @@ the Worker: `npm run db:whoami`, `npm run db:migrate`, `npm run db:migrate:previ
 ### 3. Zoho Books (India)
 
 1. Sign up at zoho.com/in/books (free plan under ₹25 lakh turnover), with your
-   GSTIN and Karnataka as the business state.
+   GSTIN and Goa as the business state.
 2. **Items → New**: create **Warg Ghost** and **Warg Greywind** as Goods with
    the HSN code your CA gives you, rate 19999 / 24999, intra-state tax GST18
    and inter-state tax IGST18.
@@ -198,7 +198,7 @@ Settings → Variables and Secrets** (type: Secret), or with
 | `ZOHO_REFRESH_TOKEN` | from `zoho-setup.mjs token` |
 | `RESEND_API_KEY` | Resend API key |
 | `ORDER_LINK_SECRET` | random string, at least 32 characters; signs buyers' order-page links (changing it breaks old links) |
-| `ADMIN_TOKEN` | optional: random string, at least 24 characters, for scripts calling the portal API with `Authorization: Bearer`. People don't need it; they sign in. |
+| `ADMIN_TOKEN` | recommended: random string, at least 24 characters (`openssl rand -hex 32`). Opens the portal ("Open with token" on /admin) when no staff account can sign in yet, e.g. while email is being set up, and lets scripts call the portal API with `Authorization: Bearer`. |
 | `GOOGLE_CLIENT_SECRET` | from step 5 |
 | `AUTH_PEPPER` | random string, at least 32 characters, mixed into every password hash. **Never change it once accounts exist, or every password stops working.** |
 
@@ -297,3 +297,24 @@ To click around locally, run `cp .dev.vars.example .dev.vars`,
 `http://localhost:8787`. Use `localhost`, not `127.0.0.1`, or the browser won't
 keep the sign-in cookie. Confirmation and reset emails don't really get sent
 locally; read them from `http://127.0.0.1:8899/__calls`.
+
+## Setup check (portal → Setup check)
+
+`GET /api/admin/health` checks every setting and secret (names only, never
+values), that the database migrations ran, and asks Google (client ID +
+secret), Resend (sending domain verified), Razorpay (key pair) and Zoho
+(token, tax and item ids) whether they accept them. It also shows the last
+email that was sent and the last one that failed, with Resend's reason.
+`POST /api/admin/test-email {to}` sends a test email and reports Resend's
+exact answer.
+
+## Delivery and billing addresses
+
+Checkout takes a delivery address and a billing address ("same as delivery"
+by default); either can be a saved address or a new one. The optional GSTIN
+belongs to the billing address and must be registered in its state. GST
+place of supply: the GSTIN's (billing) state for a business invoice,
+otherwise the delivery state. Orders store both (`billing_*` columns and
+`place_of_supply`, migration 0003); the Zoho invoice gets the billing address
+as "Bill to" and the delivery address as "Ship to". Confirm the
+place-of-supply rule with your CA.
