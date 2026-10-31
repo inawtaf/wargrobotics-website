@@ -140,7 +140,7 @@
       head.parentNode.insertBefore(sub, sentinel.nextSibling);
       made = true;
       var queued = false;
-      var evaluate = function () { queued = false; sub.classList.toggle('on', sentinel.getBoundingClientRect().top < 72); };
+      var evaluate = function () { queued = false; sub.classList.toggle('on', sentinel.getBoundingClientRect().top < 1); };
       var schedule = function () { if (!queued) { queued = true; requestAnimationFrame(evaluate); } };
       window.addEventListener('scroll', schedule, { passive: true });
       window.addEventListener('resize', schedule);

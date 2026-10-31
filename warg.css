@@ -510,7 +510,7 @@ sup.fn a:hover{ text-decoration:underline; }
 
 /* ---------- footer ---------- */
 .foot{ background:var(--near-black); color:rgba(247,248,250,0.6); }
-.foot-grid{ display:grid; grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr)); gap:clamp(28px,5vw,60px); padding-block:clamp(48px,6vw,68px); }
+.foot-grid{ display:grid; grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr)); gap:clamp(28px,5vw,60px); padding-block:clamp(48px,6vw,68px); }
 @media (max-width:780px){ .foot-grid{ grid-template-columns:1fr 1fr; } .foot-brand{ grid-column:1/-1; } }
 .foot p{ font-size:13.5px; line-height:1.6; margin:18px 0 0; max-width:42ch; }
 .foot h4{ font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.13em; text-transform:uppercase; color:rgba(247,248,250,0.42); margin:0 0 15px; }
@@ -1447,3 +1447,17 @@ sup.fn a:hover{ text-decoration:underline; }
 .coupon-row .btn{ height:44px; padding:0 16px; }
 .coupon-msg{ margin:8px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-2); }
 .review{ scroll-margin-top:70px; }
+
+/* policy pages */
+.legal-updated{ margin:14px 0 0; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); }
+.legal{ max-width:72ch; }
+.legal h2{ font-family:'Space Grotesk','Inter',sans-serif; font-weight:600; font-size:clamp(19px,1.8vw,22px); margin:38px 0 10px; color:var(--ink); }
+.legal p,.legal li{ font-size:15.5px; line-height:1.7; color:var(--ink-2); }
+.legal p{ margin:0 0 12px; }
+.legal ul{ margin:0 0 12px; padding-left:20px; display:grid; gap:6px; }
+.legal b{ color:var(--ink); font-weight:600; }
+.legal a{ color:var(--accent-700); }
+.legal code{ font-family:'IBM Plex Mono',monospace; font-size:.9em; background:var(--s-sunk); padding:1px 5px; }
+mark.fill{ background:#ffe08a; color:#5a3d00; padding:0 3px; }
+.foot-legal{ display:flex; gap:18px; flex-wrap:wrap; }
+.kit-item:last-child:nth-child(3n+2){ grid-column:span 2; }
