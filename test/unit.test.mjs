@@ -375,3 +375,14 @@ test('every customer page links the four policy pages in its footer', () => {
     for (const p of ['terms', 'refunds', 'shipping', 'privacy']) assert.match(foot, new RegExp(`href="/?${p}(\\.html)?"`), `${f} → ${p}`);
   }
 });
+
+test('grievance officer and account deletion are published', () => {
+  const root = new URL('..', import.meta.url);
+  const read = f => readFileSync(new URL(f, root), 'utf8');
+  for (const f of ['terms.html', 'privacy.html', 'contact.html', 'index.html']) {
+    assert.match(read(f), /Sam Singh/, f);
+    assert.match(read(f), /\+91 86689 23286/, f);
+  }
+  assert.match(read('privacy.html'), /id="delete"[\s\S]*Delete my Warg account/);
+  assert.match(read('account.html'), /href="\/privacy#delete"/);
+});
