@@ -89,6 +89,12 @@
   var countEl = null;
   function setCount(n) { if (countEl) { countEl.textContent = n; countEl.hidden = !n; } }
 
+  // Ends this browser's session and forgets the signed-in cart count.
+  function signOut() {
+    return api('/auth/logout', { method: 'POST' }).catch(function () {}).then(function () { location.href = '/'; });
+  }
+  window.WargSignOut = signOut;
+
   function header() {
     var bar = document.querySelector('.nav .wrap');
     if (!bar || bar.querySelector('.nav-acct')) return;
@@ -109,6 +115,10 @@
       if (d.user) {
         acct.href = '/account'; acct.textContent = 'Account'; setCount(d.cart_count || 0);
         if (d.user.is_staff) { var portal = document.createElement('a'); portal.href = '/admin'; portal.textContent = 'Portal'; box.insertBefore(portal, acct); }
+        var out = document.createElement('a');
+        out.href = '#'; out.className = 'nav-signout'; out.textContent = 'Sign out';
+        out.onclick = function (e) { e.preventDefault(); signOut(); };
+        box.insertBefore(out, c);
       }
       else {
         acct.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);

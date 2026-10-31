@@ -72,6 +72,7 @@
     if (p.get('order')) openOrder(p.get('order'));
     if (p.get('tab') === 'service') tab('service');
     if (p.get('tab') === 'setup') tab('setup');
+    if (p.get('tab') === 'carts') tab('carts');
     setInterval(summary, 60000);   // keep the counts fresh while the page is open
   }
 
@@ -86,6 +87,7 @@
       $('t-overdue').textContent = s.past_expected_delivery ? s.past_expected_delivery + ' past expected date' : '';
       $('t-attention').textContent = s.needs_attention;
       $('t-service').textContent = s.open_service;
+      $('t-carts').textContent = s.open_carts;
       $('t-revenue').textContent = inr(s.this_month.revenue_paise).replace(/\.\d\d$/, '');
       $('t-month').textContent = s.this_month.orders + ' orders, incl. GST';
       $('t-month').style.color = 'var(--ink-3)';
@@ -101,6 +103,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-panel]'), function (p) { p.hidden = p.getAttribute('data-panel') !== name; });
     if (name === 'service') loadService();
     if (name === 'setup' && !healthRan) runHealth();
+    if (name === 'carts') loadCarts();
   }
   Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (b) { b.addEventListener('click', function () { tab(b.getAttribute('data-tab')); }); });
 
@@ -379,4 +382,41 @@
       .then(function (r) { healthFlash($('health-flash'), r.message); })
       .catch(function (err) { healthFlash($('health-flash'), 'Not sent. ' + ((err.data && err.data.error) || err.message), true); });
   };
+
+  // ---------------------------------------------------------------- carts
+  var cartDays = 0;
+  var STAGE = { unverified: 'Email not confirmed', checkout: 'Started checkout, not paid', cart: 'In cart' };
+  function ago(s) {
+    var m = Math.round((Date.now() - new Date(s).getTime()) / 60000);
+    return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago';
+  }
+  function loadCarts() {
+    var tb = $('carts').querySelector('tbody');
+    api('/admin/carts' + (cartDays ? '?days=' + cartDays : '')).then(function (d) {
+      tb.innerHTML = '';
+      var t = d.totals;
+      $('carts-sum').textContent = t.carts + ' open carts · ' + t.units + ' units · ' + inr(t.subtotal_paise).replace(/\.\d\d$/, '') + ' before GST — ' +
+        t.cart + ' in cart, ' + t.checkout + ' started checkout without paying, ' + t.unverified + ' waiting on email confirmation';
+      $('carts-empty').hidden = d.carts.length > 0;
+      d.carts.forEach(function (c) {
+        var tr = el('tr');
+        var who = el('td'); who.appendChild(el('div', '', c.name)); var mail = el('a', 'p-muted', c.email); mail.href = 'mailto:' + c.email; who.appendChild(mail);
+        if (c.phone) who.appendChild(el('div', 'p-muted', c.phone));
+        tr.appendChild(who);
+        tr.appendChild(el('td', '', c.summary));
+        tr.appendChild(el('td', '', inr(c.subtotal_paise)));
+        var st = el('td'); st.appendChild(el('span', 'p-stage ' + c.stage, STAGE[c.stage] || c.stage)); tr.appendChild(st);
+        var la = el('td', '', ago(c.last_activity)); la.title = when(c.last_activity); tr.appendChild(la);
+        tr.appendChild(el('td', '', String(c.paid_orders)));
+        tb.appendChild(tr);
+      });
+    }).catch(function (e) { tb.innerHTML = ''; $('carts-sum').textContent = 'Could not load carts: ' + e.message; });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cdays]'), function (b) {
+    b.onclick = function () {
+      cartDays = Number(b.getAttribute('data-cdays'));
+      Array.prototype.forEach.call(document.querySelectorAll('[data-cdays]'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      loadCarts();
+    };
+  });
 })();

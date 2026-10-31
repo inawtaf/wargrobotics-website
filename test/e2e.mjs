@@ -634,6 +634,34 @@ await step('setup check: staff only, every service answers, no secret values sho
   assert.equal((await portal('GET', '/health')).status, 200);
 });
 
+await step('portal: open carts show who has not bought, and why', async () => {
+  const shopper = new Browser();
+  await shopper.call('POST', '/api/auth/register', { name: 'Cart Only', email: 'cartonly@example.com', password: 'correct horse battery' });
+  await shopper.call('POST', '/api/cart/add', { items: [{ sku: 'greywind', quantity: 2 }] });
+  await asha.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+  const started = await asha.call('POST', '/api/orders', { delivery_address: ADDR });   // checkout opened, never paid
+  assert.equal(started.status, 201);
+  const r = await admin('GET', '/carts');
+  assert.equal(r.status, 200);
+  const byEmail = Object.fromEntries(r.data.carts.map(c => [c.email, c]));
+  assert.equal(byEmail['cartonly@example.com'].stage, 'unverified');
+  assert.equal(byEmail['cartonly@example.com'].summary, 'Warg Greywind × 2');
+  assert.equal(byEmail['cartonly@example.com'].units, 2);
+  assert.equal(byEmail['cartonly@example.com'].paid_orders, 0);
+  assert.equal(byEmail['asha@example.com'].stage, 'checkout');
+  assert.ok(byEmail['asha@example.com'].paid_orders >= 2);
+  assert.ok(byEmail['asha@example.com'].subtotal_paise > 0);
+  assert.equal(r.data.totals.carts, r.data.carts.length);
+  assert.equal((await admin('GET', '/summary')).data.open_carts, r.data.carts.length);
+  assert.equal((await asha.call('GET', '/api/admin/carts')).status, 403, 'customers cannot see carts');
+  // Changing the cart after the unpaid checkout puts it back to "in cart".
+  await asha.call('POST', '/api/cart/add', { sku: 'greywind', quantity: 1 });
+  await sleep(1100);
+  await asha.call('POST', '/api/cart/add', { sku: 'greywind', quantity: 1 });
+  const again = (await admin('GET', '/carts')).data.carts.find(c => c.email === 'asha@example.com');
+  assert.equal(again.stage, 'cart');
+});
+
 await step('sign out everywhere', async () => {
   const second = new Browser();
   await second.call('POST', '/api/auth/login', { email: 'asha@example.com', password: 'yet another passphrase' });
