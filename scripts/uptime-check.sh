@@ -21,7 +21,7 @@ HOSTS=(
   "www.wargrobotics.com"
   # Uncomment with the Worker's own address from Workers & Pages > project >
   # Settings > Domains & Routes (only if its workers.dev route is enabled):
-  # "wargrobotics-website.YOUR-SUBDOMAIN.workers.dev"
+  "wargrobotics-website.divyansh-wargrobotics.workers.dev"
 )
 APEX="wargrobotics.com"
 PATH_TO_CHECK="/"
