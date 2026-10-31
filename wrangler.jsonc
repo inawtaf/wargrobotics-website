@@ -45,20 +45,20 @@
   // `npx wrangler secret put NAME`, never in this file. See BACKEND.md.
   "vars": {
     "SITE_URL": "https://wargrobotics.com",
-    "SELLER_STATE": "KA",
+    "SELLER_STATE": "GA",
     "RAZORPAY_KEY_ID": "rzp_test_Tu8pVtqmLfZYng",
     "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
     "EMAIL_REPLY_TO": "hello@wargrobotics.com",
     "ORDER_NOTIFY_EMAIL": "hello@wargrobotics.com",
-    "GOOGLE_CLIENT_ID": "REPLACE.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_ID": "889636532221-e400tvc0iul3gebf1khq32kqlik61tj7.apps.googleusercontent.com",
     // Staff who can open the order portal (/admin): comma-separated emails.
     // They sign in with these addresses (Google or password), confirmed.
-    "ADMIN_EMAILS": "hello@wargrobotics.com",
-    "ZOHO_ORG_ID": "REPLACE",
-    "ZOHO_TAX_ID_INTRA": "REPLACE",
-    "ZOHO_TAX_ID_INTER": "REPLACE",
-    "ZOHO_ITEM_ID_GHOST": "REPLACE",
-    "ZOHO_ITEM_ID_GREYWIND": "REPLACE"
+    "ADMIN_EMAILS": "hello@wargrobotics.com,boss@wargrobotics.com,kartikeya@wargrobotics.com,divyansh@wargrobotics.com",
+    "ZOHO_ORG_ID": "60093920306",
+    "ZOHO_TAX_ID_INTRA": "4122977000000034209",
+    "ZOHO_TAX_ID_INTER": "4122977000000034171",
+    "ZOHO_ITEM_ID_GHOST": "4122977000000038023",
+    "ZOHO_ITEM_ID_GREYWIND": "4122977000000038038"
   },
 
   // Pull-request and branch builds (`wrangler preview`). Previews inherit
@@ -76,7 +76,7 @@
     ],
     "vars": {
       "SITE_URL": "https://wargrobotics.com",
-      "SELLER_STATE": "KA",
+      "SELLER_STATE": "GA",
       "RAZORPAY_KEY_ID": "rzp_test_Tu8pVtqmLfZYng",
       "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
       "EMAIL_REPLY_TO": "hello@wargrobotics.com",
