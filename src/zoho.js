@@ -57,6 +57,9 @@ async function call(env, method, path, { body, query = {}, raw = false } = {}) {
   return data;
 }
 
+// Zoho India GST treatment: registered business, unregistered business, or consumer.
+export const gstTreatment = o => (o.gstin ? 'business_gst' : o.business_name ? 'business_none' : 'consumer');
+
 const zohoAddress = (a, attention) => ({
   attention: attention || a.name,
   address: a.address_line1,
@@ -75,12 +78,15 @@ const zohoAddress = (a, attention) => ({
 async function findOrCreateContact(env, order) {
   const bill = billingOf(order);
   const isBusiness = Boolean(order.gstin);
-  const billing_address = zohoAddress(bill, isBusiness ? order.business_name : bill.name);
+  const company = order.business_name || '';
+  const billing_address = zohoAddress(bill, company || bill.name);
   const shipping_address = zohoAddress({ ...order, name: order.customer_name });
 
   const found = await call(env, 'GET', '/contacts', { query: { email: order.email, contact_type: 'customer' } });
   const sameEmail = (found.contacts || []).filter(c => (c.email || '').toLowerCase() === order.email);
-  const existing = sameEmail.find(c => (c.gst_no || '').toUpperCase() === (order.gstin || '')) || (!isBusiness && sameEmail.find(c => !c.gst_no));
+  const existing = isBusiness
+    ? sameEmail.find(c => (c.gst_no || '').toUpperCase() === order.gstin)
+    : sameEmail.find(c => !c.gst_no && (c.company_name || '').toLowerCase() === company.toLowerCase());
   if (existing) {
     await call(env, 'PUT', `/contacts/${existing.contact_id}`, { body: { contact_name: existing.contact_name, billing_address, shipping_address } });
     return existing.contact_id;
@@ -88,10 +94,10 @@ async function findOrCreateContact(env, order) {
 
   const [first, ...rest] = bill.name.split(' ');
   const body = {
-    contact_name: isBusiness ? order.business_name : bill.name,
-    company_name: isBusiness ? order.business_name : '',
+    contact_name: company || bill.name,
+    company_name: company,
     contact_type: 'customer',
-    gst_treatment: isBusiness ? 'business_gst' : 'consumer',
+    gst_treatment: gstTreatment(order),
     ...(isBusiness ? { gst_no: order.gstin } : {}),
     place_of_contact: placeOfSupply(order),
     billing_address,
@@ -138,7 +144,7 @@ export async function createPaidInvoice(env, order) {
           reference_number: order.order_number,
           date: today,
           place_of_supply: placeOfSupply(order),
-          gst_treatment: order.gstin ? 'business_gst' : 'consumer',
+          gst_treatment: gstTreatment(order),
           ...(order.gstin ? { gst_no: order.gstin } : {}),
           is_inclusive_tax: false,
           line_items: order.items.map(it => ({

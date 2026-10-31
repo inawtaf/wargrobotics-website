@@ -8,7 +8,7 @@
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="warg.css?v=20261031e">
-<link rel="stylesheet" href="portal.css?v=20261031e">
+<link rel="stylesheet" href="portal.css?v=20261031f">
 </head>
 <body class="portal">
 
@@ -229,19 +229,29 @@
   </details>
 </template>
 <template id="tpl-tools">
-  <div class="p-tools">
-    <select data-resend aria-label="Email to resend">
-      <option value="">Resend an email…</option>
-      <option value="confirmation">Order confirmation</option>
-      <option value="processing">Processing</option>
-      <option value="dispatch">Shipped / tracking</option>
-      <option value="delivered">Delivered</option>
-    </select>
-    <button class="btn btn-line" type="button" data-retry>Retry invoice and emails</button>
-  </div>
+  <form class="p-form p-send" data-send>
+    <h3>Send an email again</h3>
+    <label>Email
+      <select name="which" required>
+        <option value="confirmation">Order confirmation (with invoice)</option>
+        <option value="invoice">GST invoice only</option>
+        <option value="processing">Processing</option>
+        <option value="dispatch">Shipped / tracking</option>
+        <option value="delivered">Delivered</option>
+        <option value="cancelled">Cancelled</option>
+      </select></label>
+    <label>Send to
+      <select name="to_choice">
+        <option value="customer" data-customer></option>
+        <option value="other">Another email address…</option>
+      </select></label>
+    <label data-other hidden>Email address<input type="email" name="to" placeholder="accounts@company.com" autocomplete="off"></label>
+    <div class="p-send-foot"><button class="btn btn-solid" type="submit">Send email</button>
+      <button class="btn btn-line" type="button" data-retry>Retry invoice and emails</button></div>
+  </form>
 </template>
 
 <script src="site.js?v=20261031e" defer></script>
-<script src="portal.js?v=20261031e" defer></script>
+<script src="portal.js?v=20261031f" defer></script>
 </body>
 </html>

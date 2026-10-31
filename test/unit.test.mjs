@@ -226,7 +226,7 @@ test('GSTIN from another state than the billing address is refused, naming both 
   assert.equal(r.ok, false);
   assert.match(r.errors.gstin, /registered in Maharashtra, but the billing address is in Goa/);
   assert.match(validateGst('30ABCDE1234F1Z5', '', 'GA').errors.business_name, /business name/);
-  assert.deepEqual(validateGst('', 'Ignored Ltd', 'GA'), { errors: {}, gstin: null, business_name: null });
+  assert.deepEqual(validateGst('', 'Fontainhas Labs', 'GA'), { errors: {}, gstin: null, business_name: 'Fontainhas Labs' }, 'company without GSTIN keeps its name');
   assert.equal(validateGst('30 ABCDE 1234F1Z5', 'Goa Co', 'GA').gstin, '30ABCDE1234F1Z5', 'spaces removed');
 });
 
@@ -295,4 +295,26 @@ test('pincodes must belong to the chosen state', () => {
 test('sign-up checks the confirmation password', () => {
   assert.match(validateRegistration({ name: 'Asha', email: 'a@b.co', password: 'correct horse battery', password_confirm: 'nope nope nope' }).errors.password_confirm, /do not match/);
   assert.equal(validateRegistration({ name: 'Asha', email: 'a@b.co', password: 'correct horse battery', password_confirm: 'correct horse battery' }).ok, true);
+});
+
+// ------------------------------------------------------------------ 31 Oct night
+import { gstTreatment } from '../src/zoho.js';
+import { RESENDABLE } from '../src/fulfilment.js';
+
+test('company name without a GSTIN: kept, invoiced as an unregistered business', () => {
+  const r = checkoutAddresses({ delivery: goa, billingSame: true, gstin: '', businessName: 'Fontainhas Labs' });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.business_name, 'Fontainhas Labs');
+  assert.equal(r.value.gstin, null);
+  assert.equal(r.value.place_of_supply, 'GA', 'no GSTIN: tax follows delivery');
+  assert.equal(gstTreatment({ gstin: null, business_name: 'Fontainhas Labs' }), 'business_none');
+  assert.equal(gstTreatment({ gstin: '30ABCDE1234F1Z5', business_name: 'X' }), 'business_gst');
+  assert.equal(gstTreatment({ gstin: null, business_name: null }), 'consumer');
+});
+
+test('resend: each email only when it makes sense for the order', () => {
+  assert.match(RESENDABLE.invoice.needs({ zoho_invoice_id: null }), /not been created/);
+  assert.equal(RESENDABLE.invoice.needs({ zoho_invoice_id: 'inv_1' }), null);
+  assert.match(RESENDABLE.dispatch.needs({}), /no tracking/);
+  assert.match(RESENDABLE.cancelled.needs({ status: 'paid' }), /not cancelled/);
 });

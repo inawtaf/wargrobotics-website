@@ -437,6 +437,19 @@ await step('resend an email on request', async () => {
   const before = (await emailsTo('asha@example.com')).length;
   assert.equal((await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'dispatch' })).status, 200);
   assert.equal((await emailsTo('asha@example.com')).length, before + 1);
+  // the confirmation, with the invoice attached, to someone else (their accounts team)
+  const r = await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'confirmation', to: 'Accounts@RaoDrones.example' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.to, 'accounts@raodrones.example');
+  const sent = (await emailsTo('accounts@raodrones.example')).pop();
+  assert.match(sent.body.subject, /confirmed/i);
+  assert.equal(sent.body.attachments[0].filename, 'INV-000001.pdf');
+  const inv = await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'invoice' });
+  assert.equal(inv.status, 200);
+  assert.equal((await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'invoice', to: 'not-an-email' })).status, 422);
+  assert.equal((await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'cancelled' })).status, 409, 'not cancelled');
+  const timeline = (await portal('GET', `/orders/${order1.order_number}`)).data.timeline.map(e => e.message).join(' | ');
+  assert.match(timeline, /Emailed to accounts@raodrones\.example: .*\(invoice attached\)/);
 });
 
 let order3;
@@ -634,7 +647,7 @@ await step('setup check: staff only, every service answers, no secret values sho
   const h = r.data;
   const bad = Object.values(h.sections).flat().filter(x => x.ok === false);
   assert.equal(h.ok, true, JSON.stringify(bad));
-  assert.equal(h.sections.database.length, 3);
+  assert.equal(h.sections.database.length, 4);
   assert.ok(h.sections.google.find(x => x.name === 'Client ID and secret').ok);
   assert.match(h.sections.google.find(x => x.name === 'Redirect URI').detail, /\/api\/auth\/google\/callback/);
   assert.match(h.sections.razorpay[0].detail, /TEST mode/);
@@ -747,6 +760,45 @@ await step('portal: customers list shows who has confirmed their email', async (
   const d = (await admin('GET', `/orders/${order1.order_number}`)).data;
   assert.equal(d.account.email_verified, true);
   assert.equal((await asha.call('GET', '/api/admin/customers')).status, 403);
+});
+
+await step('checkout: the same new address typed again is not saved twice', async () => {
+  const b = new Browser();
+  await googleSignIn(b, { sub: 'g-dupe', email: 'dupe@example.org', name: 'Dupe Test' });
+  const addr = { ...KA_ADDR, name: 'Dupe Test' };
+  for (const variant of [addr, { ...addr, city: 'BENGALURU' }, addr]) {
+    await b.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+    const r = await b.call('POST', '/api/orders', { delivery_address: variant, save_delivery: true });
+    assert.equal(r.status, 201, JSON.stringify(r.data));
+  }
+  const book = (await b.call('GET', '/api/account/addresses')).data.addresses;
+  assert.equal(book.length, 1, JSON.stringify(book.map(a => a.city)));
+  assert.equal(book[0].is_default, 1);
+});
+
+await step('company name without a GSTIN: on the review, the email and the Zoho invoice', async () => {
+  const b = new Browser();
+  await googleSignIn(b, { sub: 'g-co', email: 'buyer@fontainhas.example', name: 'Rui Costa' });
+  await b.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+  const body = { delivery_address: { ...ADDR, name: 'Rui Costa' }, gstin: '', business_name: 'Fontainhas Labs' };
+  const rev = await b.call('POST', '/api/orders', { ...body, dry_run: true });
+  assert.equal(rev.data.review.business_name, 'Fontainhas Labs');
+  assert.equal(rev.data.review.gstin, null);
+  const r = await b.call('POST', '/api/orders', body);
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  const o = await payByWebhook(r.data, 'CO');
+  assert.equal(o.business_name, 'Fontainhas Labs');
+  const c = (await (await fetch(MOCK + '/__contacts')).json()).find(x => x.email === 'buyer@fontainhas.example');
+  assert.equal(c.contact_name, 'Fontainhas Labs');
+  assert.equal(c.company_name, 'Fontainhas Labs');
+  assert.equal(c.gst_treatment, 'business_none');
+  assert.equal(c.billing_address.attention, 'Fontainhas Labs');
+  const inv = (await mockCalls()).filter(x => x.path === '/zoho/invoices' && x.method === 'POST').pop();
+  assert.equal(inv.body.gst_treatment, 'business_none');
+  assert.equal(inv.body.gst_no, undefined);
+  const conf = (await mockCalls()).find(x => x.headers.idem === `${o.order_number}-confirmation`);
+  assert.match(conf.body.html, /Billed to/);
+  assert.match(conf.body.html, /Fontainhas Labs/);
 });
 
 await step('sign out everywhere', async () => {

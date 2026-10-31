@@ -99,15 +99,15 @@
         </fieldset>
 
         <fieldset class="addon">
-          <legend class="field-legend">GST invoice for a business</legend>
+          <legend class="field-legend">Buying for a business</legend>
           <label class="addon-toggle">
             <input type="checkbox" id="is-business">
-            <span class="addon-box"><span class="addon-name">Add my GSTIN to the invoice</span>
-              <span class="addon-sub">So your business can claim input tax credit. The GSTIN must be registered in the state of the billing address.</span></span>
+            <span class="addon-box"><span class="addon-name">Put my company on the invoice</span>
+              <span class="addon-sub">Company name, and your GSTIN if you have one so you can claim input tax credit. The GSTIN must be registered in the state of the billing address.</span></span>
           </label>
           <div class="extra" data-addon="business" hidden>
             <div class="field"><label for="business_name">Business name</label><input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150"></div>
-            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="30ABCDE1234F1Z5"></div>
+            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="30ABCDE1234F1Z5"><p class="hint">Optional. Leave it empty if the company isn't GST registered.</p></div>
           </div>
         </fieldset>
         <p class="hint" id="tax-note"></p>
@@ -149,6 +149,6 @@
 
 <script src="site.js?v=20261031e" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-<script src="checkout.js?v=20261031e" defer></script>
+<script src="checkout.js?v=20261031f" defer></script>
 </body>
 </html>

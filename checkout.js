@@ -105,8 +105,8 @@
   function syncGstFromSaved() {
     var id = $('billing-same').checked ? choice() : billChoice();
     var a = saved(id);
-    if (a && a.gstin) {
-      $('is-business').checked = true; $('gstin').value = a.gstin; $('business_name').value = a.business_name || '';
+    if (a && (a.gstin || a.business_name)) {
+      $('is-business').checked = true; $('gstin').value = a.gstin || ''; $('business_name').value = a.business_name || '';
       form.querySelector('[data-addon="business"]').hidden = false;
     }
   }

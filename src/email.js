@@ -119,7 +119,7 @@ function addressBlock(o) {
 // "Billed to", shown when it differs from the delivery address or carries a GSTIN.
 function billingBlock(o) {
   const b = billingOf(o);
-  if (b.same && !o.gstin) return '';
+  if (b.same && !o.gstin && !o.business_name) return '';
   return p('<b>Billed to</b>') + block([o.business_name, b.name, b.address_line1, b.address_line2, `${b.city}, ${stateName(b.state_code)} ${b.pincode}`, o.gstin && `GSTIN ${o.gstin}`]);
 }
 

@@ -225,7 +225,7 @@ export async function route(request, env, ctx, seg, user) {
     case 'deliver': return json(await fulfil.deliver(env, order, opts));
     case 'cancel':  return json(await fulfil.cancel(env, order, opts));
     case 'note':    return json(await fulfil.note(env, order, opts));
-    case 'resend':  return json(await fulfil.resend(env, order, { actor, which: b.which }));
+    case 'resend':  return json(await fulfil.resend(env, order, { actor, which: b.which, to: b.to }));
     case 'retry': {
       await env.DB.prepare('UPDATE orders SET fulfil_attempts = 0 WHERE id = ?').bind(order.id).run();
       return json({ ok: true, result: await orders.fulfil(env, order.id) });

@@ -254,7 +254,7 @@
       }
     }
     if (o.status === 'shipped') add('tpl-deliver');
-    if (o.status !== 'created' && o.status !== 'cancelled') add('tpl-tools');
+    if (o.status !== 'created') add('tpl-tools');
     if (['created', 'paid', 'processing'].indexOf(o.status) >= 0) add('tpl-cancel');
 
     Array.prototype.forEach.call(box.querySelectorAll('form[data-action]'), function (form) {
@@ -274,15 +274,34 @@
         }).catch(function (err) { btn.disabled = false; flash(err.message, true); });
       };
     });
-    var resend = box.querySelector('[data-resend]');
-    if (resend) resend.onchange = function () {
-      if (!resend.value) return;
-      var which = resend.value; resend.value = '';
-      if (!confirm('Send the "' + which + '" email to ' + o.email + ' again?')) return;
-      api('/admin/orders/' + encodeURIComponent(o.order_number) + '/resend', { method: 'POST', body: { which: which } })
-        .then(function () { refreshAll(o.order_number, 'Email sent again.'); })
-        .catch(function (e) { flash(e.message, true); });
-    };
+    var send = box.querySelector('[data-send]');
+    if (send) {
+      // Offer only the emails that make sense for where the order is now.
+      var avail = { confirmation: true, invoice: Boolean(o.zoho_invoice_id), processing: ['processing', 'shipped', 'delivered'].indexOf(o.status) >= 0,
+        dispatch: Boolean(o.tracking_number) && o.status !== 'cancelled', delivered: o.status === 'delivered', cancelled: o.status === 'cancelled' };
+      Array.prototype.forEach.call(send.elements.which.options, function (op) { op.hidden = op.disabled = !avail[op.value]; });
+      var latest = { delivered: 'delivered', shipped: 'dispatch', processing: 'processing', cancelled: 'cancelled' }[o.status] || 'confirmation';
+      send.elements.which.value = latest;
+      send.querySelector('[data-customer]').textContent = 'Customer: ' + o.email;
+      send.elements.to_choice.onchange = function () {
+        var other = send.elements.to_choice.value === 'other';
+        send.querySelector('[data-other]').hidden = !other;
+        if (other) send.elements.to.focus();
+      };
+      send.onsubmit = function (e) {
+        e.preventDefault();
+        var which = send.elements.which.value;
+        var other = send.elements.to_choice.value === 'other';
+        var to = other ? send.elements.to.value.trim() : '';
+        if (other && !to) { flash('Enter the email address to send it to.', true); return; }
+        var label = send.elements.which.options[send.elements.which.selectedIndex].textContent;
+        if (!confirm('Send "' + label + '" to ' + (to || o.email) + '?')) return;
+        var b = send.querySelector('button[type=submit]'); b.disabled = true;
+        api('/admin/orders/' + encodeURIComponent(o.order_number) + '/resend', { method: 'POST', body: { which: which, to: to || undefined } })
+          .then(function (r) { refreshAll(o.order_number, '"' + label + '" sent to ' + r.to + '.'); })
+          .catch(function (err) { b.disabled = false; flash(err.message, true); });
+      };
+    }
     var retry = box.querySelector('[data-retry]');
     if (retry) retry.onclick = function () {
       api('/admin/orders/' + encodeURIComponent(o.order_number) + '/retry', { method: 'POST', body: {} })

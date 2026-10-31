@@ -52,7 +52,7 @@ http.createServer((req, res) => {
     }
     if (p === '/zoho/contacts' && req.method === 'POST') {
       if (state.contacts.some(c => c.contact_name === body.contact_name)) return send(res, 400, { code: 3062, message: 'The contact name already exists. Please specify a different name.' });
-      const c = { contact_id: 'c_' + (state.contacts.length + 1), contact_name: body.contact_name, email: body.contact_persons?.[0]?.email, gst_no: body.gst_no || '', billing_address: body.billing_address, shipping_address: body.shipping_address };
+      const c = { contact_id: 'c_' + (state.contacts.length + 1), contact_name: body.contact_name, email: body.contact_persons?.[0]?.email, gst_no: body.gst_no || '', company_name: body.company_name || '', gst_treatment: body.gst_treatment, billing_address: body.billing_address, shipping_address: body.shipping_address };
       state.contacts.push(c);
       return send(res, 201, { code: 0, contact: { contact_id: c.contact_id } });
     }

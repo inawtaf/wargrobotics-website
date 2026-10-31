@@ -63,9 +63,9 @@ export function validateGst(rawGstin, rawBusiness, stateCode) {
       errors.gstin = `This GSTIN is registered in ${reg ? reg.name : 'another state'}, but the billing address is in ${STATE_BY_CODE[stateCode].name}. Use an address in the state where the GSTIN is registered.`;
     }
     if (!business_name) errors.business_name = 'Enter the business name on the GST registration.';
-  } else {
-    business_name = null;
   }
+  // A business name without a GSTIN is fine: an unregistered business still
+  // gets its name on the invoice (Zoho: "business, not GST registered").
   return { errors, gstin, business_name };
 }
 

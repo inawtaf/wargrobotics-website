@@ -287,6 +287,21 @@ export async function listAddresses(request, env, ctx, user) {
 // address. billing: this is being saved as a billing address (becomes the
 // default billing one if there is none yet).
 export async function saveAddress(env, user, a, { makeDefault = false, makeDefaultBilling = false, billing = false } = {}) {
+  // The same address saved again (e.g. typed in at each checkout) updates the
+  // saved one instead of adding a copy.
+  const same = await env.DB.prepare(`SELECT id, is_default, is_default_billing FROM addresses WHERE user_id = ?
+      AND lower(name) = lower(?) AND phone = ? AND lower(address_line1) = lower(?) AND lower(IFNULL(address_line2,'')) = lower(?)
+      AND lower(city) = lower(?) AND state_code = ? AND pincode = ? ORDER BY id LIMIT 1`)
+    .bind(user.id, a.name, a.phone, a.address_line1, a.address_line2 || '', a.city, a.state_code, a.pincode).first();
+  if (same) {
+    if (a.gstin || a.business_name) {
+      await env.DB.prepare('UPDATE addresses SET gstin = COALESCE(?, gstin), business_name = COALESCE(?, business_name) WHERE id = ?').bind(a.gstin || null, a.business_name || null, same.id).run();
+    }
+    if (makeDefault) await setDefault(env, user, same.id);
+    const nb = (await env.DB.prepare('SELECT COALESCE(SUM(is_default_billing),0) AS nb FROM addresses WHERE user_id = ?').bind(user.id).first()).nb;
+    if (makeDefaultBilling || (billing && nb === 0)) await setDefault(env, user, same.id, 'is_default_billing');
+    return env.DB.prepare(`SELECT ${addressCols} FROM addresses WHERE id = ?`).bind(same.id).first();
+  }
   const count = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(is_default_billing),0) AS nb FROM addresses WHERE user_id = ?').bind(user.id).first();
   if (count.n >= MAX_ADDRESSES) throw httpError(409, `You can save up to ${MAX_ADDRESSES} addresses. Delete one first.`);
   const first = count.n === 0;

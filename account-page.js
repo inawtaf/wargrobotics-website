@@ -34,7 +34,7 @@
       left.appendChild(el('h2', 'field-legend', 'Delivering to'));
       left.appendChild(el('p', 't-body', [o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
       var b = o.billing;
-      if (b && (!b.same || o.gstin)) {
+      if (b && (!b.same || o.gstin || o.business_name)) {
         left.appendChild(el('h2', 'field-legend', 'Billed to'));
         left.appendChild(el('p', 't-body', [o.business_name, b.same ? 'Same as delivery address' : [b.name, b.address_line1, b.address_line2, b.city + ', ' + b.state_code + ' ' + b.pincode].filter(Boolean).join(', '), o.gstin && 'GSTIN ' + o.gstin].filter(Boolean).join(' · ')));
       }
