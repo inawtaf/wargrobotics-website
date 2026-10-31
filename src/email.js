@@ -102,8 +102,10 @@ function orderTable(o) {
     ? row('CGST 9%', inr(Math.floor(o.gst_paise / 2))) + row('SGST 9%', inr(o.gst_paise - Math.floor(o.gst_paise / 2)))
     : row('IGST 18%', inr(o.gst_paise));
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;border-top:1px solid #e6e7eb;border-bottom:1px solid #e6e7eb">
-${(o.items || []).map(i => row(`${h(i.product_name)} × ${i.quantity}`, inr(i.subtotal_paise))).join('')}
-${row('Subtotal', inr(o.subtotal_paise))}
+${(o.items || []).map(i => row(`${h(i.product_name)} × ${i.quantity}`, inr(i.unit_price_paise ? i.unit_price_paise * i.quantity : i.subtotal_paise))).join('')}
+${o.combo_discount_paise ? row('Ghost + Greywind combo', '− ' + inr(o.combo_discount_paise)) : ''}
+${o.coupon_discount_paise ? row(`Coupon ${h(o.coupon_code || '')}`, '− ' + inr(o.coupon_discount_paise)) : ''}
+${row(o.combo_discount_paise || o.coupon_discount_paise ? 'Subtotal after discounts' : 'Subtotal', inr(o.subtotal_paise))}
 ${tax}
 ${row('Total paid', inr(o.total_paise), true)}
 </table>`;
@@ -119,7 +121,7 @@ function addressBlock(o) {
 // "Billed to", shown when it differs from the delivery address or carries a GSTIN.
 function billingBlock(o) {
   const b = billingOf(o);
-  if (b.same && !o.gstin) return '';
+  if (b.same && !o.gstin && !o.business_name) return '';
   return p('<b>Billed to</b>') + block([o.business_name, b.name, b.address_line1, b.address_line2, `${b.city}, ${stateName(b.state_code)} ${b.pincode}`, o.gstin && `GSTIN ${o.gstin}`]);
 }
 
@@ -209,7 +211,9 @@ Support: https://wargrobotics.com/support`;
 export function teamEmail(env, o) {
   const lines = [
     `Order ${o.order_number} paid: ${inr(o.total_paise)}`,
-    ...(o.items || []).map(i => `${i.product_name} x ${i.quantity} (${i.price_type} price)`),
+    ...(o.items || []).map(i => `${i.product_name} x ${i.quantity}${i.discount_label ? ` (${i.discount_label})` : ''}`),
+    ...(o.combo_discount_paise ? [`Combo discount: ${inr(o.combo_discount_paise)}`] : []),
+    ...(o.coupon_discount_paise ? [`Coupon ${o.coupon_code}: ${inr(o.coupon_discount_paise)}`] : []),
     '',
     `${o.customer_name}${o.business_name ? ` / ${o.business_name} (${o.gstin})` : ''}`,
     `${o.email} · ${o.phone}`,

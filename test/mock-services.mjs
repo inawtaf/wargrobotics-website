@@ -52,7 +52,7 @@ http.createServer((req, res) => {
     }
     if (p === '/zoho/contacts' && req.method === 'POST') {
       if (state.contacts.some(c => c.contact_name === body.contact_name)) return send(res, 400, { code: 3062, message: 'The contact name already exists. Please specify a different name.' });
-      const c = { contact_id: 'c_' + (state.contacts.length + 1), contact_name: body.contact_name, email: body.contact_persons?.[0]?.email, gst_no: body.gst_no || '', billing_address: body.billing_address, shipping_address: body.shipping_address };
+      const c = { contact_id: 'c_' + (state.contacts.length + 1), contact_name: body.contact_name, email: body.contact_persons?.[0]?.email, gst_no: body.gst_no || '', company_name: body.company_name || '', gst_treatment: body.gst_treatment, billing_address: body.billing_address, shipping_address: body.shipping_address };
       state.contacts.push(c);
       return send(res, 201, { code: 0, contact: { contact_id: c.contact_id } });
     }
@@ -70,8 +70,11 @@ http.createServer((req, res) => {
     }
     if (p === '/zoho/invoices' && req.method === 'POST') {
       if (state.failZohoInvoices) return send(res, 400, { code: 1001, message: 'Simulated Zoho outage' });
-      const li = body.line_items[0];
-      const total = Math.round(li.rate * li.quantity * 118) / 100;
+      // Like Zoho: per line, (rate × qty − discount amount) + 18% tax, rounded to paise.
+      const total = body.line_items.reduce((t, li) => {
+        const net = Math.round((li.rate * li.quantity - (Number(li.discount) || 0)) * 100);
+        return t + net + Math.round(net * 0.18);
+      }, 0) / 100;
       const inv = { invoice_id: 'inv_' + state.nextInvoice, invoice_number: 'INV-' + String(state.nextInvoice++).padStart(6, '0'), reference_number: body.reference_number, total, status: 'draft' };
       state.invoices.push(inv);
       return send(res, 201, { code: 0, invoice: inv });
