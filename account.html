@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="analytics.js?v=20261018c"></script>
+<title>Your account – Warg Robotics</title>
+<meta name="robots" content="noindex">
+
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0D">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20261029a">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+<div class="masthead masthead-flat on-dark">
+  <nav class="nav">
+    <div class="wrap">
+      <a class="lockup" href="/" aria-label="Warg Robotics home">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+      </a>
+      <div class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#products">Products</a>
+        <a href="/#tech">How it works</a>
+        <a href="/support">Support</a>
+      </div>
+    </div>
+  </nav>
+</div>
+<nav class="crumb" aria-label="Breadcrumb">
+  <div class="wrap"><a href="/">Home</a><span aria-hidden="true">/</span><span aria-current="page">Account</span></div>
+</nav>
+
+<main id="main">
+  <section class="sec form-hero">
+    <div class="wrap">
+      <h1 class="t-section" id="acct-h">Your account</h1>
+      <p class="t-lede" id="acct-lede">Orders, tracking, invoices, addresses and service requests.</p>
+    </div>
+  </section>
+  <section class="sec-sm">
+    <div class="wrap">
+      <p class="banner" id="acct-banner" hidden></p>
+      <nav class="acct-tabs" aria-label="Account sections">
+        <a href="#orders" data-tab="orders">Orders</a>
+        <a href="#service" data-tab="service">Service</a>
+        <a href="#addresses" data-tab="addresses">Addresses</a>
+        <a href="#profile" data-tab="profile">Profile</a>
+      </nav>
+
+      <div data-panel="orders">
+        <div id="orders-list" class="cards"></div>
+        <div id="order-detail" hidden></div>
+      </div>
+
+      <div data-panel="service" hidden>
+        <div class="checkout">
+          <div><div id="service-list" class="cards"></div></div>
+          <form class="form summary" id="service-form" novalidate>
+            <h2 class="field-legend">New service request</h2>
+            <div class="field"><label for="sv-order">Order</label><select id="sv-order" name="order_number"><option value="">Not about an order</option></select></div>
+            <div class="field"><label for="sv-kind">What do you need?</label>
+              <select id="sv-kind" name="kind">
+                <option value="">Choose&hellip;</option><option value="repair">Repair</option><option value="warranty">Warranty claim</option>
+                <option value="return">Return</option><option value="setup">Setup help</option><option value="other">Something else</option>
+              </select></div>
+            <div class="field"><label for="sv-subject">Title</label><input id="sv-subject" name="subject" maxlength="120" placeholder="No video after crash"></div>
+            <div class="field"><label for="sv-message">Details</label><textarea id="sv-message" name="message" rows="5" maxlength="4000"></textarea>
+              <p class="hint">What happened, and what you have tried. You can reply to our email with photos.</p></div>
+            <div class="form-foot"><button class="btn btn-solid" type="submit">Send request</button></div>
+            <p class="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+
+      <div data-panel="addresses" hidden>
+        <div class="checkout">
+          <div><div id="address-list" class="cards"></div></div>
+          <form class="form summary" id="address-form" novalidate>
+            <h2 class="field-legend" id="af-h">Add an address</h2>
+            <input type="hidden" name="id">
+            <div class="field"><label for="af-label">Label</label><input id="af-label" name="label" maxlength="30" placeholder="Home, Office"></div>
+            <div class="field"><label for="af-name">Receiver's name</label><input id="af-name" name="name" maxlength="100" autocomplete="name"></div>
+            <div class="field"><label for="af-phone">Mobile number</label><input id="af-phone" name="phone" type="tel" autocomplete="tel"></div>
+            <div class="field"><label for="af-l1">House, building, street</label><input id="af-l1" name="address_line1" maxlength="150" autocomplete="address-line1"></div>
+            <div class="field"><label for="af-l2">Area, landmark</label><input id="af-l2" name="address_line2" maxlength="150" autocomplete="address-line2"></div>
+            <div class="field"><label for="af-city">City or town</label><input id="af-city" name="city" maxlength="80" autocomplete="address-level2"></div>
+            <div class="field"><label for="af-pin">Pincode</label><input id="af-pin" name="pincode" maxlength="6" inputmode="numeric" autocomplete="postal-code"></div>
+            <div class="field"><label for="af-state">State</label><select id="af-state" name="state_code"><option value="">Choose&hellip;</option></select></div>
+            <div class="field"><label for="af-biz">Business name (for GST invoice)</label><input id="af-biz" name="business_name" maxlength="150"></div>
+            <div class="field"><label for="af-gstin">GSTIN</label><input id="af-gstin" name="gstin" maxlength="15" autocapitalize="characters"><p class="hint">Optional, for business purchases.</p></div>
+            <label class="check"><input type="checkbox" name="is_default" value="1"> Use as my default address</label>
+            <div class="form-foot"><button class="btn btn-solid" type="submit">Save address</button><button class="link-btn" type="button" id="af-cancel" hidden>Cancel</button></div>
+            <p class="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+
+      <div data-panel="profile" hidden>
+        <div class="checkout">
+          <div>
+            <form class="form" id="profile-form" novalidate>
+              <h2 class="field-legend">Your details</h2>
+              <div class="field"><label for="pf-name">Name</label><input id="pf-name" name="name" maxlength="100" autocomplete="name"></div>
+              <div class="field"><label for="pf-email">Email</label><input id="pf-email" type="email" disabled><p class="hint" id="pf-email-hint"></p></div>
+              <div class="field"><label for="pf-phone">Mobile number</label><input id="pf-phone" name="phone" type="tel" autocomplete="tel"></div>
+              <div class="form-foot"><button class="btn btn-solid" type="submit">Save</button></div>
+              <p class="form-status" role="status" aria-live="polite"></p>
+            </form>
+            <form class="form" id="password-form" novalidate style="margin-top:36px">
+              <h2 class="field-legend" id="pw-h">Change password</h2>
+              <div class="field" id="pw-current"><label for="pw-cur">Current password</label><input id="pw-cur" name="current_password" type="password" autocomplete="current-password"></div>
+              <div class="field"><label for="pw-new">New password</label><input id="pw-new" name="new_password" type="password" autocomplete="new-password"><p class="hint">At least 10 characters. Other devices will be signed out.</p></div>
+              <div class="form-foot"><button class="btn btn-solid" type="submit">Save password</button></div>
+              <p class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+          <div class="summary">
+            <h2 class="field-legend">Google sign-in</h2>
+            <p class="t-body" id="g-state"></p>
+            <div class="card-actions"><a class="btn btn-line" id="g-link" href="/api/auth/google?mode=link&next=/account%23profile" hidden>Link Google account</a>
+              <button class="btn btn-line" id="g-unlink" type="button" hidden>Unlink Google</button></div>
+            <h2 class="field-legend" style="margin-top:28px">Sign out</h2>
+            <div class="card-actions"><button class="btn btn-line" id="signout" type="button">Sign out</button>
+              <button class="btn btn-line" id="signout-all" type="button">Sign out everywhere</button></div>
+            <p class="form-status" id="side-status" role="status"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-base">
+      <span>&copy; 2026 Warg Robotics &middot; Indiranagar, Bengaluru &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="site.js?v=20261029a" defer></script>
+<script src="account-page.js?v=20261029a" defer></script>
+</body>
+</html>

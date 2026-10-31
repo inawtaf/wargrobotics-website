@@ -6,6 +6,10 @@
 # gets, so a single dead edge IP shows up as "flaky" rather than as a fault.
 # Probing every address separately says exactly which one is down.
 #
+# Hosted as a Cloudflare Worker (static assets). Its workers.dev address is
+# the deployment itself, bypassing the custom domain: if it is up while
+# wargrobotics.com is down, the fault is in DNS or the custom-domain setup.
+#
 # Output: one line per probe to stdout, a Markdown table to $GITHUB_STEP_SUMMARY
 # (when set), and exit code 1 if any probe failed. Failed probe lines are also
 # written to $FAIL_FILE (default: failures.txt) for the workflow to report.
@@ -15,7 +19,9 @@ set -u
 HOSTS=(
   "wargrobotics.com"
   "www.wargrobotics.com"
-  "wargrobotics-website.vercel.app"
+  # Uncomment with the Worker's own address from Workers & Pages > project >
+  # Settings > Domains & Routes (only if its workers.dev route is enabled):
+  # "wargrobotics-website.YOUR-SUBDOMAIN.workers.dev"
 )
 APEX="wargrobotics.com"
 PATH_TO_CHECK="/"

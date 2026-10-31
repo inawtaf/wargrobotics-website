@@ -1,0 +1,19 @@
+{
+  "name": "wargrobotics-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "wrangler dev",
+    "db:migrate": "wrangler d1 migrations apply wargrobotics-orders --remote",
+    "db:migrate:local": "wrangler d1 migrations apply wargrobotics-orders --local",
+    "db:migrate:preview": "node scripts/migrate-preview.mjs",
+    "db:whoami": "wrangler whoami && wrangler d1 list"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

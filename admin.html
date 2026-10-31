@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order portal – Warg Robotics</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="warg.css?v=20261029a">
+<link rel="stylesheet" href="portal.css?v=20261029a">
+</head>
+<body class="portal">
+
+<header class="p-top">
+  <div class="p-wrap p-top-in">
+    <a class="lockup" href="/" aria-label="Warg Robotics site"><img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792"></a>
+    <span class="p-title">Order portal</span>
+    <span class="p-who" id="who"></span>
+  </div>
+</header>
+
+<main class="p-wrap" id="main">
+  <div id="gate" class="p-gate" hidden></div>
+
+  <div id="app" hidden>
+    <section class="p-tiles" aria-label="Summary">
+      <button class="p-tile" data-go="paid"><span class="p-v" id="t-paid">–</span><span class="p-k">To process</span><span class="p-s" id="t-late"></span></button>
+      <button class="p-tile" data-go="processing"><span class="p-v" id="t-processing">–</span><span class="p-k">Processing</span></button>
+      <button class="p-tile" data-go="shipped"><span class="p-v" id="t-shipped">–</span><span class="p-k">Shipped</span><span class="p-s" id="t-overdue"></span></button>
+      <button class="p-tile" data-go="attention"><span class="p-v" id="t-attention">–</span><span class="p-k">Needs attention</span><span class="p-s">invoice or email failed</span></button>
+      <button class="p-tile" data-tab="service"><span class="p-v" id="t-service">–</span><span class="p-k">Open service</span></button>
+      <div class="p-tile p-tile-static"><span class="p-v" id="t-revenue">–</span><span class="p-k">Paid this month</span><span class="p-s" id="t-month"></span></div>
+    </section>
+
+    <nav class="p-tabs" role="tablist">
+      <button role="tab" data-tab="orders" aria-selected="true">Orders</button>
+      <button role="tab" data-tab="service" aria-selected="false">Service requests</button>
+    </nav>
+
+    <!-- ================= orders ================= -->
+    <section data-panel="orders">
+      <div class="p-bar">
+        <div class="p-chips" role="group" aria-label="Filter by status">
+          <button data-status="open" aria-pressed="true">Open</button>
+          <button data-status="paid" aria-pressed="false">To process</button>
+          <button data-status="processing" aria-pressed="false">Processing</button>
+          <button data-status="shipped" aria-pressed="false">Shipped</button>
+          <button data-status="delivered" aria-pressed="false">Delivered</button>
+          <button data-status="cancelled" aria-pressed="false">Cancelled</button>
+          <button data-status="" aria-pressed="false">All paid</button>
+          <button data-status="unpaid" aria-pressed="false">Unpaid</button>
+        </div>
+        <form class="p-search" id="search">
+          <input type="search" id="q" placeholder="Order, name, email, phone, AWB…" aria-label="Search orders">
+          <input type="date" id="from" aria-label="From date">
+          <input type="date" id="to" aria-label="To date">
+          <button class="btn btn-line" type="submit">Search</button>
+          <a class="btn btn-line" id="csv" href="#">Export CSV</a>
+        </form>
+      </div>
+
+      <div class="p-split">
+        <div class="p-list">
+          <table class="p-table" id="orders">
+            <thead><tr><th>Order</th><th>Placed</th><th>Customer</th><th>Items</th><th class="num">Total</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p class="p-empty" id="orders-empty" hidden>No orders match.</p>
+          <div class="p-more"><button class="btn btn-line" id="more" hidden>Load more</button></div>
+        </div>
+
+        <aside class="p-detail" id="detail" hidden aria-live="polite">
+          <div class="p-d-head">
+            <div>
+              <h2 id="d-number"></h2>
+              <p class="p-muted" id="d-sub"></p>
+            </div>
+            <button class="p-x" id="d-close" aria-label="Close">&times;</button>
+          </div>
+          <p class="p-flash" id="flash" role="status" hidden></p>
+
+          <div class="p-actions" id="d-actions"></div>
+
+          <div class="p-cols">
+            <div class="p-block">
+              <h3>Customer</h3>
+              <pre id="d-customer"></pre>
+              <button class="link-btn" id="copy-addr" type="button">Copy shipping address</button>
+              <p class="p-muted" id="d-repeat"></p>
+            </div>
+            <div class="p-block">
+              <h3>Items</h3>
+              <table class="p-mini" id="d-items"></table>
+            </div>
+            <div class="p-block">
+              <h3>Payment and invoice</h3>
+              <pre id="d-pay"></pre>
+              <p class="p-warn" id="d-warn"></p>
+            </div>
+          </div>
+
+          <div class="p-block">
+            <h3>Timeline</h3>
+            <ol class="p-timeline" id="d-timeline"></ol>
+            <form class="p-note" id="note-form">
+              <input id="note" placeholder="Add an internal note (not sent to the customer)" maxlength="1000">
+              <button class="btn btn-line" type="submit">Add note</button>
+            </form>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= service ================= -->
+    <section data-panel="service" hidden>
+      <div class="p-bar">
+        <div class="p-chips" role="group" aria-label="Service filter">
+          <button data-sstatus="" aria-pressed="true">Open + in progress</button>
+          <button data-sstatus="resolved" aria-pressed="false">Resolved</button>
+          <button data-sstatus="closed" aria-pressed="false">Closed</button>
+        </div>
+      </div>
+      <div id="service" class="p-service"></div>
+    </section>
+  </div>
+</main>
+
+<!-- action forms, cloned into the detail panel -->
+<template id="tpl-process">
+  <form class="p-form" data-action="process">
+    <h3>Start processing</h3>
+    <p class="p-muted">Tells the customer their order is being tested and packed.</p>
+    <textarea name="message" rows="2" maxlength="1000" placeholder="Optional message to the customer"></textarea>
+    <label class="check"><input type="checkbox" name="notify" checked> Email the customer</label>
+    <button class="btn btn-solid" type="submit">Mark as processing</button>
+  </form>
+</template>
+<template id="tpl-ship">
+  <form class="p-form" data-action="ship">
+    <h3 data-ship-title>Ship</h3>
+    <div class="p-grid">
+      <label>Courier<select name="courier" required></select></label>
+      <label>Tracking number (AWB)<input name="tracking_number" required maxlength="60"></label>
+      <label class="p-wide">Tracking link<input name="tracking_url" type="url" placeholder="https://…" maxlength="300"></label>
+      <label>Expected delivery<input name="expected_delivery" type="date"></label>
+    </div>
+    <textarea name="message" rows="2" maxlength="1000" placeholder="Optional message to the customer"></textarea>
+    <label class="check"><input type="checkbox" name="notify" checked> Email the customer tracking and delivery instructions</label>
+    <button class="btn btn-solid" type="submit">Mark as shipped</button>
+  </form>
+</template>
+<template id="tpl-deliver">
+  <form class="p-form" data-action="deliver">
+    <h3>Delivered</h3>
+    <textarea name="message" rows="2" maxlength="1000" placeholder="Optional message to the customer"></textarea>
+    <label class="check"><input type="checkbox" name="notify" checked> Email the customer</label>
+    <button class="btn btn-solid" type="submit">Mark as delivered</button>
+  </form>
+</template>
+<template id="tpl-cancel">
+  <details class="p-danger">
+    <summary>Cancel order</summary>
+    <form class="p-form" data-action="cancel">
+      <p class="p-muted">This does not refund the money. After cancelling, refund the payment in the Razorpay dashboard and issue a credit note in Zoho Books.</p>
+      <textarea name="reason" rows="2" maxlength="1000" required placeholder="Reason (the customer sees this)"></textarea>
+      <label class="check"><input type="checkbox" name="notify" checked> Email the customer</label>
+      <button class="btn btn-line" type="submit">Cancel this order</button>
+    </form>
+  </details>
+</template>
+<template id="tpl-tools">
+  <div class="p-tools">
+    <select data-resend aria-label="Email to resend">
+      <option value="">Resend an email…</option>
+      <option value="confirmation">Order confirmation</option>
+      <option value="processing">Processing</option>
+      <option value="dispatch">Shipped / tracking</option>
+      <option value="delivered">Delivered</option>
+    </select>
+    <button class="btn btn-line" type="button" data-retry>Retry invoice and emails</button>
+  </div>
+</template>
+
+<script src="site.js?v=20261029a" defer></script>
+<script src="portal.js?v=20261029a" defer></script>
+</body>
+</html>

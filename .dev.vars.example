@@ -1,0 +1,26 @@
+# Copy to .dev.vars for local testing. Points every integration at test/mock-services.mjs. Never put real keys here.
+RAZORPAY_KEY_ID=rzp_test_local
+RAZORPAY_KEY_SECRET=rzp_test_secret
+RAZORPAY_WEBHOOK_SECRET=whsec_test
+RAZORPAY_API_BASE=http://127.0.0.1:8899/rzp
+ZOHO_API_BASE=http://127.0.0.1:8899/zoho
+ZOHO_ACCOUNTS_BASE=http://127.0.0.1:8899/zaccounts
+ZOHO_CLIENT_ID=x
+ZOHO_CLIENT_SECRET=x
+ZOHO_REFRESH_TOKEN=x
+ZOHO_ORG_ID=org_1
+ZOHO_TAX_ID_INTRA=tax_intra
+ZOHO_TAX_ID_INTER=tax_inter
+ZOHO_ITEM_ID_GHOST=item_ghost
+ZOHO_ITEM_ID_GREYWIND=item_greywind
+RESEND_API_KEY=re_test
+RESEND_API_BASE=http://127.0.0.1:8899/resend
+ORDER_LINK_SECRET=local-order-link-secret
+ADMIN_TOKEN=admin-token-for-local-testing-only
+ORDER_NOTIFY_EMAIL=team@example.com
+GOOGLE_CLIENT_ID=google-client.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=google-secret
+GOOGLE_TOKEN_URL=http://127.0.0.1:8899/google/token
+GOOGLE_AUTH_URL=http://127.0.0.1:8899/google/auth
+AUTH_PEPPER=local-pepper
+ADMIN_EMAILS=staff@example.com
