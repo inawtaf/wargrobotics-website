@@ -3,7 +3,8 @@
 // header also works, for scripts.
 
 import { json, readJson, safeEqual } from './util.js';
-import { STATE_BY_CODE } from './config.js';
+import { STATE_BY_CODE, PRODUCTS } from './config.js';
+import { quoteCart } from './pricing.js';
 import * as orders from './orders.js';
 import * as fulfil from './fulfilment.js';
 import * as account from './account.js';
@@ -55,10 +56,11 @@ export async function summary(env) {
   const overdue = await env.DB.prepare(`SELECT COUNT(*) AS n FROM orders WHERE status = 'shipped' AND expected_delivery IS NOT NULL AND expected_delivery < date('now')`).first();
   const problems = await env.DB.prepare(`SELECT COUNT(*) AS n FROM orders WHERE status != 'created' AND status != 'cancelled' AND (invoice_error IS NOT NULL AND zoho_invoice_id IS NULL OR email_error IS NOT NULL AND confirmation_sent_at IS NULL)`).first();
   const service = await env.DB.prepare("SELECT COUNT(*) AS n FROM service_requests WHERE status IN ('open','in_progress')").first();
+  const openCarts = await env.DB.prepare('SELECT COUNT(DISTINCT user_id) AS n FROM cart_items').first();
   return json({
     to_process: by.paid || 0, processing: by.processing || 0, shipped: by.shipped || 0, delivered: by.delivered || 0,
     cancelled: by.cancelled || 0, unpaid: by.created || 0,
-    waiting_over_2_days: late.n, past_expected_delivery: overdue.n, needs_attention: problems.n, open_service: service.n,
+    waiting_over_2_days: late.n, past_expected_delivery: overdue.n, needs_attention: problems.n, open_service: service.n, open_carts: openCarts.n,
     this_month: { orders: month.n, revenue_paise: month.paise },
     couriers: fulfil.COURIERS,
   });
@@ -124,6 +126,43 @@ export async function detail(env, order) {
   return json({ order: { ...order, items }, timeline, payment_events: payments.results, service_requests: service.results, customer_other_orders: others });
 }
 
+// ---------------------------------------------------------------- carts
+// Signed-in customers with something in their cart: who is close to buying and
+// what stops them. (Signed-out carts live only in the visitor's browser.)
+// Stage: email not confirmed (can't pay yet) / started checkout (unpaid order
+// after the last cart change) / in cart.
+export async function carts(request, env) {
+  const url = new URL(request.url);
+  const days = Math.min(365, Math.max(0, Number(url.searchParams.get('days')) || 0));
+  const { results } = await env.DB.prepare(`SELECT u.id, u.name, u.email, u.phone, u.email_verified_at, u.created_at AS signed_up_at,
+      MAX(c.added_at) AS last_activity, SUM(c.quantity) AS units, group_concat(c.sku || ':' || c.quantity) AS lines,
+      (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id AND o.status IN ('paid','processing','shipped','delivered')) AS paid_orders,
+      (SELECT MAX(o.created_at) FROM orders o WHERE o.user_id = u.id AND o.status = 'created') AS last_unpaid_checkout
+    FROM cart_items c JOIN users u ON u.id = c.user_id
+    ${days ? "WHERE c.added_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now', ?)" : ''}
+    GROUP BY u.id ORDER BY last_activity DESC LIMIT 500`).bind(...(days ? [`-${days} days`] : [])).all();
+  const sold = await orders.soldAtOffer(env);
+  const rows = results.map(r => {
+    const items = String(r.lines || '').split(',').map(x => x.split(':')).filter(([sku]) => PRODUCTS[sku]).map(([sku, q]) => ({ sku, quantity: Number(q) }));
+    const q = items.length ? quoteCart({ items, soldAtOffer: sold, buyerState: null, sellerState: env.SELLER_STATE || 'GA' }) : null;
+    const stage = !r.email_verified_at ? 'unverified'
+      : r.last_unpaid_checkout && r.last_unpaid_checkout >= r.last_activity ? 'checkout' : 'cart';
+    return {
+      name: r.name, email: r.email, phone: r.phone, signed_up_at: r.signed_up_at, last_activity: r.last_activity,
+      units: r.units, summary: q ? q.summary : '', subtotal_paise: q ? q.subtotalPaise : 0, total_paise: q ? q.totalPaise : 0,
+      paid_orders: r.paid_orders, stage,
+    };
+  });
+  const sum = (k, f = () => true) => rows.filter(f).reduce((s, r) => s + (k ? r[k] : 1), 0);
+  return json({
+    totals: {
+      carts: rows.length, units: sum('units'), subtotal_paise: sum('subtotal_paise'),
+      unverified: sum(null, r => r.stage === 'unverified'), checkout: sum(null, r => r.stage === 'checkout'), cart: sum(null, r => r.stage === 'cart'),
+    },
+    carts: rows,
+  });
+}
+
 // ---------------------------------------------------------------- routing
 
 export async function route(request, env, ctx, seg, user) {
@@ -134,6 +173,7 @@ export async function route(request, env, ctx, seg, user) {
 
   if (kind === 'me' && m === 'GET') return json({ actor });
   if (kind === 'health' && m === 'GET') return health.health(env);
+  if (kind === 'carts' && m === 'GET') return carts(request, env);
   if (kind === 'test-email' && m === 'POST') return health.testEmail(request, env, actor);
   if (kind === 'summary' && m === 'GET') return summary(env);
   if (kind === 'orders.csv' && m === 'GET') return csv(request, env);
