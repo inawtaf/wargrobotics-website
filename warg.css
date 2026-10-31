@@ -1389,6 +1389,8 @@ sup.fn a:hover{ text-decoration:underline; }
 .pill{ display:inline-block; padding:3px 9px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; background:var(--s-sunk); color:var(--ink-2); }
 .pill.paid,.pill.open,.pill.in_progress{ background:var(--accent-100); color:var(--accent-900); }
 .pill.shipped,.pill.delivered,.pill.resolved{ background:#E3F4E8; color:#1D6B36; }
+.pill.warn{ background:var(--amber-050, #fdf3e1); color:var(--amber-700, #8a5a00); }
+.field label .pill{ margin-left:6px; vertical-align:1px; }
 .empty{ padding:28px; text-align:center; color:var(--ink-3); background:var(--s-raised); border:1px dashed var(--line-2); }
 
 .cart-line{ display:grid; grid-template-columns:1fr auto auto; gap:16px; align-items:center; }
@@ -1418,3 +1420,22 @@ sup.fn a:hover{ text-decoration:underline; }
 .pill.cancelled,.pill.refunded{ background:#F3E3E3; color:#8A2C2C; }
 /* Header "Sign out": on small phones it lives on the account page only. */
 @media (max-width:520px){ .nav-signout{ display:none; } }
+/* Account + cart in the sticky bar that replaces the header once it has scrolled away. */
+.subnav-acct{ display:flex; align-items:center; gap:18px; flex:none; }
+.subnav-acct a{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--ink); text-decoration:none; }
+.subnav-acct a:hover{ color:var(--accent-700); }
+.subnav-site .who{ text-decoration:none; }
+.subnav-site nav{ margin-left:auto; }
+@media (max-width:860px){ .subnav-acct{ margin-left:auto; } .subnav .subnav-acct ~ .btn{ margin-left:0; } }
+@media (max-width:520px){ .subnav-acct{ gap:12px; } .subnav-acct .nav-signout{ display:none; } }
+/* checkout review step */
+.review{ border:1px solid var(--line-2); background:var(--s-raised); padding:22px 24px; margin-bottom:20px; }
+.review h2{ margin:0 0 14px; }
+.review-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px 28px; }
+@media (max-width:640px){ .review-grid{ grid-template-columns:1fr; } }
+.review h3{ margin:0 0 6px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); font-weight:500; }
+.review p{ margin:0; font-size:14.5px; line-height:1.6; }
+.review table{ width:100%; border-collapse:collapse; margin-top:18px; font-size:14.5px; }
+.review td{ padding:7px 0; border-bottom:1px solid var(--line-2); }
+.review td:last-child{ text-align:right; white-space:nowrap; }
+.review tr.total td{ font-weight:700; border-bottom:0; }

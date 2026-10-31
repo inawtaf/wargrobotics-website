@@ -1,4 +1,4 @@
-import { PRODUCTS, MAX_QUANTITY, STATE_BY_CODE } from './config.js';
+import { PRODUCTS, MAX_QUANTITY, STATE_BY_CODE, pincodeFitsState, statesForPincode } from './config.js';
 
 export const clean = (v, max = 200) =>
   typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
@@ -37,8 +37,12 @@ export function validateAddress(b, { phoneRequired = true } = {}) {
   const state_code = clean(b.state_code, 2).toUpperCase();
   if (!STATE_BY_CODE[state_code]) errors.state_code = 'Choose the state.';
 
-  const pincode = clean(b.pincode, 6);
-  if (!/^[1-9][0-9]{5}$/.test(pincode)) errors.pincode = 'Enter the 6-digit pincode.';
+  const pincode = clean(b.pincode, 10).replace(/\s/g, '');
+  if (!/^[1-8][0-9]{5}$/.test(pincode)) errors.pincode = 'Enter a valid 6-digit Indian pincode.';
+  else if (STATE_BY_CODE[state_code] && !pincodeFitsState(pincode, state_code)) {
+    const likely = statesForPincode(pincode).map(c => STATE_BY_CODE[c]?.name).filter(Boolean);
+    errors.pincode = `${pincode} is not a ${STATE_BY_CODE[state_code].name} pincode${likely.length ? ` (it looks like ${likely.join(' or ')})` : ''}. Check the pincode and the state.`;
+  }
 
   const gst = validateGst(b.gstin, b.business_name, state_code);
   Object.assign(errors, gst.errors);
@@ -128,5 +132,6 @@ export function validateRegistration(b) {
   if (!email) errors.email = 'Enter a valid email address.';
   const pw = passwordProblem(b.password, email);
   if (pw) errors.password = pw;
+  else if (b.password_confirm !== undefined && b.password_confirm !== b.password) errors.password_confirm = 'The two passwords do not match.';
   return result(errors, { name, email, password: b.password });
 }

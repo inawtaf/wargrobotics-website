@@ -62,10 +62,12 @@ async function quoteHandler(request, env) {
   return json({ quote: await orders.quoteItems(env, v.value, String(b.state_code || '').toUpperCase()) });
 }
 
-// Order page opened from an email link: no full address or phone on this view.
-async function orderByToken(env, n, token) {
+// Order page opened from an email link. The link alone isn't enough: the
+// buyer must be signed in to the account that placed the order.
+async function orderByToken(env, n, token, user) {
+  if (!user) return json({ error: 'Please sign in to see this order.', code: 'signin' }, 401);
   const order = await orders.getByNumber(env, n);
-  if (!order || !token || !safeEqual(await orderToken(env, order.order_number), token)) return json({ error: 'not found' }, 404);
+  if (!order || order.user_id !== user.id || !token || !safeEqual(await orderToken(env, order.order_number), token)) return json({ error: 'not found' }, 404);
   const { phone, address_line1, address_line2, gstin, billing, ...view } = orders.publicView(order, await orders.getItems(env, order.id));
   return json({ order: { ...view, timeline: await orderEvents(env, order.id, { visibleOnly: true }) } });
 }
@@ -125,6 +127,12 @@ async function createOrderHandler(request, env, ctx, user) {
   const gstSource = 'gstin' in b ? b : (bill?.value || del.value);
   const c = checkoutAddresses({ delivery: del.value, billing: bill?.value, billingSame, gstin: gstSource.gstin, businessName: gstSource.business_name });
   if (!c.ok) return json({ error: 'validation', fields: c.errors }, 422);
+
+  // Review step: everything checked and priced, nothing saved or charged yet.
+  if (b.dry_run) {
+    const quote = await orders.quoteItems(env, items.value, c.value.place_of_supply);
+    return json({ review: { ...c.value, quote, email: user.email } });
+  }
 
   if (!(await auth.throttle(env, `checkout:${user.id}`, 20, 3600))) throw httpError(429, 'Too many checkout attempts. Try again later.');
 
@@ -188,9 +196,8 @@ async function route(request, env, ctx) {
 
   if (a === 'products' && m === 'GET') return products(env);
   if (a === 'quote' && m === 'POST') return quoteHandler(request, env);
-  if (a === 'orders' && b && !c && m === 'GET' && url.searchParams.has('t')) return orderByToken(env, b, url.searchParams.get('t'));
-
   const user = await auth.currentUser(env, request);
+  if (a === 'orders' && b && !c && m === 'GET' && url.searchParams.has('t')) return orderByToken(env, b, url.searchParams.get('t'), user);
 
   if (a === 'auth') {
     if (b === 'register' && m === 'POST') return account.register(request, env);

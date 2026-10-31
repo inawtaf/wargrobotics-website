@@ -7,7 +7,7 @@
   if (!form) return;
   var api = window.WargApi, F = window.WargForm;
   var btn = document.getElementById('pay-btn');
-  var addresses = [], user = null, quote = null, busy = false, states = {};
+  var addresses = [], user = null, quote = null, busy = false, states = {}, reviewing = null;
   function $(id) { return document.getElementById(id); }
   function track(n, p) { if (window.wargTrack) window.wargTrack(n, p); }
 
@@ -150,18 +150,58 @@
   function setBusy(on, label) {
     busy = on;
     btn.disabled = on || !user || !user.email_verified;
-    btn.textContent = label || (quote ? 'Pay ' + window.inr(quote.totalPaise) : 'Pay');
+    var q = reviewing ? reviewing.quote : quote;
+    btn.textContent = label || (reviewing ? 'Pay ' + window.inr(q.totalPaise) : 'Review order');
   }
+
+  // ---------------------------------------------------------------- review step
+  // Before paying: the server checks everything and prices it (dry run), and
+  // the buyer sees exactly what will be ordered, where it goes and who is billed.
+  function addrLines(a) {
+    return [a.name, a.address_line1, a.address_line2, a.city + ', ' + (states[a.state_code] || a.state_code) + ' ' + a.pincode, a.phone].filter(Boolean);
+  }
+  function showReview(r) {
+    reviewing = r;
+    var box = $('review'); box.innerHTML = '';
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+    function block(title, lines) {
+      var d = el('div'); d.appendChild(el('h3', '', title));
+      lines.forEach(function (l, i) { if (i) d.appendChild(document.createElement('br')); d.appendChild(document.createTextNode(l)); });
+      return d;
+    }
+    box.appendChild(el('h2', 'field-legend', 'Review your order'));
+    var grid = el('div', 'review-grid');
+    grid.appendChild(block('Deliver to', addrLines(r.delivery)));
+    grid.appendChild(block('Bill to', [r.business_name].filter(Boolean).concat(r.billingSame ? ['Same as delivery address'] : addrLines(r.billing)).concat(r.gstin ? ['GSTIN ' + r.gstin] : [])));
+    grid.appendChild(block('Email', [r.email, 'Order confirmation and GST invoice go here.']));
+    grid.appendChild(block('GST', ['Place of supply: ' + (states[r.place_of_supply] || r.place_of_supply), r.quote.taxKind === 'intra' ? 'CGST 9% + SGST 9%' : 'IGST 18%']));
+    box.appendChild(grid);
+    var t = el('table');
+    function row(a, b, cls) { var tr = el('tr', cls); tr.appendChild(el('td', '', a)); tr.appendChild(el('td', '', b)); t.appendChild(tr); }
+    r.quote.lines.forEach(function (l) { row(l.productName + ' × ' + l.quantity + (l.priceType === 'offer' ? ' (offer price)' : ''), window.inr(l.subtotalPaise)); });
+    row('Subtotal', window.inr(r.quote.subtotalPaise));
+    r.quote.taxLines.forEach(function (l) { row(l.label, window.inr(l.paise)); });
+    row('Delivery', 'Free');
+    row('Total to pay', window.inr(r.quote.totalPaise), 'total');
+    box.appendChild(t);
+    box.hidden = false;
+    $('co-fields').hidden = true;
+    $('edit-btn').hidden = false;
+    setBusy(false);
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function editDetails() {
+    reviewing = null;
+    $('review').hidden = true; $('co-fields').hidden = false; $('edit-btn').hidden = true;
+    F.clear(form); setBusy(false);
+  }
+  $('edit-btn').onclick = editDetails;
 
   // ---------------------------------------------------------------- pay
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     if (busy) return;
     F.clear(form);
-    if (typeof window.Razorpay !== 'function') {
-      F.status(form, 'The payment window could not load. Check your connection or ad blocker, then try again.', 'bad');
-      return;
-    }
     var body = { hp_trap: $('hp-trap').value };
     var v = F.values(form);
     if (choice() === 'new') {
@@ -182,9 +222,25 @@
     }
     body.gstin = $('is-business').checked ? $('gstin').value : '';
     body.business_name = $('is-business').checked ? $('business_name').value : '';
+
+    if (!reviewing) {
+      setBusy(true, 'Checking…');
+      api('/orders', { method: 'POST', body: Object.assign({ dry_run: true }, body) }).then(function (d) { showReview(d.review); })
+        .catch(function (err) { setBusy(false); showErrors(err); });
+      return;
+    }
+    if (typeof window.Razorpay !== 'function') {
+      F.status(form, 'The payment window could not load. Check your connection or ad blocker, then try again.', 'bad');
+      return;
+    }
     setBusy(true, 'Creating your order…');
     api('/orders', { method: 'POST', body: body }).then(openRazorpay).catch(function (err) {
-      setBusy(false);
+      editDetails();
+      showErrors(err);
+    });
+  });
+
+  function showErrors(err) {
       F.fail(form, err);
       var f = err.data && err.data.fields;
       if (f) {
@@ -198,8 +254,7 @@
         var top = f.address_id || f.billing_address_id || f.gstin;
         if (top) F.status(form, top, 'bad');
       }
-    });
-  });
+  }
 
   function openRazorpay(o) {
     track('begin_checkout', { currency: 'INR', value: o.amount_paise / 100, items: o.quote.lines.map(function (l) { return { item_id: l.sku, item_name: l.productName, quantity: l.quantity }; }) });

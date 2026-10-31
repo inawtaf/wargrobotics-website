@@ -45,7 +45,7 @@ async function signedIn(env, request, user, body = {}) {
 // ===================================================================== auth
 
 export async function register(request, env) {
-  if (!(await auth.throttle(env, `register:${auth.clientIp(request)}`, 10, 3600))) throw httpError(429, 'Too many sign-ups from this network. Try again later.');
+  if (!(await auth.throttle(env, `register:${auth.clientIp(request)}`, 30, 3600))) throw httpError(429, 'Too many sign-ups from this network. Try again later.');
   const v = validateRegistration(await readJson(request));
   if (!v.ok) return json({ error: 'validation', fields: v.errors }, 422);
   const { name, email: addr, password } = v.value;
@@ -95,13 +95,24 @@ export async function me(request, env, ctx, user) {
   return json({ user: { ...publicUser(user), is_staff: auth.isStaff(env, user) }, cart_count: cart.n });
 }
 
-// GET /api/auth/verify?token=  (the link in the email) -> back to the account page
+// GET /api/auth/verify?token=  (the link in the email). Opening it again, or
+// after a mail scanner opened it, still says "confirmed". Signed in -> account
+// page; opened on another device or browser -> sign-in page with the news.
 export async function verify(request, env) {
   const url = new URL(request.url);
-  const userId = await auth.consumeToken(env, url.searchParams.get('token'), 'verify');
-  if (!userId) return Response.redirect(`${new URL(request.url).origin}/account?verify=expired`, 302);
-  await env.DB.prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?').bind(nowIso(), nowIso(), userId).run();
-  return Response.redirect(`${url.origin}/account?verify=done`, 302);
+  const found = await auth.findToken(env, url.searchParams.get('token'), 'verify');
+  const user = found && (await getUserById(env, found.userId));
+  const session = await auth.currentUser(env, request);
+  const here = session && user && session.id === user.id;
+  const go = (ok) => Response.redirect(`${url.origin}${here ? `/account?verify=${ok ? 'done' : 'expired'}` : `/login?verify=${ok ? 'done' : 'expired'}`}`, 302);
+  if (!user) return go(false);
+  if (user.email_verified_at) return go(true);
+  if (found.expired) return go(false);
+  await env.DB.batch([
+    env.DB.prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?').bind(nowIso(), nowIso(), user.id),
+    env.DB.prepare('UPDATE auth_tokens SET used_at = COALESCE(used_at, ?) WHERE user_id = ? AND purpose = ?').bind(Math.floor(Date.now() / 1000), user.id, 'verify'),
+  ]);
+  return go(true);
 }
 
 export async function resendVerification(request, env, ctx, user) {
@@ -109,6 +120,15 @@ export async function resendVerification(request, env, ctx, user) {
   if (!(await auth.throttle(env, `verify-send:${user.id}`, 5, 3600))) throw httpError(429, 'We have sent several links already. Check your spam folder, or try again in an hour.');
   if (!(await sendVerification(env, user))) throw httpError(502, SEND_FAILED);
   return json({ ok: true, sent_to: user.email });
+}
+
+// Portal: send (another) confirmation email to an unconfirmed account.
+export async function adminSendVerification(env, userId) {
+  const user = await getUserById(env, userId);
+  if (!user) return json({ error: 'not found' }, 404);
+  if (user.email_verified_at) return json({ ok: true, already: true, message: `${user.email} is already confirmed.` });
+  if (!(await sendVerification(env, user))) return json({ error: SEND_FAILED.replace('Try "Send it again" in a few minutes, or write to hello@wargrobotics.com.', 'See Setup check for the reason.') }, 502);
+  return json({ ok: true, message: `Confirmation email sent to ${user.email}.` });
 }
 
 // Always answers the same way, so it can't be used to find out who has an account.
@@ -129,7 +149,8 @@ export async function reset(request, env) {
   const userId = await auth.consumeToken(env, b.token, 'reset');
   if (!userId) return json({ error: 'This reset link has expired or was already used. Ask for a new one.' }, 400);
   const user = await getUserById(env, userId);
-  const problem = passwordProblem(b.password, user.email);
+  const problem = passwordProblem(b.password, user.email)
+    || (b.password_confirm !== undefined && b.password_confirm !== b.password ? 'The two passwords do not match.' : null);
   if (problem) {
     // Put the token back so the visitor can fix the password and retry.
     await env.DB.prepare('UPDATE auth_tokens SET used_at = NULL WHERE token_hash = ?').bind(await sha256Hex(b.token)).run();
@@ -240,6 +261,7 @@ export async function changePassword(request, env, ctx, user) {
   }
   const problem = passwordProblem(b.new_password, user.email);
   if (problem) return json({ error: 'validation', fields: { new_password: problem } }, 422);
+  if (b.new_password_confirm !== undefined && b.new_password_confirm !== b.new_password) return json({ error: 'validation', fields: { new_password_confirm: 'The two passwords do not match.' } }, 422);
   await env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').bind(await auth.hashPassword(env, b.new_password), nowIso(), user.id).run();
   await auth.endAllSessions(env, user.id, user.session_hash);   // sign out everywhere else
   await sendSafely(env, { to: user.email, ...email.passwordChangedEmail(env, user) });
@@ -257,7 +279,7 @@ export async function unlinkGoogle(request, env, ctx, user) {
 const addressCols = 'id, label, name, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name, is_default, is_default_billing';
 
 export async function listAddresses(request, env, ctx, user) {
-  const { results } = await env.DB.prepare(`SELECT ${addressCols} FROM addresses WHERE user_id = ? ORDER BY is_default DESC, is_default_billing DESC, id DESC`).bind(user.id).all();
+  const { results } = await env.DB.prepare(`SELECT ${addressCols} FROM addresses WHERE user_id = ? ORDER BY id`).bind(user.id).all();
   return json({ addresses: results });
 }
 

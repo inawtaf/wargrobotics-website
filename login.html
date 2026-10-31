@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261031a">
+<link rel="stylesheet" href="warg.css?v=20261031e">
 </head>
 <body>
 
@@ -55,7 +55,7 @@
       </div>
 
       <form class="form" id="signin-form" novalidate>
-        <div class="field"><label for="si-email">Email</label><input type="email" id="si-email" name="email" required autocomplete="email"></div>
+        <div class="field"><label for="si-email">Email</label><input type="email" id="si-email" name="email" required autocomplete="username"></div>
         <div class="field"><label for="si-password">Password</label><input type="password" id="si-password" name="password" required autocomplete="current-password"></div>
         <div class="form-foot">
           <button class="btn btn-solid" type="submit">Sign in</button>
@@ -66,10 +66,11 @@
 
       <form class="form" id="register-form" novalidate hidden>
         <div class="field"><label for="re-name">Full name</label><input type="text" id="re-name" name="name" required autocomplete="name" maxlength="100"></div>
-        <div class="field"><label for="re-email">Email</label><input type="email" id="re-email" name="email" required autocomplete="email">
+        <div class="field"><label for="re-email">Email</label><input type="email" id="re-email" name="email" required autocomplete="username">
           <p class="hint">We send a link to confirm it. Your invoices go here.</p></div>
         <div class="field"><label for="re-password">Password</label><input type="password" id="re-password" name="password" required autocomplete="new-password" minlength="10">
           <p class="hint">At least 10 characters. A short phrase is easy to remember and hard to guess.</p></div>
+        <div class="field"><label for="re-password2">Confirm password</label><input type="password" id="re-password2" name="password_confirm" required autocomplete="new-password" minlength="10"></div>
         <div class="form-foot"><button class="btn btn-solid" type="submit">Create account</button></div>
         <p class="form-status" role="status" aria-live="polite"></p>
       </form>
@@ -87,7 +88,7 @@
 
       <form class="form" id="forgot-form" novalidate hidden>
         <p class="t-body">Enter your email and we will send a link to choose a new password.</p>
-        <div class="field"><label for="fo-email">Email</label><input type="email" id="fo-email" name="email" required autocomplete="email"></div>
+        <div class="field"><label for="fo-email">Email</label><input type="email" id="fo-email" name="email" required autocomplete="username"></div>
         <div class="form-foot">
           <button class="btn btn-solid" type="submit">Send reset link</button>
           <button class="link-btn" type="button" id="back-signin">Back to sign in</button>
@@ -106,7 +107,7 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261031b" defer></script>
-<script src="auth-page.js?v=20261031a" defer></script>
+<script src="site.js?v=20261031e" defer></script>
+<script src="auth-page.js?v=20261031e" defer></script>
 </body>
 </html>
