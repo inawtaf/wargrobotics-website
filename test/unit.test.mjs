@@ -366,3 +366,23 @@ test('confirmation email shows full prices, the combo and coupon savings, and th
   assert.match(html, /Coupon WARG20<\/td><td[^>]*>− ₹5,999\.80/);
   assert.match(html, /Subtotal after discounts<\/td><td[^>]*>₹73,998\.20/);
 });
+
+test('every customer page links the four policy pages in its footer', () => {
+  const root = new URL('..', import.meta.url);
+  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html')) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    const foot = html.slice(html.indexOf('<footer'));
+    for (const p of ['terms', 'refunds', 'shipping', 'privacy']) assert.match(foot, new RegExp(`href="/?${p}(\\.html)?"`), `${f} → ${p}`);
+  }
+});
+
+test('grievance officer and account deletion are published', () => {
+  const root = new URL('..', import.meta.url);
+  const read = f => readFileSync(new URL(f, root), 'utf8');
+  for (const f of ['terms.html', 'privacy.html', 'contact.html', 'index.html']) {
+    assert.match(read(f), /Sam Singh/, f);
+    assert.match(read(f), /\+91 86689 23286/, f);
+  }
+  assert.match(read('privacy.html'), /id="delete"[\s\S]*Delete my Warg account/);
+  assert.match(read('account.html'), /href="\/privacy#delete"/);
+});

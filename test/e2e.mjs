@@ -843,7 +843,7 @@ await step('sign out everywhere', async () => {
 });
 
 await step('pages served; backend source and secrets are not', async () => {
-  for (const p of ['/login', '/account', '/cart', '/checkout', '/order', '/reset']) assert.equal((await fetch(SITE + p)).status, 200, p);
+  for (const p of ['/login', '/account', '/cart', '/checkout', '/order', '/reset', '/terms', '/refunds', '/shipping', '/privacy', '/contact']) assert.equal((await fetch(SITE + p)).status, 200, p);
   for (const p of ['/src/worker.js', '/src/auth.js', '/migrations/0002_accounts.sql', '/wrangler.jsonc', '/.dev.vars', '/.dev.vars.example', '/package.json', '/test/e2e.mjs']) {
     assert.equal((await fetch(SITE + p)).status, 404, p);
   }

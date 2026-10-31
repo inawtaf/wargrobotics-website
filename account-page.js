@@ -329,6 +329,8 @@
         .catch(function (e) { $('side-status').textContent = e.message; });
     };
     $('signout').onclick = $('signout-top').onclick = function () { window.WargSignOut(); };
+    $('delete-acct').href = 'mailto:hello@wargrobotics.com?subject=' + encodeURIComponent('Delete my Warg account') +
+      '&body=' + encodeURIComponent('Please delete my Warg Robotics account and personal data.\n\nAccount email: ' + me.email);
     $('signout-all').onclick = function () { api('/auth/logout-all', { method: 'POST' }).then(function () { location.href = '/login'; }); };
   }
   function googleState() {
