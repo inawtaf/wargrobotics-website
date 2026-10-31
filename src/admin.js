@@ -92,7 +92,10 @@ export async function csv(request, env) {
     FROM orders o ${sql} ORDER BY o.id DESC LIMIT 5000`).bind(...args).all();
   const cols = [
     ['Order', 'order_number'], ['Status', 'status'], ['Paid at', 'paid_at'], ['Items', 'items'], ['Units', 'item_count'],
-    ['Subtotal (INR)', r => (r.subtotal_paise / 100).toFixed(2)], ['GST (INR)', r => (r.gst_paise / 100).toFixed(2)],
+    ['List price total (INR)', r => ((r.list_subtotal_paise ?? r.subtotal_paise) / 100).toFixed(2)],
+    ['Combo discount (INR)', r => ((r.combo_discount_paise || 0) / 100).toFixed(2)],
+    ['Coupon', 'coupon_code'], ['Coupon discount (INR)', r => ((r.coupon_discount_paise || 0) / 100).toFixed(2)],
+    ['Subtotal after discounts (INR)', r => (r.subtotal_paise / 100).toFixed(2)], ['GST (INR)', r => (r.gst_paise / 100).toFixed(2)],
     ['Total (INR)', r => (r.total_paise / 100).toFixed(2)], ['Tax', r => (r.tax_kind === 'intra' ? 'CGST+SGST' : 'IGST')],
     ['Invoice', 'invoice_number'], ['Customer', 'customer_name'], ['Business', 'business_name'], ['GSTIN', 'gstin'],
     ['Email', 'email'], ['Phone', 'phone'], ['Address', r => [r.address_line1, r.address_line2].filter(Boolean).join(', ')],
@@ -143,10 +146,9 @@ export async function carts(request, env) {
     FROM cart_items c JOIN users u ON u.id = c.user_id
     ${days ? "WHERE c.added_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now', ?)" : ''}
     GROUP BY u.id ORDER BY last_activity DESC LIMIT 500`).bind(...(days ? [`-${days} days`] : [])).all();
-  const sold = await orders.soldAtOffer(env);
   const rows = results.map(r => {
     const items = String(r.lines || '').split(',').map(x => x.split(':')).filter(([sku]) => PRODUCTS[sku]).map(([sku, q]) => ({ sku, quantity: Number(q) }));
-    const q = items.length ? quoteCart({ items, soldAtOffer: sold, buyerState: null, sellerState: env.SELLER_STATE || 'GA' }) : null;
+    const q = items.length ? quoteCart({ items, buyerState: null, sellerState: env.SELLER_STATE || 'GA' }) : null;
     const stage = !r.email_verified_at ? 'unverified'
       : r.last_unpaid_checkout && r.last_unpaid_checkout >= r.last_activity ? 'checkout' : 'cart';
     return {
@@ -225,7 +227,7 @@ export async function route(request, env, ctx, seg, user) {
     case 'deliver': return json(await fulfil.deliver(env, order, opts));
     case 'cancel':  return json(await fulfil.cancel(env, order, opts));
     case 'note':    return json(await fulfil.note(env, order, opts));
-    case 'resend':  return json(await fulfil.resend(env, order, { actor, which: b.which }));
+    case 'resend':  return json(await fulfil.resend(env, order, { actor, which: b.which, to: b.to }));
     case 'retry': {
       await env.DB.prepare('UPDATE orders SET fulfil_attempts = 0 WHERE id = ?').bind(order.id).run();
       return json({ ok: true, result: await orders.fulfil(env, order.id) });

@@ -7,7 +7,7 @@
   if (!form) return;
   var api = window.WargApi, F = window.WargForm;
   var btn = document.getElementById('pay-btn');
-  var addresses = [], user = null, quote = null, busy = false, states = {}, reviewing = null;
+  var addresses = [], user = null, quote = null, busy = false, states = {}, reviewing = null, coupon = null, couponInfo = null;
   function $(id) { return document.getElementById(id); }
   function track(n, p) { if (window.wargTrack) window.wargTrack(n, p); }
 
@@ -21,6 +21,7 @@
         r[0].states.forEach(function (s) { var o = document.createElement('option'); o.value = s.code; o.textContent = s.name; sel.appendChild(o); });
       });
       states = {}; r[0].states.forEach(function (s) { states[s.code] = s.name; });
+      setupCoupon(r[0].coupon);
       addresses = r[1].addresses;
       if (user.name) { $('name').value = user.name; $('b_name').value = user.name; }
       if (user.phone) $('phone').value = user.phone;
@@ -105,8 +106,8 @@
   function syncGstFromSaved() {
     var id = $('billing-same').checked ? choice() : billChoice();
     var a = saved(id);
-    if (a && a.gstin) {
-      $('is-business').checked = true; $('gstin').value = a.gstin; $('business_name').value = a.business_name || '';
+    if (a && (a.gstin || a.business_name)) {
+      $('is-business').checked = true; $('gstin').value = a.gstin || ''; $('business_name').value = a.business_name || '';
       form.querySelector('[data-addon="business"]').hidden = false;
     }
   }
@@ -119,20 +120,57 @@
   });
 
   // ---------------------------------------------------------------- summary
+  // ---------------------------------------------------------------- coupon
+  // The launch code is filled in; the buyer presses Apply. Applied, it is sent
+  // with every quote and with the order, and the server decides what it takes off.
+  function setupCoupon(info) {
+    couponInfo = info;
+    if (!info || !info.active) return;
+    $('coupon-box').hidden = false;
+    $('coupon-code').value = info.code;
+    $('coupon-msg').textContent = info.percent + '% off, for the first ' + info.max_orders + ' orders (' + info.left + ' left). Not combined with the combo price.';
+  }
+  $('coupon-apply').onclick = function () {
+    if (coupon) { coupon = null; refresh(); return; }       // the button says Remove once applied
+    var code = $('coupon-code').value.trim().toUpperCase();
+    if (!code) { $('coupon-msg').textContent = 'Enter a coupon code.'; return; }
+    coupon = code; refresh();
+  };
+  function showCoupon(q) {
+    var msg = $('coupon-msg'), b = $('coupon-apply');
+    if (!coupon) { b.textContent = 'Apply'; $('coupon-code').disabled = false; return; }
+    var c = q.coupon || {};
+    if (c.status === 'invalid' || c.status === 'used_up') { msg.textContent = c.message; coupon = null; b.textContent = 'Apply'; return; }
+    b.textContent = 'Remove'; $('coupon-code').disabled = true;
+    msg.textContent = c.status === 'applied' ? coupon + ' applied: you save ' + window.inr(c.discountPaise) + ' before GST.' : c.message || '';
+  }
+
   function refresh() {
     var sc = stateCode();
-    api('/cart' + (sc ? '?state_code=' + sc : '')).then(function (c) {
+    var qs = [];
+    if (sc) qs.push('state_code=' + sc);
+    if (coupon) qs.push('coupon=' + encodeURIComponent(coupon));
+    api('/cart' + (qs.length ? '?' + qs.join('&') : '')).then(function (c) {
       if (!c.items.length) { location.href = '/cart'; return; }
       quote = c.quote;
+      showCoupon(quote);
       var box = $('sum-items'); box.innerHTML = '';
       quote.lines.forEach(function (l) {
         var p = document.createElement('p'); p.className = 'summary-item';
         p.textContent = l.productName + ' × ' + l.quantity;
         var s = document.createElement('p'); s.className = 'summary-offer';
-        s.textContent = window.inr(l.subtotalPaise) + (l.priceType === 'offer' ? ' · offer price' : '');
+        s.textContent = window.inr(l.listSubtotalPaise) + (l.discountLabel ? ' · ' + l.discountLabel : '');
         box.appendChild(p); box.appendChild(s);
       });
-      $('sum-subtotal').textContent = window.inr(quote.subtotalPaise);
+      $('sum-subtotal').textContent = window.inr(quote.listSubtotalPaise);
+      Array.prototype.forEach.call(document.querySelectorAll('.summary-lines .disc-row'), function (el) { el.remove(); });
+      var anchor = $('sum-disc-anchor');
+      quote.discounts.forEach(function (d) {
+        var row = document.createElement('div'); row.className = 'disc-row';
+        var dt = document.createElement('dt'); dt.textContent = d.label;
+        var dd = document.createElement('dd'); dd.textContent = '− ' + window.inr(d.paise);
+        row.appendChild(dt); row.appendChild(dd); anchor.parentNode.insertBefore(row, anchor);
+      });
       var total = document.querySelector('.summary-total');
       Array.prototype.forEach.call(document.querySelectorAll('.summary-lines .tax-row'), function (el) { el.remove(); });
       (sc ? quote.taxLines : [{ label: 'GST 18%', paise: quote.gstPaise }]).forEach(function (l) {
@@ -178,8 +216,9 @@
     box.appendChild(grid);
     var t = el('table');
     function row(a, b, cls) { var tr = el('tr', cls); tr.appendChild(el('td', '', a)); tr.appendChild(el('td', '', b)); t.appendChild(tr); }
-    r.quote.lines.forEach(function (l) { row(l.productName + ' × ' + l.quantity + (l.priceType === 'offer' ? ' (offer price)' : ''), window.inr(l.subtotalPaise)); });
-    row('Subtotal', window.inr(r.quote.subtotalPaise));
+    r.quote.lines.forEach(function (l) { row(l.productName + ' × ' + l.quantity + ' @ ' + window.inr(l.unitPricePaise), window.inr(l.listSubtotalPaise)); });
+    r.quote.discounts.forEach(function (d) { row(d.label, '− ' + window.inr(d.paise), 'disc'); });
+    row(r.quote.discounts.length ? 'Subtotal after discounts' : 'Subtotal', window.inr(r.quote.subtotalPaise));
     r.quote.taxLines.forEach(function (l) { row(l.label, window.inr(l.paise)); });
     row('Delivery', 'Free');
     row('Total to pay', window.inr(r.quote.totalPaise), 'total');
@@ -220,6 +259,7 @@
         body.billing_address_id = Number(billChoice());
       }
     }
+    if (coupon) body.coupon = coupon;
     body.gstin = $('is-business').checked ? $('gstin').value : '';
     body.business_name = $('is-business').checked ? $('business_name').value : '';
 
@@ -251,7 +291,8 @@
             if (input) { var p = document.createElement('p'); p.className = 'err'; p.textContent = f[k]; input.setAttribute('aria-invalid', 'true'); input.parentNode.appendChild(p); }
           }
         });
-        var top = f.address_id || f.billing_address_id || f.gstin;
+        if (f.coupon) { coupon = null; $('coupon-msg').textContent = f.coupon; refresh(); }
+        var top = f.address_id || f.billing_address_id || f.gstin || f.coupon;
         if (top) F.status(form, top, 'bad');
       }
   }

@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261031e">
+<link rel="stylesheet" href="warg.css?v=20261031g">
 </head>
 <body>
 
@@ -99,15 +99,15 @@
         </fieldset>
 
         <fieldset class="addon">
-          <legend class="field-legend">GST invoice for a business</legend>
+          <legend class="field-legend">Buying for a business</legend>
           <label class="addon-toggle">
             <input type="checkbox" id="is-business">
-            <span class="addon-box"><span class="addon-name">Add my GSTIN to the invoice</span>
-              <span class="addon-sub">So your business can claim input tax credit. The GSTIN must be registered in the state of the billing address.</span></span>
+            <span class="addon-box"><span class="addon-name">Put my company on the invoice</span>
+              <span class="addon-sub">Company name, and your GSTIN if you have one so you can claim input tax credit. The GSTIN must be registered in the state of the billing address.</span></span>
           </label>
           <div class="extra" data-addon="business" hidden>
             <div class="field"><label for="business_name">Business name</label><input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150"></div>
-            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="30ABCDE1234F1Z5"></div>
+            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="30ABCDE1234F1Z5"><p class="hint">Optional. Leave it empty if the company isn't GST registered.</p></div>
           </div>
         </fieldset>
         <p class="hint" id="tax-note"></p>
@@ -129,11 +129,18 @@
         <h2 class="field-legend" id="summary-h">Order summary</h2>
         <div id="sum-items"></div>
         <dl class="summary-lines">
-          <div><dt>Subtotal</dt><dd id="sum-subtotal">&mdash;</dd></div>
+          <div><dt>Price</dt><dd id="sum-subtotal">&mdash;</dd></div>
+          <div id="sum-disc-anchor" hidden></div>
           <div class="tax-row"><dt>GST 18%</dt><dd>&mdash;</dd></div>
           <div class="summary-total"><dt>Total</dt><dd id="sum-total">&mdash;</dd></div>
         </dl>
-        <p class="hint">Delivery within India is included. GST is added at 18% on the listed price.</p>
+        <div class="coupon-box" id="coupon-box" hidden>
+          <label for="coupon-code" class="field-legend">Coupon</label>
+          <div class="coupon-row"><input type="text" id="coupon-code" autocomplete="off" autocapitalize="characters" maxlength="20" aria-describedby="coupon-msg">
+            <button class="btn btn-line" type="button" id="coupon-apply">Apply</button></div>
+          <p class="coupon-msg" id="coupon-msg" role="status" aria-live="polite"></p>
+        </div>
+        <p class="hint">Delivery within India is included. GST is added at 18% on the price after discounts.</p>
       </aside>
     </div>
   </section>
@@ -147,8 +154,8 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261031e" defer></script>
+<script src="site.js?v=20261031g" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-<script src="checkout.js?v=20261031e" defer></script>
+<script src="checkout.js?v=20261031g" defer></script>
 </body>
 </html>

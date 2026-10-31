@@ -10,6 +10,7 @@
 
 import { nowIso, orderToken, httpError } from './util.js';
 import * as email from './email.js';
+import * as zoho from './zoho.js';
 
 export const COURIERS = ['Delhivery', 'Blue Dart', 'DTDC', 'Ekart', 'Xpressbees', 'Shadowfax', 'India Post', 'Shiprocket', 'Other'];
 
@@ -27,7 +28,7 @@ export async function events(env, orderId, { visibleOnly = false } = {}) {
 
 async function load(env, orderId) {
   const o = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
-  o.items = (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
+  o.items = (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, discount_paise, discount_label FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
   o.link_token = await orderToken(env, o.order_number);
   return o;
 }
@@ -46,11 +47,11 @@ async function transition(env, order, from, to, fields) {
 
 // Sends the status email and records it on the timeline. A failed email never
 // undoes the status change; it is recorded so staff can press "Resend".
-async function notify(env, o, template, { actor, message, key }) {
+async function notify(env, o, template, { actor, message, key, to, attachments }) {
   try {
     const m = template(env, o, { message });
-    await email.sendEmail(env, { to: o.email, ...m, idempotencyKey: key });
-    await addEvent(env, o.id, { kind: 'email', message: `Emailed: ${m.subject}`, actor });
+    await email.sendEmail(env, { to: to || o.email, ...m, idempotencyKey: key, ...(attachments?.length ? { attachments } : {}) });
+    await addEvent(env, o.id, { kind: 'email', message: `Emailed${to && to !== o.email ? ` to ${to}` : ''}: ${m.subject}${attachments?.length ? ' (invoice attached)' : ''}`, actor });
     return true;
   } catch (e) {
     console.error(`email failed for ${o.order_number}:`, e.message);
@@ -128,17 +129,32 @@ export async function note(env, order, { actor, message }) {
 }
 
 // Re-sends the email for a stage (for "I never got it" or after an email failure).
-const RESEND = {
-  confirmation: (o, env) => email.confirmationEmail(env, o, { hasInvoice: false }),
-  processing: (o, env) => email.processingEmail(env, o, {}),
-  dispatch: (o, env) => email.dispatchEmail(env, o, {}),
-  delivered: (o, env) => email.deliveredEmail(env, o, {}),
+// Portal "Send email": any of the customer emails again, to the customer or to
+// another address (e.g. their accounts team). The invoice PDF is attached to
+// the confirmation and invoice emails when the invoice exists.
+export const RESENDABLE = {
+  confirmation: { label: 'Order confirmation (with invoice)', build: (o, env, pdf) => email.confirmationEmail(env, o, { hasInvoice: pdf }) },
+  invoice:      { label: 'GST invoice', build: (o, env) => email.invoiceEmail(env, o), needs: o => o.zoho_invoice_id ? null : 'The invoice has not been created yet.' },
+  processing:   { label: 'Processing', build: (o, env) => email.processingEmail(env, o, {}) },
+  dispatch:     { label: 'Shipped / tracking', build: (o, env) => email.dispatchEmail(env, o, {}), needs: o => o.tracking_number ? null : 'This order has no tracking details yet.' },
+  delivered:    { label: 'Delivered', build: (o, env) => email.deliveredEmail(env, o, {}) },
+  cancelled:    { label: 'Cancelled', build: (o, env) => email.cancelledEmail(env, o, {}), needs: o => o.status === 'cancelled' ? null : 'This order is not cancelled.' },
 };
-export async function resend(env, order, { actor, which }) {
-  if (!RESEND[which]) throw httpError(422, 'Choose which email to resend.');
-  if (which === 'dispatch' && !order.tracking_number) throw httpError(409, 'This order has no tracking details yet.');
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export async function resend(env, order, { actor, which, to }) {
+  const r = RESENDABLE[which];
+  if (!r) throw httpError(422, 'Choose which email to send.');
+  const problem = r.needs?.(order);
+  if (problem) throw httpError(409, problem);
+  const recipient = to ? String(to).trim().toLowerCase() : null;
+  if (recipient && !EMAIL_RE.test(recipient)) throw httpError(422, 'That email address does not look right.');
   const o = await load(env, order.id);
-  const ok = await notify(env, o, (e, ord) => RESEND[which](ord, e), { actor, key: `${o.order_number}-${which}-resend-${Date.now()}` });
+  let attachments = [];
+  if ((which === 'confirmation' || which === 'invoice') && o.zoho_invoice_id) {
+    try { attachments = [email.pdfAttachment(`${o.invoice_number}.pdf`, await zoho.invoicePdf(env, o.zoho_invoice_id))]; }
+    catch (e) { if (which === 'invoice') throw httpError(502, `Could not fetch the invoice PDF from Zoho: ${e.message}`); }
+  }
+  const ok = await notify(env, o, (e, ord) => r.build(ord, e, attachments.length > 0), { actor, to: recipient, attachments, key: `${o.order_number}-${which}-resend-${Date.now()}` });
   if (!ok) throw httpError(502, 'The email could not be sent. Check the timeline for the reason.');
-  return { ok: true };
+  return { ok: true, to: recipient || o.email };
 }

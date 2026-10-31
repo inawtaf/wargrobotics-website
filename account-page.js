@@ -34,7 +34,7 @@
       left.appendChild(el('h2', 'field-legend', 'Delivering to'));
       left.appendChild(el('p', 't-body', [o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
       var b = o.billing;
-      if (b && (!b.same || o.gstin)) {
+      if (b && (!b.same || o.gstin || o.business_name)) {
         left.appendChild(el('h2', 'field-legend', 'Billed to'));
         left.appendChild(el('p', 't-body', [o.business_name, b.same ? 'Same as delivery address' : [b.name, b.address_line1, b.address_line2, b.city + ', ' + b.state_code + ' ' + b.pincode].filter(Boolean).join(', '), o.gstin && 'GSTIN ' + o.gstin].filter(Boolean).join(' · ')));
       }
@@ -70,11 +70,13 @@
     aside.appendChild(el('h2', 'field-legend', 'Order ' + o.order_number));
     (o.items || []).forEach(function (i) {
       aside.appendChild(el('p', 'summary-item', i.product_name + ' × ' + i.quantity));
-      aside.appendChild(el('p', 'summary-offer', inr(i.subtotal_paise) + (i.price_type === 'offer' ? ' · offer price' : '')));
+      aside.appendChild(el('p', 'summary-offer', inr(i.unit_price_paise * i.quantity) + (i.discount_label ? ' · ' + i.discount_label : i.price_type === 'offer' ? ' · offer price' : '')));
     });
     var dl = el('dl', 'summary-lines');
     function row(k, v, cls) { var d = el('div', cls); d.appendChild(el('dt', '', k)); d.appendChild(el('dd', '', v)); dl.appendChild(d); }
-    row('Subtotal', inr(o.subtotal_paise));
+    if (o.combo_discount_paise) row('Ghost + Greywind combo', '− ' + inr(o.combo_discount_paise));
+    if (o.coupon_discount_paise) row('Coupon ' + o.coupon_code, '− ' + inr(o.coupon_discount_paise));
+    row(o.combo_discount_paise || o.coupon_discount_paise ? 'Subtotal after discounts' : 'Subtotal', inr(o.subtotal_paise));
     row(o.tax_kind === 'intra' ? 'CGST 9% + SGST 9%' : 'IGST 18%', inr(o.gst_paise));
     row(o.status === 'created' ? 'Total' : 'Total paid', inr(o.total_paise), 'summary-total');
     aside.appendChild(dl);

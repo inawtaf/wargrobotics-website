@@ -6,21 +6,26 @@ export const PRODUCTS = {
     sku: 'ghost',
     name: 'Warg Ghost',
     line: '720p90 · 8 GB onboard',
-    listPricePaise: 24_999_00,
-    offerPricePaise: 19_999_00,
-    offerUnits: 100,               // "Offer price, first 100 orders" (counted in units)
+    listPricePaise: 29_999_00,
     zohoItemVar: 'ZOHO_ITEM_ID_GHOST',
   },
   greywind: {
     sku: 'greywind',
     name: 'Warg Greywind',
     line: '1080p30 / 720p90 · 16 GB onboard',
-    listPricePaise: 29_999_00,
-    offerPricePaise: 24_999_00,
-    offerUnits: 100,
+    listPricePaise: 35_999_00,
     zohoItemVar: 'ZOHO_ITEM_ID_GREYWIND',
   },
 };
+
+// One Ghost + one Greywind together cost this (before GST). Applied
+// automatically to every pair in the cart.
+export const COMBO = { skus: ['ghost', 'greywind'], pricePaise: 49_999_00, label: 'Ghost + Greywind combo' };
+
+// Launch coupon: percent off items that aren't in a combo pair (the combo is
+// always the better price, so the two never stack). Works for the first
+// `maxOrders` paid orders that used it.
+export const COUPON = { code: 'WARG20', percent: 20, maxOrders: 100 };
 
 export const GST_RATE_BP = 1800;   // 18%, in basis points
 export const MAX_QUANTITY = 9;     // ten or more is a bulk order (see prebook page)
