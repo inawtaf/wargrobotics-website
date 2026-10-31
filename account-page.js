@@ -32,7 +32,12 @@
     }
     if (o.address_line1) {
       left.appendChild(el('h2', 'field-legend', 'Delivering to'));
-      left.appendChild(el('p', 't-body', [o.business_name, o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
+      left.appendChild(el('p', 't-body', [o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
+      var b = o.billing;
+      if (b && (!b.same || o.gstin)) {
+        left.appendChild(el('h2', 'field-legend', 'Billed to'));
+        left.appendChild(el('p', 't-body', [o.business_name, b.same ? 'Same as delivery address' : [b.name, b.address_line1, b.address_line2, b.city + ', ' + b.state_code + ' ' + b.pincode].filter(Boolean).join(', '), o.gstin && 'GSTIN ' + o.gstin].filter(Boolean).join(' · ')));
+      }
     }
     var actions = el('div', 'card-actions');
     if (opts.signedIn && o.invoice_available) { var inv = el('a', 'btn btn-line', 'Download invoice ' + (o.invoice_number || '')); inv.href = '/api/account/orders/' + encodeURIComponent(o.order_number) + '/invoice'; actions.appendChild(inv); }
@@ -239,16 +244,22 @@
         var c = el('div', 'card');
         var head = el('div', 'card-head');
         head.appendChild(el('p', 'card-title', (a.label ? a.label + ' · ' : '') + a.name));
-        if (a.is_default) head.appendChild(el('span', 'pill paid', 'Default'));
+        if (a.is_default) head.appendChild(el('span', 'pill paid', 'Default delivery'));
+        if (a.is_default_billing) head.appendChild(el('span', 'pill processing', 'Default billing'));
         c.appendChild(head);
         c.appendChild(el('p', 'card-meta', [a.business_name, a.address_line1, a.address_line2, a.city + ', ' + (states[a.state_code] || a.state_code) + ' ' + a.pincode, a.phone, a.gstin && 'GSTIN ' + a.gstin].filter(Boolean).join(', ')));
         var acts = el('div', 'card-actions');
         var ed = el('button', 'btn btn-line', 'Edit'); ed.type = 'button'; ed.onclick = function () { editAddress(a); };
         acts.appendChild(ed);
         if (!a.is_default) {
-          var df = el('button', 'btn btn-line', 'Make default'); df.type = 'button';
+          var df = el('button', 'btn btn-line', 'Deliver here by default'); df.type = 'button';
           df.onclick = function () { api('/account/addresses/' + a.id + '/default', { method: 'POST' }).then(loadAddresses); };
           acts.appendChild(df);
+        }
+        if (!a.is_default_billing) {
+          var db = el('button', 'btn btn-line', 'Bill here by default'); db.type = 'button';
+          db.onclick = function () { api('/account/addresses/' + a.id + '/default?for=billing', { method: 'POST' }).then(loadAddresses); };
+          acts.appendChild(db);
         }
         var rm = el('button', 'btn btn-line', 'Delete'); rm.type = 'button';
         rm.onclick = function () { if (confirm('Delete this address?')) api('/account/addresses/' + a.id, { method: 'DELETE' }).then(loadAddresses); };
@@ -264,6 +275,7 @@
       aForm.elements[k].value = a ? (a[k] || '') : '';
     });
     aForm.elements.is_default.checked = Boolean(a && a.is_default);
+    aForm.elements.is_default_billing.checked = Boolean(a && a.is_default_billing);
     $('af-h').textContent = a ? 'Edit address' : 'Add an address';
     $('af-cancel').hidden = !a;
     aForm.scrollIntoView({ behavior: 'smooth' });
@@ -273,6 +285,7 @@
     e.preventDefault(); F.clear(aForm);
     var v = F.values(aForm), id = v.id;
     v.is_default = aForm.elements.is_default.checked;
+    v.is_default_billing = aForm.elements.is_default_billing.checked;
     delete v.id;
     api('/account/addresses' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', body: v }).then(function () {
       editAddress(null); F.status(aForm, 'Address saved.', 'ok'); loadAddresses();

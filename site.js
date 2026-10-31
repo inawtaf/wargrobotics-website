@@ -11,6 +11,8 @@
     opts = opts || {};
     var init = { method: opts.method || 'GET', credentials: 'same-origin', headers: {} };
     if (opts.body !== undefined) { init.headers['content-type'] = 'application/json'; init.body = JSON.stringify(opts.body); }
+    // Portal opened with an access token (ADMIN_TOKEN) instead of a staff account.
+    if (path.indexOf('/admin') === 0) { try { var t = sessionStorage.getItem('warg_admin_token'); if (t) init.headers.authorization = 'Bearer ' + t; } catch (e) {} }
     return fetch('/api' + path, init).then(function (r) {
       return r.text().then(function (t) {
         var d = {}; try { d = t ? JSON.parse(t) : {}; } catch (e) {}

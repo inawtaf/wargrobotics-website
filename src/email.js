@@ -3,6 +3,7 @@
 
 import { escapeHtml as h, inr, base64FromBytes } from './util.js';
 import { STATE_BY_CODE } from './config.js';
+import { billingOf, placeOfSupply } from './billing.js';
 
 const base = env => env.RESEND_API_BASE || 'https://api.resend.com';
 
@@ -28,8 +29,48 @@ export async function sendEmail(env, { to, subject, html, text, attachments, ide
     }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`Resend: ${data.message || data.name || `HTTP ${res.status}`}`);
+  if (!res.ok) {
+    const message = `Resend: ${data.message || data.name || `HTTP ${res.status}`}`;
+    await remember(env, 'last_email_error', { at: new Date().toISOString(), message, subject });
+    throw new Error(message);
+  }
+  await remember(env, 'last_email_ok', { at: new Date().toISOString(), subject });
   return data.id;
+}
+
+// The latest send result, shown on the portal's setup check. Never fails the send.
+async function remember(env, key, value) {
+  try {
+    await env.DB.prepare('INSERT INTO kv (key, value, expires_at) VALUES (?, ?, 4102444800) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .bind(key, JSON.stringify(value)).run();
+  } catch { /* best effort */ }
+}
+
+// Setup check: is EMAIL_FROM's domain verified in Resend? A sending-only API
+// key can't list domains (401 restricted_api_key); then we say so.
+export async function checkDomain(env) {
+  if (!env.RESEND_API_KEY) return { ok: false, detail: 'RESEND_API_KEY secret is missing.' };
+  const from = env.EMAIL_FROM || 'orders@wargrobotics.com';
+  const domain = (from.match(/@([^>\s]+)/) || [])[1]?.toLowerCase();
+  const res = await fetch(`${base(env)}/domains`, { headers: { authorization: `Bearer ${env.RESEND_API_KEY}` } });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && /restricted/i.test(data.name || data.message || '')) {
+    return { ok: null, detail: `The API key can only send, so the domain status can't be read here. Check resend.com → Domains shows ${domain} as Verified, and use "Send test email".` };
+  }
+  if (!res.ok) return { ok: false, detail: `Resend rejected the API key: ${data.message || data.name || res.status}. Create a new key and paste it into RESEND_API_KEY.` };
+  const list = data.data || [];
+  const d = list.find(x => (x.name || '').toLowerCase() === domain);
+  if (!d) return { ok: false, detail: `${domain} (from EMAIL_FROM) is not added in Resend. Domains there: ${list.map(x => `${x.name} (${x.status})`).join(', ') || 'none'}.` };
+  if (d.status !== 'verified') return { ok: false, detail: `${domain} is "${d.status}" in Resend, not verified. Add the DNS records Resend lists for it in Cloudflare DNS (set them to "DNS only", grey cloud), then click Verify in Resend.` };
+  return { ok: true, detail: `${domain} is verified in Resend.` };
+}
+
+export function testEmail(env) {
+  return {
+    subject: 'Warg Robotics test email',
+    text: `This is a test email from ${env.SITE_URL || 'wargrobotics.com'}. If you can read it, order and account emails will arrive too.`,
+    html: layout('Test email', p(`This is a test email from ${h(env.SITE_URL || 'wargrobotics.com')}. If you can read it, order and account emails will arrive too.`)),
+  };
 }
 
 export const pdfAttachment = (filename, bytes) => ({ filename, content: base64FromBytes(bytes) });
@@ -46,7 +87,7 @@ function layout(title, bodyHtml) {
 ${bodyHtml}
 </td></tr>
 <tr><td style="padding:18px 28px;border-top:1px solid #e6e7eb;font-size:12px;color:#6b6e78">
-Warg Robotics · Indiranagar, Bengaluru · <a href="mailto:hello@wargrobotics.com" style="color:#6b6e78">hello@wargrobotics.com</a>
+Warg Robotics · Panaji, Goa · <a href="mailto:hello@wargrobotics.com" style="color:#6b6e78">hello@wargrobotics.com</a>
 </td></tr></table></td></tr></table></body></html>`;
 }
 
@@ -68,10 +109,18 @@ ${row('Total paid', inr(o.total_paise), true)}
 </table>`;
 }
 
+const stateName = c => STATE_BY_CODE[c]?.name || c;
+const block = lines => `<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#4a4d57">${lines.filter(Boolean).map(h).join('<br>')}</p>`;
+
 function addressBlock(o) {
-  const lines = [o.business_name, o.customer_name, o.address_line1, o.address_line2,
-    `${o.city}, ${STATE_BY_CODE[o.state_code]?.name || o.state_code} ${o.pincode}`, o.phone].filter(Boolean);
-  return `<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#4a4d57">${lines.map(h).join('<br>')}</p>`;
+  return block([o.customer_name, o.address_line1, o.address_line2, `${o.city}, ${stateName(o.state_code)} ${o.pincode}`, o.phone]);
+}
+
+// "Billed to", shown when it differs from the delivery address or carries a GSTIN.
+function billingBlock(o) {
+  const b = billingOf(o);
+  if (b.same && !o.gstin) return '';
+  return p('<b>Billed to</b>') + block([o.business_name, b.name, b.address_line1, b.address_line2, `${b.city}, ${stateName(b.state_code)} ${b.pincode}`, o.gstin && `GSTIN ${o.gstin}`]);
 }
 
 // o.link_token is filled in by the caller (orders.js) before rendering.
@@ -88,6 +137,7 @@ export function confirmationEmail(env, o, { hasInvoice }) {
     orderTable(o),
     p('<b>Delivering to</b>'),
     addressBlock(o),
+    billingBlock(o),
     p(hasInvoice
       ? `Your GST invoice ${h(o.invoice_number || '')} is attached.`
       : 'Your GST invoice will follow in a separate email shortly.'),
@@ -163,8 +213,9 @@ export function teamEmail(env, o) {
     '',
     `${o.customer_name}${o.business_name ? ` / ${o.business_name} (${o.gstin})` : ''}`,
     `${o.email} · ${o.phone}`,
-    o.address_line1, o.address_line2,
-    `${o.city}, ${o.state_code} ${o.pincode}`,
+    `Deliver to: ${[o.address_line1, o.address_line2, `${o.city}, ${o.state_code} ${o.pincode}`].filter(Boolean).join(', ')}`,
+    (() => { const b = billingOf(o); return b.same ? 'Bill to: same as delivery' : `Bill to: ${[b.name, b.address_line1, b.address_line2, `${b.city}, ${b.state_code} ${b.pincode}`].filter(Boolean).join(', ')}`; })(),
+    `Place of supply: ${placeOfSupply(o)} (${o.tax_kind === 'intra' ? 'CGST+SGST' : 'IGST'})`,
     '',
     `Razorpay payment: ${o.razorpay_payment_id}`,
     `Invoice: ${o.invoice_number || 'not yet created'}`,

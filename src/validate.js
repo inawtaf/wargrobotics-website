@@ -14,8 +14,9 @@ export function normalisePhone(raw) {
   return m ? `+91${m[1]}` : null;
 }
 
-// A delivery address (checkout or saved address book).
-export function validateAddress(b) {
+// An address (checkout delivery or billing, or the saved address book).
+// Billing addresses may leave out the phone: { phoneRequired: false }.
+export function validateAddress(b, { phoneRequired = true } = {}) {
   b = b && typeof b === 'object' ? b : {};
   const errors = {};
 
@@ -24,7 +25,7 @@ export function validateAddress(b) {
   if (name.length < 2) errors.name = 'Enter the name of the person receiving it.';
 
   const phone = normalisePhone(b.phone);
-  if (!phone) errors.phone = 'Enter a 10-digit Indian mobile number; the courier needs it.';
+  if (!phone && (phoneRequired || clean(b.phone, 20))) errors.phone = phoneRequired ? 'Enter a 10-digit Indian mobile number; the courier needs it.' : 'Enter a 10-digit Indian mobile number, or leave it empty.';
 
   const address_line1 = clean(b.address_line1, 150);
   if (address_line1.length < 5) errors.address_line1 = 'Enter the house, building and street.';
@@ -39,20 +40,51 @@ export function validateAddress(b) {
   const pincode = clean(b.pincode, 6);
   if (!/^[1-9][0-9]{5}$/.test(pincode)) errors.pincode = 'Enter the 6-digit pincode.';
 
-  const gstin = clean(b.gstin, 15).toUpperCase() || null;
-  let business_name = clean(b.business_name, 150) || null;
+  const gst = validateGst(b.gstin, b.business_name, state_code);
+  Object.assign(errors, gst.errors);
+
+  return result(errors, { label, name, phone: phone || null, address_line1, address_line2, city, state_code, pincode, gstin: gst.gstin, business_name: gst.business_name });
+}
+
+// GSTIN + business name, checked against the state of the address they belong to.
+export function validateGst(rawGstin, rawBusiness, stateCode) {
+  const errors = {};
+  const gstin = clean(rawGstin, 40).toUpperCase().replace(/\s/g, '') || null;   // too long fails the pattern below
+  let business_name = clean(rawBusiness, 150) || null;
   if (gstin) {
     if (!GSTIN_RE.test(gstin)) {
-      errors.gstin = 'That does not look like a GSTIN (15 characters, e.g. 29ABCDE1234F1Z5).';
-    } else if (STATE_BY_CODE[state_code] && gstin.slice(0, 2) !== STATE_BY_CODE[state_code].gst) {
-      errors.gstin = `This GSTIN is registered outside ${STATE_BY_CODE[state_code].name}. Use the delivery state of that registration.`;
+      errors.gstin = 'That does not look like a GSTIN (15 characters, e.g. 30ABCDE1234F1Z5).';
+    } else if (STATE_BY_CODE[stateCode] && gstin.slice(0, 2) !== STATE_BY_CODE[stateCode].gst) {
+      const reg = Object.values(STATE_BY_CODE).find(s => s.gst === gstin.slice(0, 2));
+      errors.gstin = `This GSTIN is registered in ${reg ? reg.name : 'another state'}, but the billing address is in ${STATE_BY_CODE[stateCode].name}. Use an address in the state where the GSTIN is registered.`;
     }
     if (!business_name) errors.business_name = 'Enter the business name on the GST registration.';
   } else {
     business_name = null;
   }
+  return { errors, gstin, business_name };
+}
 
-  return result(errors, { label, name, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name });
+// Checkout: delivery address, billing address (or "same as delivery") and the
+// optional GSTIN, which belongs to the billing address. Inputs are already
+// validated addresses; this decides the invoice details and place of supply.
+//   GST place of supply for goods: with a GSTIN, the registration's state
+//   (the billing state); without one, where the goods are delivered.
+export function checkoutAddresses({ delivery, billing, billingSame, gstin, businessName }) {
+  const bill = billingSame || !billing ? { ...delivery } : billing;
+  const gst = validateGst(gstin, businessName, bill.state_code);
+  if (Object.keys(gst.errors).length) return { ok: false, errors: gst.errors };
+  return {
+    ok: true,
+    value: {
+      delivery: { ...delivery, gstin: null, business_name: null },
+      billing: { name: bill.name, phone: bill.phone || null, address_line1: bill.address_line1, address_line2: bill.address_line2 || null, city: bill.city, state_code: bill.state_code, pincode: bill.pincode },
+      billingSame: Boolean(billingSame || !billing),
+      gstin: gst.gstin,
+      business_name: gst.business_name,
+      place_of_supply: gst.gstin ? bill.state_code : delivery.state_code,
+    },
+  };
 }
 
 // Cart lines: [{ sku, quantity }]. Merges duplicates; total units capped.

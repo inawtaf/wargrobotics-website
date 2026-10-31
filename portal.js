@@ -14,26 +14,52 @@
   var state = { status: 'open', q: '', from: '', to: '', page: 1, current: null, couriers: [] };
 
   // ---------------------------------------------------------------- gate
-  window.WargMe().then(function (d) {
-    var gate = $('gate');
-    if (!d.user) {
-      gate.hidden = false;
-      gate.innerHTML = '<h1 class="t-section" style="font-size:26px">Staff sign-in</h1><p class="t-body">Sign in with your Warg Robotics staff account to open the order portal.</p><p><a class="btn btn-solid" href="/login?next=%2Fadmin">Sign in</a></p>';
-      return;
-    }
-    if (!d.user.is_staff) {
-      gate.hidden = false;
-      gate.innerHTML = '<h1 class="t-section" style="font-size:26px">No portal access</h1><p class="t-body"></p><p><a class="btn btn-line" href="/account">Go to your account</a></p>';
-      gate.querySelector('.t-body').textContent = d.user.email + ' is not a staff account' + (d.user.email_verified ? '.' : ', and its email is not confirmed yet.') + ' Ask an admin to add it to ADMIN_EMAILS.';
-      return;
-    }
-    $('who').textContent = d.user.email;
+  // Staff account (ADMIN_EMAILS, confirmed email), or an access token (ADMIN_TOKEN)
+  // for when no staff account can sign in yet, e.g. while email is being set up.
+  function tokenForm(gate) {
+    var f = el('form', 'p-token');
+    f.innerHTML = '<p class="p-muted">Or open the portal with the access token (the ADMIN_TOKEN secret):</p><input type="password" autocomplete="off" aria-label="Access token" placeholder="Access token"> <button class="btn btn-line" type="submit">Open with token</button><p class="p-muted p-token-msg"></p>';
+    f.onsubmit = function (e) {
+      e.preventDefault();
+      try { sessionStorage.setItem('warg_admin_token', f.querySelector('input').value.trim()); } catch (x) {}
+      api('/admin/me').then(function () { location.reload(); }).catch(function () {
+        try { sessionStorage.removeItem('warg_admin_token'); } catch (x) {}
+        f.querySelector('.p-token-msg').textContent = 'That token was not accepted.';
+      });
+    };
+    gate.appendChild(f);
+  }
+  function openPortal(label, signOut) {
+    $('who').textContent = label;
     var out = el('button', '', 'Sign out');
-    out.onclick = function () { api('/auth/logout', { method: 'POST' }).then(function () { location.href = '/login?next=%2Fadmin'; }); };
+    out.onclick = signOut;
     $('who').appendChild(out);
     $('app').hidden = false;
     start();
-  });
+  }
+  var hasToken = false;
+  try { hasToken = Boolean(sessionStorage.getItem('warg_admin_token')); } catch (x) {}
+  (hasToken ? api('/admin/me').then(function (r) { return { token: r.actor === 'api-token' }; }).catch(function () { try { sessionStorage.removeItem('warg_admin_token'); } catch (x) {} return {}; }) : Promise.resolve({}))
+    .then(function (t) {
+      if (t.token) return openPortal('access token', function () { try { sessionStorage.removeItem('warg_admin_token'); } catch (x) {} location.reload(); });
+      return window.WargMe().then(function (d) {
+        var gate = $('gate');
+        if (!d.user) {
+          gate.hidden = false;
+          gate.innerHTML = '<h1 class="t-section" style="font-size:26px">Staff sign-in</h1><p class="t-body">Sign in with your Warg Robotics staff account to open the order portal.</p><p><a class="btn btn-solid" href="/login?next=%2Fadmin">Sign in</a></p>';
+          tokenForm(gate);
+          return;
+        }
+        if (!d.user.is_staff) {
+          gate.hidden = false;
+          gate.innerHTML = '<h1 class="t-section" style="font-size:26px">No portal access</h1><p class="t-body"></p><p><a class="btn btn-line" href="/account">Go to your account</a></p>';
+          gate.querySelector('.t-body').textContent = d.user.email + ' is not a staff account' + (d.user.email_verified ? '.' : ', and its email is not confirmed yet.') + ' Ask an admin to add it to ADMIN_EMAILS.';
+          tokenForm(gate);
+          return;
+        }
+        openPortal(d.user.email, function () { api('/auth/logout', { method: 'POST' }).then(function () { location.href = '/login?next=%2Fadmin'; }); });
+      });
+    });
 
   function start() {
     var p = new URLSearchParams(location.search);
@@ -45,6 +71,7 @@
     loadOrders();
     if (p.get('order')) openOrder(p.get('order'));
     if (p.get('tab') === 'service') tab('service');
+    if (p.get('tab') === 'setup') tab('setup');
     setInterval(summary, 60000);   // keep the counts fresh while the page is open
   }
 
@@ -73,6 +100,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('.p-tabs [data-tab]'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === name)); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-panel]'), function (p) { p.hidden = p.getAttribute('data-panel') !== name; });
     if (name === 'service') loadService();
+    if (name === 'setup' && !healthRan) runHealth();
   }
   Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (b) { b.addEventListener('click', function () { tab(b.getAttribute('data-tab')); }); });
 
@@ -158,12 +186,16 @@
     $('d-customer').textContent = [
       o.customer_name + (o.business_name ? ' · ' + o.business_name : ''),
       o.email, o.phone, '',
-      o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode,
-      o.gstin ? 'GSTIN ' + o.gstin : null
+      'Deliver to:', o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, '',
+      o.billing_line1 ? 'Bill to: ' + o.billing_name : 'Bill to: same as delivery',
+      o.billing_line1 ? o.billing_line1 : null, o.billing_line2 || null,
+      o.billing_line1 ? o.billing_city + ', ' + o.billing_state_code + ' ' + o.billing_pincode : null,
+      o.gstin ? 'GSTIN ' + o.gstin : null,
+      'Place of supply: ' + (o.place_of_supply || o.state_code) + (o.tax_kind === 'intra' ? ' (CGST+SGST)' : ' (IGST)')
     ].filter(function (l) { return l !== null && l !== undefined; }).join('\n').replace(/\n{3,}/g, '\n\n');
     $('d-repeat').textContent = d.customer_other_orders ? 'Repeat customer: ' + d.customer_other_orders + ' other order(s).' : '';
     $('copy-addr').onclick = function () {
-      var text = [o.customer_name, o.business_name, o.address_line1, o.address_line2, o.city + ' ' + o.pincode, o.state_code, o.phone].filter(Boolean).join('\n');
+      var text = [o.customer_name, o.address_line1, o.address_line2, o.city + ' ' + o.pincode, o.state_code, o.phone].filter(Boolean).join('\n');
       navigator.clipboard.writeText(text).then(function () { flash('Address copied.'); });
     };
 
@@ -312,4 +344,39 @@
       });
     });
   }
+
+  // ---------------------------------------------------------------- setup check
+  var healthRan = false;
+  var SECTION = { settings: 'Settings and secrets', database: 'Database', google: 'Google sign-in', email: 'Email (Resend)', razorpay: 'Razorpay', zoho: 'Zoho Books' };
+  function healthFlash(box, msg, bad) { box.hidden = !msg; box.textContent = msg || ''; box.className = 'p-flash' + (bad ? ' bad' : ''); }
+  function runHealth() {
+    healthRan = true;
+    var box = $('health');
+    box.innerHTML = '<p class="p-muted">Checking…</p>';
+    api('/admin/health').then(function (h) {
+      box.innerHTML = '';
+      box.appendChild(el('p', h.ok ? 'p-ok' : 'p-warn', h.ok ? 'Everything checked out.' : 'Some items need fixing: see the rows marked ✗.'));
+      Object.keys(h.sections).forEach(function (k) {
+        box.appendChild(el('h3', 'p-h', SECTION[k] || k));
+        var t = el('table', 'p-mini');
+        h.sections[k].forEach(function (r) {
+          var tr = el('tr');
+          tr.appendChild(el('td', r.ok === false ? 'p-bad' : r.ok ? 'p-good' : 'p-info', r.ok === false ? '✗' : r.ok ? '✓' : 'i'));
+          tr.appendChild(el('td', '', r.name));
+          tr.appendChild(el('td', '', r.detail));
+          t.appendChild(tr);
+        });
+        box.appendChild(t);
+      });
+      box.appendChild(el('p', 'p-muted', 'Checked ' + when(h.checked_at)));
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(el('p', 'p-warn', 'Could not run the check: ' + e.message)); });
+  }
+  $('run-health').onclick = runHealth;
+  $('test-email-form').onsubmit = function (e) {
+    e.preventDefault();
+    healthFlash($('health-flash'), 'Sending…');
+    api('/admin/test-email', { method: 'POST', body: { to: $('test-email-to').value } })
+      .then(function (r) { healthFlash($('health-flash'), r.message); })
+      .catch(function (err) { healthFlash($('health-flash'), 'Not sent. ' + ((err.data && err.data.error) || err.message), true); });
+  };
 })();
