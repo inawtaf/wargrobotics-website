@@ -28,7 +28,7 @@ export async function events(env, orderId, { visibleOnly = false } = {}) {
 
 async function load(env, orderId) {
   const o = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
-  o.items = (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
+  o.items = (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, discount_paise, discount_label FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
   o.link_token = await orderToken(env, o.order_number);
   return o;
 }

@@ -208,6 +208,25 @@
   };
   window.WargForm = form;
 
+  // Product pages: coupon prices say how many coupons are left, and switch
+  // back to the plain price once the coupon has ended.
+  function couponPrices() {
+    if (!document.querySelector('[data-price-sku], [data-coupon-left]')) return;
+    api('/products').then(function (p) {
+      var c = p.coupon;
+      Array.prototype.forEach.call(document.querySelectorAll('[data-coupon-left]'), function (el) {
+        el.textContent = c.active ? ' (' + c.left + ' left)' : '';
+      });
+      if (c.active) return;
+      Array.prototype.forEach.call(document.querySelectorAll('[data-coupon-only]'), function (el) { el.hidden = true; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-price-sku]'), function (el) {
+        var prod = p.products.filter(function (x) { return x.sku === el.getAttribute('data-price-sku'); })[0];
+        if (prod) el.innerHTML = window.inr(prod.list_price_paise).replace(/\.00$/, '') + '<span>+GST</span>';
+      });
+    }).catch(function () {});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', couponPrices); else couponPrices();
+
   // Pincode boxes take digits only (6 of them).
   document.addEventListener('input', function (e) {
     var t = e.target;

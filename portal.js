@@ -206,7 +206,12 @@
 
     var t = $('d-items'); t.innerHTML = '';
     function row(a, b, cls) { var tr = el('tr', cls); tr.appendChild(el('td', '', a)); tr.appendChild(el('td', '', b)); t.appendChild(tr); }
-    o.items.forEach(function (i) { row(i.product_name + ' × ' + i.quantity + (i.price_type === 'offer' ? ' (offer)' : ''), inr(i.subtotal_paise)); });
+    o.items.forEach(function (i) {
+      row(i.product_name + ' × ' + i.quantity + (i.price_type === 'offer' ? ' (offer)' : ''), inr(i.unit_price_paise * i.quantity));
+      if (i.discount_paise) row('   ' + i.discount_label, '− ' + inr(i.discount_paise));
+    });
+    if (o.coupon_code) row('Coupon used', o.coupon_code);
+    row('Subtotal after discounts', inr(o.subtotal_paise));
     row(o.tax_kind === 'intra' ? 'CGST + SGST 18%' : 'IGST 18%', inr(o.gst_paise));
     row('Total', inr(o.total_paise), 't');
 

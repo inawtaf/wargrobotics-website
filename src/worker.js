@@ -3,7 +3,7 @@
 // every other path is served straight from the static files.
 //
 // Public
-//   GET  /api/products                       prices, offer units left, states
+//   GET  /api/products                       prices, coupon (uses left), combo, states
 //   POST /api/quote                          price a list of items for a state
 //   GET  /api/orders/:n?t=token              order page from an email link
 //   POST /api/webhooks/razorpay              Razorpay webhook
@@ -26,7 +26,8 @@
 //   POST /api/admin/orders/:n/process|ship|deliver|cancel|note|resend|retry
 //   GET /api/admin/service;  POST /api/admin/service/:sr
 
-import { PRODUCTS, STATES, MAX_QUANTITY, GST_RATE_BP } from './config.js';
+import { PRODUCTS, STATES, MAX_QUANTITY, GST_RATE_BP, COMBO, COUPON } from './config.js';
+import { comboShares, couponUnitDiscount } from './pricing.js';
 import { validateAddress, validateItems, checkoutAddresses } from './validate.js';
 import { json, safeEqual, orderToken, readJson, httpError } from './util.js';
 import * as auth from './auth.js';
@@ -41,13 +42,15 @@ import { ensureSchema } from './schema.js';
 // --------------------------------------------------------------------- public
 
 async function products(env) {
-  const sold = await orders.soldAtOffer(env);
+  const left = await orders.couponUsesLeft(env);
   return json({
     products: Object.values(PRODUCTS).map(p => ({
       sku: p.sku, name: p.name, line: p.line,
-      list_price_paise: p.listPricePaise, offer_price_paise: p.offerPricePaise,
-      offer_units_left: Math.max(0, p.offerUnits - (sold[p.sku] || 0)),
+      list_price_paise: p.listPricePaise,
+      coupon_price_paise: p.listPricePaise - couponUnitDiscount(p.sku),
     })),
+    coupon: { code: COUPON.code, percent: COUPON.percent, max_orders: COUPON.maxOrders, left, active: left > 0 },
+    combo: { skus: COMBO.skus, label: COMBO.label, price_paise: COMBO.pricePaise, saving_paise: comboShares().total },
     gst_rate_bp: GST_RATE_BP, max_quantity: MAX_QUANTITY,
     seller_state: env.SELLER_STATE || 'GA', razorpay_key_id: env.RAZORPAY_KEY_ID || null,
     google_enabled: google.configured(env),
@@ -59,7 +62,7 @@ async function quoteHandler(request, env) {
   const b = await readJson(request);
   const v = validateItems(b.items);
   if (!v.ok) return json({ error: v.errors.items }, 422);
-  return json({ quote: await orders.quoteItems(env, v.value, String(b.state_code || '').toUpperCase()) });
+  return json({ quote: await orders.quoteItems(env, v.value, String(b.state_code || '').toUpperCase(), b.coupon || null) });
 }
 
 // Order page opened from an email link. The link alone isn't enough: the
@@ -128,11 +131,16 @@ async function createOrderHandler(request, env, ctx, user) {
   const c = checkoutAddresses({ delivery: del.value, billing: bill?.value, billingSame, gstin: gstSource.gstin, businessName: gstSource.business_name });
   if (!c.ok) return json({ error: 'validation', fields: c.errors }, 422);
 
-  // Review step: everything checked and priced, nothing saved or charged yet.
-  if (b.dry_run) {
-    const quote = await orders.quoteItems(env, items.value, c.value.place_of_supply);
-    return json({ review: { ...c.value, quote, email: user.email } });
+  // Coupon applied at checkout: refuse a wrong or finished one now, before
+  // anyone pays expecting a discount.
+  const coupon = b.coupon ? String(b.coupon).trim().toUpperCase() : null;
+  const priced = await orders.quoteItems(env, items.value, c.value.place_of_supply, coupon);
+  if (coupon && (priced.coupon.status === 'invalid' || priced.coupon.status === 'used_up')) {
+    return json({ error: 'validation', fields: { coupon: priced.coupon.message } }, 422);
   }
+
+  // Review step: everything checked and priced, nothing saved or charged yet.
+  if (b.dry_run) return json({ review: { ...c.value, quote: priced, email: user.email } });
 
   if (!(await auth.throttle(env, `checkout:${user.id}`, 20, 3600))) throw httpError(429, 'Too many checkout attempts. Try again later.');
 
@@ -143,7 +151,7 @@ async function createOrderHandler(request, env, ctx, user) {
     if (bill?.save) await account.saveAddress(env, user, { ...bill.value, phone: bill.value.phone || c.value.delivery.phone, gstin: c.value.gstin, business_name: c.value.business_name }, { makeDefaultBilling: true });
   } catch (e) { console.error('saving checkout address:', e.message); /* e.g. address book full: still place the order */ }
 
-  const created = await orders.createOrder(env, user, items.value, c.value);
+  const created = await orders.createOrder(env, user, items.value, c.value, coupon);
   return json({
     order_number: created.orderNumber,
     token: created.token,

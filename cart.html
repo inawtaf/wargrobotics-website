@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261031e">
+<link rel="stylesheet" href="warg.css?v=20261031g">
 </head>
 <body>
 
@@ -49,16 +49,19 @@
         <div class="card-actions">
           <a class="btn btn-line" href="/cart?add=ghost" data-add="ghost">Add a Ghost</a>
           <a class="btn btn-line" href="/cart?add=greywind" data-add="greywind">Add a Greywind</a>
+          <a class="btn btn-line" href="/cart?add=combo" data-add="combo">Add the Ghost + Greywind combo</a>
         </div>
       </div>
       <aside class="summary" id="cart-summary" hidden>
         <h2 class="field-legend">Summary</h2>
         <dl class="summary-lines">
-          <div><dt>Subtotal</dt><dd id="c-subtotal"></dd></div>
+          <div><dt>Price</dt><dd id="c-subtotal"></dd></div>
+          <div id="c-disc-anchor" hidden></div>
           <div class="tax-row"><dt>GST 18%</dt><dd id="c-gst"></dd></div>
           <div class="summary-total"><dt>Total</dt><dd id="c-total"></dd></div>
         </dl>
         <a class="btn btn-solid btn-lg" id="to-checkout" href="/checkout" style="width:100%;justify-content:center">Checkout</a>
+        <p class="coupon-hint" id="c-coupon" hidden></p>
         <p class="hint" style="margin-top:12px">GST is split as CGST + SGST or IGST once you choose a delivery address. Delivery within India is included.</p>
       </aside>
     </div>
@@ -73,7 +76,7 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261031e" defer></script>
-<script src="cart-page.js?v=20261026b" defer></script>
+<script src="site.js?v=20261031g" defer></script>
+<script src="cart-page.js?v=20261031g" defer></script>
 </body>
 </html>

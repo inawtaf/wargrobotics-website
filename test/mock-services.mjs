@@ -70,8 +70,11 @@ http.createServer((req, res) => {
     }
     if (p === '/zoho/invoices' && req.method === 'POST') {
       if (state.failZohoInvoices) return send(res, 400, { code: 1001, message: 'Simulated Zoho outage' });
-      const li = body.line_items[0];
-      const total = Math.round(li.rate * li.quantity * 118) / 100;
+      // Like Zoho: per line, (rate × qty − discount amount) + 18% tax, rounded to paise.
+      const total = body.line_items.reduce((t, li) => {
+        const net = Math.round((li.rate * li.quantity - (Number(li.discount) || 0)) * 100);
+        return t + net + Math.round(net * 0.18);
+      }, 0) / 100;
       const inv = { invoice_id: 'inv_' + state.nextInvoice, invoice_number: 'INV-' + String(state.nextInvoice++).padStart(6, '0'), reference_number: body.reference_number, total, status: 'draft' };
       state.invoices.push(inv);
       return send(res, 201, { code: 0, invoice: inv });

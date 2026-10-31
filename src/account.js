@@ -371,14 +371,15 @@ async function cartItems(env, userId) {
   return results.filter(r => PRODUCTS[r.sku]);
 }
 
-async function cartResponse(env, user, stateCode) {
+async function cartResponse(env, user, stateCode, coupon = null) {
   const items = await cartItems(env, user.id);
-  const quote = items.length ? await orders.quoteItems(env, items, stateCode || null) : null;
+  const quote = items.length ? await orders.quoteItems(env, items, stateCode || null, coupon) : null;
   return json({ items, quote, max_quantity: MAX_QUANTITY });
 }
 
 export async function getCart(request, env, ctx, user) {
-  return cartResponse(env, user, new URL(request.url).searchParams.get('state_code'));
+  const u = new URL(request.url);
+  return cartResponse(env, user, u.searchParams.get('state_code'), u.searchParams.get('coupon'));
 }
 
 async function writeCart(env, userId, items) {

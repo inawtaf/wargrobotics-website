@@ -7,7 +7,7 @@ import { createHmac, createHash, webcrypto } from 'node:crypto';
 // v20 on, so provide it here for older Node (the site code itself is unchanged).
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
-import { quoteCart, unitPrice } from '../src/pricing.js';
+import { quoteCart } from '../src/pricing.js';
 import { PRODUCTS } from '../src/config.js';
 import { validateAddress, validateItems, validateRegistration, passwordProblem } from '../src/validate.js';
 import { hashPassword, verifyPassword, burnPasswordCheck } from '../src/auth.js';
@@ -20,46 +20,81 @@ const good = {
   name: 'Asha Rao', phone: '98450 12345',
   address_line1: '12, 3rd Cross, Indiranagar', city: 'Bengaluru', state_code: 'KA', pincode: '560038',
 };
-const quote = ({ sku, quantity, unitsSoldAtOffer, buyerState, sellerState }) =>
-  quoteCart({ items: [{ sku, quantity }], soldAtOffer: { [sku]: unitsSoldAtOffer }, buyerState, sellerState });
+const quote = ({ sku, quantity, buyerState, sellerState, coupon }) =>
+  quoteCart({ items: [{ sku, quantity }], buyerState, sellerState, coupon });
+const C = (code = 'WARG20', usesLeft = 50) => ({ code, usesLeft });
 
-test('offer price while units remain, list price once they run out', () => {
-  const g = PRODUCTS.ghost;
-  assert.equal(unitPrice(g, 0, 1).unitPricePaise, 19_999_00);
-  assert.equal(unitPrice(g, 99, 1).priceType, 'offer');
-  assert.equal(unitPrice(g, 100, 1).priceType, 'list');
-  assert.equal(unitPrice(g, 98, 3).unitPricePaise, 24_999_00, 'order that does not fit the offer pays list');
-});
-
-test('GST 18% on top; CGST+SGST in Karnataka, IGST elsewhere', () => {
-  const ka = quote({ sku: 'ghost', quantity: 1, unitsSoldAtOffer: 0, buyerState: 'KA', sellerState: 'KA' });
+test('list prices: Ghost ₹29,999, Greywind ₹35,999, GST 18% on top', () => {
+  const ka = quote({ sku: 'ghost', quantity: 1, buyerState: 'KA', sellerState: 'KA' });
   assert.equal(ka.summary, 'Warg Ghost × 1');
-  assert.equal(ka.subtotalPaise, 1_999_900);
-  assert.equal(ka.gstPaise, 359_982);
-  assert.equal(ka.totalPaise, 2_359_882);           // ₹23,598.82
+  assert.equal(ka.subtotalPaise, 2_999_900);
+  assert.equal(ka.gstPaise, 539_982);
+  assert.equal(ka.totalPaise, 3_539_882);           // ₹35,398.82
   assert.equal(ka.taxKind, 'intra');
-  assert.deepEqual(ka.taxLines.map(l => l.paise), [179_991, 179_991]);
+  assert.deepEqual(ka.taxLines.map(l => l.paise), [269_991, 269_991]);
+  assert.equal(ka.discountPaise, 0);
+  assert.deepEqual(ka.discounts, []);
 
-  const mh = quote({ sku: 'greywind', quantity: 2, unitsSoldAtOffer: 0, buyerState: 'MH', sellerState: 'KA' });
-  assert.equal(mh.subtotalPaise, 4_999_800);
-  assert.equal(mh.gstPaise, 899_964);
+  const mh = quote({ sku: 'greywind', quantity: 2, buyerState: 'MH', sellerState: 'KA' });
+  assert.equal(mh.subtotalPaise, 7_199_800);
+  assert.equal(mh.gstPaise, 1_295_964);
   assert.equal(mh.taxKind, 'inter');
   assert.equal(mh.taxLines.length, 1);
-  assert.equal(mh.totalPaise, 5_899_764);
+  assert.equal(mh.totalPaise, 8_495_764);
 });
 
-test('tax lines always add up to the GST total (odd paise)', () => {
-  for (const sku of Object.keys(PRODUCTS)) for (let q = 1; q <= 9; q++) {
-    const r = quote({ sku, quantity: q, unitsSoldAtOffer: 0, buyerState: 'KA', sellerState: 'KA' });
+test('tax lines always add up to the GST total (odd paise), with and without discounts', () => {
+  for (const sku of Object.keys(PRODUCTS)) for (let q = 1; q <= 9; q++) for (const coupon of [undefined, C()]) {
+    const r = quote({ sku, quantity: q, buyerState: 'KA', sellerState: 'KA', coupon });
     assert.equal(r.taxLines.reduce((s, l) => s + l.paise, 0), r.gstPaise);
+    assert.equal(r.subtotalPaise, r.listSubtotalPaise - r.discountPaise);
+    assert.equal(r.totalPaise, r.subtotalPaise + r.gstPaise);
   }
 });
 
-test('cart: mixed products, per-line offer, totals add up', () => {
-  const q = quoteCart({ items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 2 }], soldAtOffer: { greywind: 99 }, buyerState: 'MH', sellerState: 'KA' });
-  assert.equal(q.lines[0].priceType, 'offer');
-  assert.equal(q.lines[1].priceType, 'list', 'only 1 Greywind offer unit left, line of 2 pays list');
-  assert.equal(q.subtotalPaise, 1_999_900 + 2 * 2_999_900);
+test('combo: one Ghost + one Greywind = ₹49,999 before GST, for every pair', () => {
+  const one = quoteCart({ items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 1 }], buyerState: 'GA', sellerState: 'GA' });
+  assert.equal(one.comboPairs, 1);
+  assert.equal(one.subtotalPaise, 4_999_900);
+  assert.equal(one.comboDiscountPaise, 1_599_900);
+  assert.deepEqual(one.discounts.map(d => [d.kind, d.paise]), [['combo', 1_599_900]]);
+  // each line carries its own share, in proportion to its price
+  assert.equal(one.lines[0].discountPaise + one.lines[1].discountPaise, 1_599_900);
+  assert.ok(one.lines[0].discountPaise < one.lines[1].discountPaise);
+  const two = quoteCart({ items: [{ sku: 'ghost', quantity: 2 }, { sku: 'greywind', quantity: 3 }], buyerState: 'GA', sellerState: 'GA' });
+  assert.equal(two.comboPairs, 2);
+  assert.equal(two.subtotalPaise, 2 * 4_999_900 + 3_599_900, 'two combos + one Greywind at list');
+  assert.match(two.lines[1].discountLabel, /2 in combo/);
+});
+
+test('coupon WARG20: 20% off items outside a combo; never stacked on the combo', () => {
+  const g = quote({ sku: 'ghost', quantity: 1, buyerState: 'GA', sellerState: 'GA', coupon: C('warg20') });
+  assert.equal(g.coupon.status, 'applied');
+  assert.equal(g.couponDiscountPaise, 599_980);
+  assert.equal(g.subtotalPaise, 2_399_920);         // ₹23,999.20
+  assert.deepEqual(g.discounts.map(d => d.label), ['Coupon WARG20 (20% off)']);
+  const mix = quoteCart({ items: [{ sku: 'ghost', quantity: 2 }, { sku: 'greywind', quantity: 1 }], buyerState: 'GA', sellerState: 'GA', coupon: C() });
+  assert.equal(mix.subtotalPaise, 4_999_900 + 2_399_920, 'one combo + the spare Ghost at 20% off');
+  assert.equal(mix.lines.find(l => l.sku === 'ghost').discountLabel, '1 in combo, 1 with WARG20 (20% off)');
+  const pair = quoteCart({ items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 1 }], buyerState: 'GA', sellerState: 'GA', coupon: C() });
+  assert.equal(pair.subtotalPaise, 4_999_900, 'combo only');
+  assert.equal(pair.coupon.status, 'no_items');
+  assert.equal(pair.couponDiscountPaise, 0);
+});
+
+test('coupon refused when wrong or used up', () => {
+  assert.equal(quote({ sku: 'ghost', quantity: 1, coupon: C('WARG50') }).coupon.status, 'invalid');
+  assert.equal(quote({ sku: 'ghost', quantity: 1, coupon: C('WARG50') }).discountPaise, 0);
+  const done = quote({ sku: 'ghost', quantity: 1, coupon: C('WARG20', 0) });
+  assert.equal(done.coupon.status, 'used_up');
+  assert.match(done.coupon.message, /first 100 orders/);
+  assert.equal(done.subtotalPaise, 2_999_900);
+});
+
+test('cart: mixed products, totals add up', () => {
+  const q = quoteCart({ items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 2 }], buyerState: 'MH', sellerState: 'KA' });
+  assert.equal(q.listSubtotalPaise, 2_999_900 + 2 * 3_599_900);
+  assert.equal(q.subtotalPaise, 4_999_900 + 3_599_900);
   assert.equal(q.gstPaise, q.lines.reduce((s, l) => s + l.gstPaise, 0));
   assert.equal(q.totalPaise, q.subtotalPaise + q.gstPaise);
   assert.equal(q.itemCount, 3);
@@ -194,8 +229,8 @@ const goa = { name: 'Asha Rao', phone: '+919845012345', address_line1: '4, Rua d
 const pune = { name: 'Rao Drones', phone: null, address_line1: 'Plot 7, MIDC Bhosari', city: 'Pune', state_code: 'MH', pincode: '411026' };
 
 test('Goa seller: Goa buyer pays CGST+SGST, a Karnataka buyer pays IGST', () => {
-  assert.equal(quote({ sku: 'ghost', quantity: 1, unitsSoldAtOffer: 0, buyerState: 'GA', sellerState: 'GA' }).taxKind, 'intra');
-  assert.equal(quote({ sku: 'ghost', quantity: 1, unitsSoldAtOffer: 0, buyerState: 'KA', sellerState: 'GA' }).taxKind, 'inter');
+  assert.equal(quote({ sku: 'ghost', quantity: 1, buyerState: 'GA', sellerState: 'GA' }).taxKind, 'intra');
+  assert.equal(quote({ sku: 'ghost', quantity: 1, buyerState: 'KA', sellerState: 'GA' }).taxKind, 'inter');
 });
 
 test('billing same as delivery: copies the delivery address; place of supply is the delivery state', () => {
@@ -317,4 +352,17 @@ test('resend: each email only when it makes sense for the order', () => {
   assert.equal(RESENDABLE.invoice.needs({ zoho_invoice_id: 'inv_1' }), null);
   assert.match(RESENDABLE.dispatch.needs({}), /no tracking/);
   assert.match(RESENDABLE.cancelled.needs({ status: 'paid' }), /not cancelled/);
+});
+
+test('confirmation email shows full prices, the combo and coupon savings, and the discounted subtotal', () => {
+  const o = { order_number: 'WR-311026-COMB', customer_name: 'Asha Rao', email: 'a@b.co', phone: '+919845012345', address_line1: '4, Rua de Ourem', city: 'Panaji', state_code: 'GA', pincode: '403001',
+    items: [{ product_name: 'Warg Ghost', quantity: 2, unit_price_paise: 2999900, discount_paise: 1327205, subtotal_paise: 4672595, discount_label: '1 in combo, 1 with WARG20 (20% off)' },
+            { product_name: 'Warg Greywind', quantity: 1, unit_price_paise: 3599900, discount_paise: 872675, subtotal_paise: 2727225, discount_label: '1 in combo' }],
+    list_subtotal_paise: 9599700, combo_discount_paise: 1599900, coupon_code: 'WARG20', coupon_discount_paise: 599980,
+    subtotal_paise: 7399820, gst_paise: 1331968, total_paise: 8731788, tax_kind: 'intra', link_token: 't' };
+  const html = confirmationEmail({}, o, { hasInvoice: true }).html;
+  assert.match(html, /Warg Ghost × 2<\/td><td[^>]*>₹59,998\.00/);
+  assert.match(html, /Ghost \+ Greywind combo<\/td><td[^>]*>− ₹15,999\.00/);
+  assert.match(html, /Coupon WARG20<\/td><td[^>]*>− ₹5,999\.80/);
+  assert.match(html, /Subtotal after discounts<\/td><td[^>]*>₹73,998\.20/);
 });

@@ -1,6 +1,6 @@
 /* Cart page: works signed in (server cart) or signed out (this browser). */
 (function () {
-  var cart = window.WargCart;
+  var cart = window.WargCart, api = window.WargApi;
   var MAX = 9;
   var lines = document.getElementById('cart-lines');
   var summary = document.getElementById('cart-summary');
@@ -27,10 +27,10 @@
         '<div class="qty"><button type="button" aria-label="One fewer">−</button><span></span><button type="button" aria-label="One more">+</button></div>' +
         '<div class="cart-price"></div>';
       card.querySelector('.card-title').textContent = l.productName;
-      card.querySelector('.card-meta').textContent = l.line + (l.priceType === 'offer' ? ' · offer price' : '');
+      card.querySelector('.card-meta').textContent = l.line + (l.discountLabel ? ' · ' + l.discountLabel : '');
       card.querySelector('.qty span').textContent = l.quantity;
       var price = card.querySelector('.cart-price');
-      if (l.priceType === 'offer') { var s = document.createElement('s'); s.textContent = window.inr(l.listPricePaise * l.quantity); price.appendChild(s); }
+      if (l.discountPaise) { var s = document.createElement('s'); s.textContent = window.inr(l.listSubtotalPaise); price.appendChild(s); }
       price.appendChild(document.createTextNode(window.inr(l.subtotalPaise)));
       var btns = card.querySelectorAll('.qty button');
       btns[1].disabled = total >= MAX;
@@ -42,7 +42,23 @@
       card.firstChild.appendChild(rm);
       lines.appendChild(card);
     });
-    $('c-subtotal').textContent = window.inr(q.subtotalPaise);
+    $('c-subtotal').textContent = window.inr(q.listSubtotalPaise);
+    // Discount rows (combo now; the coupon is applied at checkout)
+    Array.prototype.forEach.call(document.querySelectorAll('.disc-row'), function (el) { el.remove(); });
+    var anchor = $('c-disc-anchor');
+    q.discounts.forEach(function (d) {
+      var row = document.createElement('div'); row.className = 'disc-row';
+      var dt = document.createElement('dt'); dt.textContent = d.label;
+      var dd = document.createElement('dd'); dd.textContent = '− ' + window.inr(d.paise);
+      row.appendChild(dt); row.appendChild(dd); anchor.parentNode.insertBefore(row, anchor);
+    });
+    var hint = $('c-coupon');
+    if (coupon && coupon.active) {
+      hint.hidden = false;
+      hint.textContent = (q.comboPairs && q.lines.every(function (l) { return l.quantity === q.comboPairs; }))
+        ? 'Combo price applied. (It beats the ' + coupon.code + ' coupon, so the coupon isn\u2019t needed.)'
+        : 'Coupon ' + coupon.code + ': ' + coupon.percent + '% off, first ' + coupon.max_orders + ' orders. Apply it at checkout.';
+    } else hint.hidden = true;
     $('c-gst').textContent = window.inr(q.gstPaise);
     $('c-total').textContent = window.inr(q.totalPaise);
     summary.hidden = false;
@@ -66,7 +82,12 @@
     a.addEventListener('click', function (e) { e.preventDefault(); add(a.getAttribute('data-add')); });
   });
 
+  // Coupon details for the hint under the summary.
+  var coupon = null;
+  api('/products').then(function (p) { coupon = p.coupon; if (items.length) load(); }).catch(function () {});
+
   function add(sku) {
+    if (sku === 'combo') return cart.add('ghost', 1).then(function () { return add('greywind'); });
     return cart.add(sku, 1).then(function (r) {
       note(r && r.trimmed ? 'Orders are limited to 9 units, so not everything was added.' : 'Added to your cart.');
       if (window.wargTrack) window.wargTrack('add_to_cart', { items: [{ item_id: sku, quantity: 1 }] });

@@ -1,4 +1,4 @@
-import { PRODUCTS } from './config.js';
+import { PRODUCTS, COUPON } from './config.js';
 import { quoteCart } from './pricing.js';
 import { nowIso, nowSec, newOrderNumber, orderToken } from './util.js';
 import * as razorpay from './razorpay.js';
@@ -10,29 +10,31 @@ export { billingOf, placeOfSupply };
 
 const sellerState = env => env.SELLER_STATE || 'GA';
 
-// Units already sold at the offer price, per product. Unpaid orders don't count.
-export async function soldAtOffer(env) {
-  const { results } = await env.DB.prepare(`SELECT i.sku, COALESCE(SUM(i.quantity),0) AS n
-    FROM order_items i JOIN orders o ON o.id = i.order_id
-    WHERE i.price_type = 'offer' AND o.status IN ('paid','processing','shipped','delivered') GROUP BY i.sku`).all();
-  return Object.fromEntries(results.map(r => [r.sku, r.n]));
+// Coupon uses left: paid orders on which the coupon took money off count
+// (cancelled ones too, so a cancel can't be used to reopen it). Unpaid don't.
+export async function couponUsesLeft(env) {
+  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM orders WHERE coupon_code = ? AND coupon_discount_paise > 0
+    AND status IN ('paid','processing','shipped','delivered','cancelled','refunded')`).bind(COUPON.code).first();
+  return Math.max(0, COUPON.maxOrders - r.n);
 }
 
-export async function quoteItems(env, items, buyerState) {
-  return quoteCart({ items, soldAtOffer: await soldAtOffer(env), buyerState, sellerState: sellerState(env) });
+// couponCode: what the buyer applied at checkout (or nothing).
+export async function quoteItems(env, items, buyerState, couponCode = null) {
+  const usesLeft = couponCode ? await couponUsesLeft(env) : 0;
+  return quoteCart({ items, buyerState, sellerState: sellerState(env), coupon: { code: couponCode, usesLeft } });
 }
 
 export const getByNumber = (env, n) => env.DB.prepare('SELECT * FROM orders WHERE order_number = ?').bind(n).first();
 export const getByRazorpayOrder = (env, id) => env.DB.prepare('SELECT * FROM orders WHERE razorpay_order_id = ?').bind(id).first();
 export const getItems = async (env, orderId) =>
-  (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
+  (await env.DB.prepare('SELECT sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise, discount_paise, discount_label FROM order_items WHERE order_id = ? ORDER BY id').bind(orderId).all()).results;
 
 // Saves the order and its lines, then asks Razorpay for an order to pay against.
 // user: the signed-in account; items: validated cart lines;
 // a: checkoutAddresses() result { delivery, billing, gstin, business_name, place_of_supply }.
-export async function createOrder(env, user, items, a) {
+export async function createOrder(env, user, items, a, couponCode = null) {
   const { delivery: d, billing: bl } = a;
-  const q = await quoteItems(env, items, a.place_of_supply);
+  const q = await quoteItems(env, items, a.place_of_supply, couponCode);
   let orderNumber, orderId;
   for (let i = 0; i < 5; i++) {
     orderNumber = newOrderNumber();
@@ -40,12 +42,14 @@ export async function createOrder(env, user, items, a) {
       const row = await env.DB.prepare(`INSERT INTO orders (
           order_number, user_id, item_count, summary, subtotal_paise, gst_rate_bp, gst_paise, total_paise, tax_kind,
           customer_name, email, phone, address_line1, address_line2, city, state_code, pincode, gstin, business_name,
-          billing_name, billing_phone, billing_line1, billing_line2, billing_city, billing_state_code, billing_pincode, place_of_supply)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`).bind(
+          billing_name, billing_phone, billing_line1, billing_line2, billing_city, billing_state_code, billing_pincode, place_of_supply,
+          list_subtotal_paise, combo_discount_paise, coupon_code, coupon_discount_paise)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`).bind(
         orderNumber, user.id, q.itemCount, q.summary, q.subtotalPaise, q.gstRateBp, q.gstPaise, q.totalPaise, q.taxKind,
         d.name, user.email, d.phone, d.address_line1, d.address_line2 ?? null, d.city, d.state_code, d.pincode,
         a.gstin ?? null, a.business_name ?? null,
-        bl.name, bl.phone ?? null, bl.address_line1, bl.address_line2 ?? null, bl.city, bl.state_code, bl.pincode, a.place_of_supply
+        bl.name, bl.phone ?? null, bl.address_line1, bl.address_line2 ?? null, bl.city, bl.state_code, bl.pincode, a.place_of_supply,
+        q.listSubtotalPaise, q.comboDiscountPaise, q.couponDiscountPaise ? q.coupon.code : null, q.couponDiscountPaise
       ).first();
       orderId = row.id;
       break;
@@ -54,8 +58,8 @@ export async function createOrder(env, user, items, a) {
     }
   }
   await env.DB.batch(q.lines.map(l => env.DB.prepare(
-    'INSERT INTO order_items (order_id, sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(orderId, l.sku, l.productName, l.quantity, l.priceType, l.unitPricePaise, l.subtotalPaise, l.gstPaise)));
+    'INSERT INTO order_items (order_id, sku, product_name, quantity, price_type, unit_price_paise, subtotal_paise, gst_paise, discount_paise, discount_label) VALUES (?,?,?,?,?,?,?,?,?,?)'
+  ).bind(orderId, l.sku, l.productName, l.quantity, l.priceType, l.unitPricePaise, l.subtotalPaise, l.gstPaise, l.discountPaise, l.discountLabel)));
 
   const rzp = await razorpay.createOrder(env, {
     amountPaise: q.totalPaise,
@@ -211,7 +215,11 @@ export function publicView(o, items) {
     status: o.status,
     summary: o.summary,
     item_count: o.item_count,
-    items: (items || []).map(i => ({ sku: i.sku, product_name: i.product_name, quantity: i.quantity, price_type: i.price_type, unit_price_paise: i.unit_price_paise, subtotal_paise: i.subtotal_paise })),
+    items: (items || []).map(i => ({ sku: i.sku, product_name: i.product_name, quantity: i.quantity, price_type: i.price_type, unit_price_paise: i.unit_price_paise, discount_paise: i.discount_paise || 0, discount_label: i.discount_label || null, subtotal_paise: i.subtotal_paise })),
+    list_subtotal_paise: o.list_subtotal_paise ?? o.subtotal_paise,
+    combo_discount_paise: o.combo_discount_paise || 0,
+    coupon_code: o.coupon_code || null,
+    coupon_discount_paise: o.coupon_discount_paise || 0,
     subtotal_paise: o.subtotal_paise,
     gst_paise: o.gst_paise,
     tax_kind: o.tax_kind,

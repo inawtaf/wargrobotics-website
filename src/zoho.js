@@ -147,11 +147,15 @@ export async function createPaidInvoice(env, order) {
           gst_treatment: gstTreatment(order),
           ...(order.gstin ? { gst_no: order.gstin } : {}),
           is_inclusive_tax: false,
+          // Combo and coupon show as line discounts (an amount), taken off
+          // before GST, so the invoice lists the full price and the saving.
+          ...(order.items.some(it => it.discount_paise) ? { discount_type: 'item_level', is_discount_before_tax: true } : {}),
           line_items: order.items.map(it => ({
             item_id: env[it.zohoItemVar],
             quantity: it.quantity,
             rate: it.unit_price_paise / 100,
             tax_id: taxId,
+            ...(it.discount_paise ? { discount: Number((it.discount_paise / 100).toFixed(2)), description: `Discount: ${it.discount_label}` } : {}),
             ...(it.price_type === 'offer' ? { description: 'Offer price' } : {}),
           })),
           notes: `Paid online via Razorpay (payment ${order.razorpay_payment_id}).`,
