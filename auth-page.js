@@ -14,7 +14,8 @@
     if (!token) { F.status(resetForm, 'This link is incomplete. Use the link in your email, or ask for a new one.', 'bad'); }
     resetForm.addEventListener('submit', function (e) {
       e.preventDefault(); F.clear(resetForm);
-      api('/auth/reset', { method: 'POST', body: { token: token, password: $('rs-password').value } })
+      if ($('rs-password').value !== $('rs-password2').value) { F.errors(resetForm, { password_confirm: 'The two passwords do not match.' }); return; }
+      api('/auth/reset', { method: 'POST', body: { token: token, password: $('rs-password').value, password_confirm: $('rs-password2').value } })
         .then(function () { location.href = '/account?reset=done'; })
         .catch(function (err) { F.fail(resetForm, err); });
     });
@@ -35,6 +36,9 @@
     if (p.google_enabled === false) { $('google-btn').hidden = true; document.querySelector('.or-rule').hidden = true; }
   }).catch(function () {});
   if (q.get('error')) show(q.get('error'));
+  if (q.get('verify') === 'done') show('Your email is confirmed. Sign in to continue.', true);
+  if (q.get('verify') === 'expired') show('That confirmation link has expired. Sign in, and send a new one from your account page.');
+  if (/^\/order\?/.test(next)) show('Sign in to see your order. Use the account the order email was sent to.', true);
   if (next === '/checkout') show('Sign in or create an account to place your order. Your cart is kept.', true);
 
   function tab(which) {
@@ -64,7 +68,9 @@
   });
 
   register.addEventListener('submit', function (e) {
-    e.preventDefault(); F.clear(register); busy(register, true);
+    e.preventDefault(); F.clear(register);
+    if ($('re-password').value !== $('re-password2').value) { F.errors(register, { password_confirm: 'The two passwords do not match.' }); return; }
+    busy(register, true);
     api('/auth/register', { method: 'POST', body: F.values(register) })
       .then(function (d) {
         if (window.wargTrack) window.wargTrack('sign_up', { method: 'email' });

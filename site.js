@@ -86,8 +86,8 @@
   function sumItems(items) { return (items || []).reduce(function (s, i) { return s + i.quantity; }, 0); }
 
   // ---------------------------------------------------------------- header
-  var countEl = null;
-  function setCount(n) { if (countEl) { countEl.textContent = n; countEl.hidden = !n; } }
+  var countEls = [];
+  function setCount(n) { countEls.forEach(function (el) { el.textContent = n; el.hidden = !n; }); }
 
   // Ends this browser's session and forgets the signed-in cart count.
   function signOut() {
@@ -95,36 +95,74 @@
   }
   window.WargSignOut = signOut;
 
-  function header() {
-    var bar = document.querySelector('.nav .wrap');
-    if (!bar || bar.querySelector('.nav-acct')) return;
+  // Sign in / Account (+ Portal, Sign out) and Cart (n), into one bar.
+  function accountLinks(cls) {
     var box = document.createElement('div');
-    box.className = 'nav-acct';
+    box.className = cls;
     var acct = document.createElement('a');
     acct.href = '/login'; acct.textContent = 'Sign in';
     var c = document.createElement('a');
     c.href = '/cart'; c.className = 'nav-cart'; c.setAttribute('aria-label', 'Cart');
     c.innerHTML = 'Cart <span class="nav-cart-n" hidden>0</span>';
-    countEl = c.querySelector('.nav-cart-n');
+    countEls.push(c.querySelector('.nav-cart-n'));
     box.appendChild(acct); box.appendChild(c);
-    var buy = bar.querySelector('.nav-buy');
-    bar.insertBefore(box, buy || null);
-    if (!bar.querySelector('.nav-links')) box.classList.add('push');
-    setCount(localCount());
     whoami().then(function (d) {
       if (d.user) {
-        acct.href = '/account'; acct.textContent = 'Account'; setCount(d.cart_count || 0);
+        acct.href = '/account'; acct.textContent = 'Account';
         if (d.user.is_staff) { var portal = document.createElement('a'); portal.href = '/admin'; portal.textContent = 'Portal'; box.insertBefore(portal, acct); }
         var out = document.createElement('a');
         out.href = '#'; out.className = 'nav-signout'; out.textContent = 'Sign out';
         out.onclick = function (e) { e.preventDefault(); signOut(); };
         box.insertBefore(out, c);
-      }
-      else {
+      } else {
         acct.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
-        setCount(localCount());
       }
     });
+    return box;
+  }
+
+  // The masthead nav scrolls away with the page header. The home page then
+  // shows its sticky product bar (.subnav); other pages get a slim bar here,
+  // so Sign in / Account and Cart stay reachable all the way down.
+  function stickyBar() {
+    var sub = document.querySelector('.subnav');
+    var made = false;
+    if (!sub) {
+      var head = document.querySelector('.masthead');
+      if (!head) return;
+      document.documentElement.classList.add('js');   // the bar slides in (warg.css); pages without warg.js need this too
+      sub = document.createElement('div');
+      sub.className = 'subnav subnav-site';
+      sub.innerHTML = '<div class="wrap"><a class="who" href="/">Warg Robotics</a><nav aria-label="Site"><a href="/#products">Products</a><a href="/support">Support</a></nav></div>';
+      var sentinel = document.createElement('div');
+      sentinel.className = 'subnav-sentinel'; sentinel.setAttribute('aria-hidden', 'true');
+      head.parentNode.insertBefore(sentinel, head.nextSibling);
+      head.parentNode.insertBefore(sub, sentinel.nextSibling);
+      made = true;
+      var queued = false;
+      var evaluate = function () { queued = false; sub.classList.toggle('on', sentinel.getBoundingClientRect().top < 72); };
+      var schedule = function () { if (!queued) { queued = true; requestAnimationFrame(evaluate); } };
+      window.addEventListener('scroll', schedule, { passive: true });
+      window.addEventListener('resize', schedule);
+      schedule();
+    }
+    var wrap = sub.querySelector('.wrap');
+    if (!wrap || wrap.querySelector('.subnav-acct')) return;
+    var links = accountLinks('subnav-acct');
+    var btn = wrap.querySelector('.btn');
+    wrap.insertBefore(links, made ? null : btn || null);
+  }
+
+  function header() {
+    var bar = document.querySelector('.nav .wrap');
+    if (!bar || bar.querySelector('.nav-acct')) return;
+    var box = accountLinks('nav-acct');
+    var buy = bar.querySelector('.nav-buy');
+    bar.insertBefore(box, buy || null);
+    if (!bar.querySelector('.nav-links')) box.classList.add('push');
+    stickyBar();
+    setCount(localCount());
+    whoami().then(function (d) { setCount(d.user ? d.cart_count || 0 : localCount()); });
   }
 
   // ---------------------------------------------------------------- forms
@@ -169,6 +207,15 @@
     return '\u20b9' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   window.WargForm = form;
+
+  // Pincode boxes take digits only (6 of them).
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t && t.matches && t.matches('input[name="pincode"], input[data-b="pincode"]')) {
+      var v = t.value.replace(/\D/g, '').slice(0, 6);
+      if (v !== t.value) t.value = v;
+    }
+  });
   window.WargApi = api;
   window.WargCart = cart;
   window.WargMe = whoami;

@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261031a">
+<link rel="stylesheet" href="warg.css?v=20261031e">
 </head>
 <body>
 
@@ -49,6 +49,7 @@
         <p class="banner" id="verify-banner" hidden>Confirm your email to place an order: we sent a link to <b id="vb-email"></b>.
           <button class="link-btn" type="button" id="vb-resend">Send it again</button></p>
 
+        <div id="co-fields">
         <fieldset class="intents">
           <legend class="field-legend">Deliver to</legend>
           <div class="addr-pick" id="addr-list"></div>
@@ -110,11 +111,15 @@
           </div>
         </fieldset>
         <p class="hint" id="tax-note"></p>
+        </div>
+
+        <div id="review" class="review" hidden aria-live="polite"></div>
 
         <div class="hp-field" aria-hidden="true"><label for="hp-trap">Leave this empty</label><input type="text" id="hp-trap" name="hp_trap" tabindex="-1" autocomplete="off"></div>
 
         <div class="form-foot">
           <button class="btn btn-solid btn-lg" type="submit" id="pay-btn" disabled>Loading&hellip;</button>
+          <button class="btn btn-line btn-lg" type="button" id="edit-btn" hidden>Edit details</button>
           <p class="form-note">Payments by <b>Razorpay</b>. <a href="/cart">Edit cart</a></p>
         </div>
         <p class="form-status" role="status" aria-live="polite"></p>
@@ -142,8 +147,8 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261031b" defer></script>
+<script src="site.js?v=20261031e" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-<script src="checkout.js?v=20261031a" defer></script>
+<script src="checkout.js?v=20261031e" defer></script>
 </body>
 </html>

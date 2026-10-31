@@ -120,10 +120,12 @@ export async function detail(env, order) {
     env.DB.prepare('SELECT source, event, payment_id, amount_paise, received_at FROM payment_events WHERE order_id = ? ORDER BY id').bind(order.id).all(),
     env.DB.prepare('SELECT request_number, kind, subject, status, updated_at FROM service_requests WHERE order_id = ? ORDER BY id DESC').bind(order.id).all(),
   ]);
+  const acct = order.user_id ? await env.DB.prepare('SELECT id, email, email_verified_at, created_at FROM users WHERE id = ?').bind(order.user_id).first() : null;
   const others = order.user_id
     ? (await env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND id != ? AND status != 'created'").bind(order.user_id, order.id).first()).n
     : 0;
-  return json({ order: { ...order, items }, timeline, payment_events: payments.results, service_requests: service.results, customer_other_orders: others });
+  return json({ order: { ...order, items }, timeline, payment_events: payments.results, service_requests: service.results, customer_other_orders: others,
+    account: acct && { id: acct.id, email: acct.email, email_verified: Boolean(acct.email_verified_at), signed_up_at: acct.created_at } });
 }
 
 // ---------------------------------------------------------------- carts
@@ -163,6 +165,29 @@ export async function carts(request, env) {
   });
 }
 
+// ---------------------------------------------------------------- customers
+// Every account: confirmed email or not, how they sign in, what they bought.
+export async function customers(request, env) {
+  const url = new URL(request.url);
+  const where = [], args = [];
+  const f = url.searchParams.get('filter');
+  if (f === 'unverified') where.push('u.email_verified_at IS NULL');
+  if (f === 'verified') where.push('u.email_verified_at IS NOT NULL');
+  const q = (url.searchParams.get('q') || '').trim().slice(0, 80);
+  if (q) { where.push('(u.email LIKE ? OR u.name LIKE ? OR u.phone LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  const { results } = await env.DB.prepare(`SELECT u.id, u.name, u.email, u.phone, u.email_verified_at, u.created_at,
+      (u.password_hash IS NOT NULL) AS has_password, (u.google_sub IS NOT NULL) AS has_google,
+      (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id AND o.status IN ('paid','processing','shipped','delivered')) AS paid_orders,
+      (SELECT COALESCE(SUM(o.total_paise),0) FROM orders o WHERE o.user_id = u.id AND o.status IN ('paid','processing','shipped','delivered')) AS spent_paise,
+      (SELECT COALESCE(SUM(c.quantity),0) FROM cart_items c WHERE c.user_id = u.id) AS cart_units
+    FROM users u ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY u.id DESC LIMIT 500`).bind(...args).all();
+  const totals = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(email_verified_at IS NOT NULL) AS verified FROM users').first();
+  return json({
+    totals: { accounts: totals.n, verified: totals.verified || 0, unverified: totals.n - (totals.verified || 0) },
+    customers: results.map(r => ({ ...r, email_verified: Boolean(r.email_verified_at), has_password: Boolean(r.has_password), has_google: Boolean(r.has_google) })),
+  });
+}
+
 // ---------------------------------------------------------------- routing
 
 export async function route(request, env, ctx, seg, user) {
@@ -174,6 +199,8 @@ export async function route(request, env, ctx, seg, user) {
   if (kind === 'me' && m === 'GET') return json({ actor });
   if (kind === 'health' && m === 'GET') return health.health(env);
   if (kind === 'carts' && m === 'GET') return carts(request, env);
+  if (kind === 'customers' && m === 'GET' && !id) return customers(request, env);
+  if (kind === 'customers' && m === 'POST' && id && action === 'send-verification') return account.adminSendVerification(env, Number(id));
   if (kind === 'test-email' && m === 'POST') return health.testEmail(request, env, actor);
   if (kind === 'summary' && m === 'GET') return summary(env);
   if (kind === 'orders.csv' && m === 'GET') return csv(request, env);

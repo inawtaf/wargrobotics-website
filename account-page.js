@@ -88,17 +88,17 @@
     var n = q.get('n'), tok = q.get('t'), tries = 0;
     var fail = function (m) { $('order-lede').textContent = m; };
     if (!n) return fail('This link is incomplete. Use the link in your order email, or open your account.');
+    // Orders are private: the link in the email asks you to sign in first.
     var load = function () {
       window.WargMe().then(function (d) {
-        var path = d.user && !tok ? '/account/orders/' + encodeURIComponent(n) : '/orders/' + encodeURIComponent(n) + '?t=' + encodeURIComponent(tok || '');
-        return api(path).then(function (r) {
-          var o = r.order, signed = Boolean(d.user);
-          if (signed && tok) {   // signed in: fetch the full view for invoices and actions
-            return api('/account/orders/' + encodeURIComponent(n)).then(function (full) { show(full.order, true, full.service_requests); }).catch(function () { show(o, false); });
-          }
-          show(o, signed, r.service_requests);
-        });
-      }).catch(function () { fail('We could not find this order. Check the link in your email, or sign in to see your orders.'); });
+        if (!d.user) { location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search); return; }
+        return api('/account/orders/' + encodeURIComponent(n)).then(function (r) { show(r.order, true, r.service_requests); })
+          .catch(function (e) {
+            fail(e.status === 404
+              ? 'This order is not in the account you are signed in to (' + d.user.email + '). Sign out, then sign in with the email address the order email was sent to.'
+              : 'We could not load this order. Please try again.');
+          });
+      }).catch(function () { fail('We could not load this order. Please try again.'); });
     };
     var show = function (o, signed, service) {
       $('order-body').hidden = false;
@@ -132,7 +132,7 @@
     if (!d.user) { location.href = '/login?next=' + encodeURIComponent('/account' + location.hash); return; }
     me = d.user;
     $('acct-h').textContent = 'Hello, ' + me.name.split(' ')[0];
-    $('acct-lede').textContent = me.email;
+    $('acct-lede').textContent = me.email + (me.email_verified ? ' · confirmed' : ' · not confirmed yet');
     banners();
     profile();
     loadOrders().then(loadService);
@@ -296,7 +296,17 @@
   function profile() {
     var pf = $('profile-form');
     $('pf-name').value = me.name; $('pf-email').value = me.email; $('pf-phone').value = me.phone || '';
-    $('pf-email-hint').textContent = me.email_verified ? 'Confirmed. To change it, email us.' : 'Not confirmed yet.';
+    $('pf-email-hint').textContent = me.email_verified ? 'Confirmed. To change it, email us.' : 'Not confirmed yet: open the link we emailed you. You need a confirmed email to place an order.';
+    $('pf-email-pill').textContent = me.email_verified ? 'Confirmed' : 'Not confirmed';
+    $('pf-email-pill').className = 'pill ' + (me.email_verified ? 'delivered' : 'warn');
+    $('pf-verify-row').hidden = Boolean(me.email_verified);
+    $('pf-verify').onclick = function () {
+      var b = this; b.disabled = true;
+      api('/auth/resend-verification', { method: 'POST' })
+        .then(function (d) { $('pf-email-hint').textContent = 'Sent to ' + (d.sent_to || me.email) + '. Check your inbox and spam folder, then open the link.'; })
+        .catch(function (e) { $('pf-email-hint').textContent = e.message; })
+        .then(function () { setTimeout(function () { b.disabled = false; }, 15000); });
+    };
     pf.onsubmit = function (e) {
       e.preventDefault(); F.clear(pf);
       api('/account/profile', { method: 'PATCH', body: F.values(pf) }).then(function () { F.status(pf, 'Saved.', 'ok'); }).catch(function (err) { F.fail(pf, err); });
@@ -305,6 +315,7 @@
     if (!me.has_password) { $('pw-h').textContent = 'Set a password'; $('pw-current').hidden = true; }
     pw.onsubmit = function (e) {
       e.preventDefault(); F.clear(pw);
+      if ($('pw-new').value !== $('pw-new2').value) { F.errors(pw, { new_password_confirm: 'The two passwords do not match.' }); return; }
       api('/account/password', { method: 'POST', body: F.values(pw) }).then(function () {
         pw.reset(); me.has_password = true; $('pw-h').textContent = 'Change password'; $('pw-current').hidden = false;
         F.status(pw, 'Password saved. Other devices have been signed out.', 'ok'); googleState();
