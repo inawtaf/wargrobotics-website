@@ -12,13 +12,21 @@ export function comboShares() {
   return { [COMBO.skus[0]]: first, [COMBO.skus[1]]: total - first, total };
 }
 
-export const couponUnitDiscount = sku => Math.round((PRODUCTS[sku].listPricePaise * COUPON.percent) / 100);
+// Discount per unit: what takes the price down to the coupon price, which is
+// percent off rounded down to whole rupees (29,999 -> 23,999; 35,999 -> 28,799).
+export const couponUnitDiscount = sku => {
+  const list = PRODUCTS[sku].listPricePaise;
+  return list - Math.floor((list * (100 - COUPON.percent)) / 100 / 100) * 100;
+};
+
+export const couponExpired = (now = Date.now()) => now > Date.parse(COUPON.validUntil);
 
 // What a requested coupon code does, given how many uses are left.
-export function couponStatus(code, usesLeft) {
+export function couponStatus(code, usesLeft, now = Date.now()) {
   if (!code) return { code: null, status: 'none' };
   const c = String(code).trim().toUpperCase();
   if (c !== COUPON.code) return { code: c, status: 'invalid', message: `${c} is not a valid coupon.` };
+  if (couponExpired(now)) return { code: c, status: 'used_up', message: `Coupon ${c} was valid until ${COUPON.validUntilText} and has ended.` };
   if (!(usesLeft > 0)) return { code: c, status: 'used_up', message: `Coupon ${c} has been used by the first ${COUPON.maxOrders} orders and has ended.` };
   return { code: c, status: 'ok' };
 }
@@ -28,7 +36,7 @@ export function couponStatus(code, usesLeft) {
 //   intra-state (buyer in the seller's state): CGST + SGST, half each.
 //   inter-state: IGST, the whole rate.
 // items: [{ sku, quantity }]   coupon: { code, usesLeft } (optional)
-export function quoteCart({ items, buyerState, sellerState, coupon = {} }) {
+export function quoteCart({ items, buyerState, sellerState, coupon = {} }) {   // coupon: { code, usesLeft, now? }
   if (!Array.isArray(items) || !items.length) throw new Error('cart is empty');
   const qty = {};
   for (const { sku, quantity } of items) {
@@ -37,7 +45,7 @@ export function quoteCart({ items, buyerState, sellerState, coupon = {} }) {
   }
   const pairs = Math.min(...COMBO.skus.map(s => qty[s] || 0));
   const shares = comboShares();
-  const cs = couponStatus(coupon.code, coupon.usesLeft);
+  const cs = couponStatus(coupon.code, coupon.usesLeft, coupon.now);
   const couponOn = cs.status === 'ok';
 
   const lines = Object.entries(qty).map(([sku, quantity]) => {

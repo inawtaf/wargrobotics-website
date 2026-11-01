@@ -208,20 +208,17 @@
   };
   window.WargForm = form;
 
-  // Product pages: coupon prices say how many coupons are left, and switch
-  // back to the plain price once the coupon has ended.
+  // Product pages: switch coupon prices back to the plain price once the
+  // coupon has ended (date passed, or its order limit reached).
   function couponPrices() {
-    if (!document.querySelector('[data-price-sku], [data-coupon-left]')) return;
+    if (!document.querySelector('[data-price-sku]')) return;
     api('/products').then(function (p) {
       var c = p.coupon;
-      Array.prototype.forEach.call(document.querySelectorAll('[data-coupon-left]'), function (el) {
-        el.textContent = c.active ? ' (' + c.left + ' left)' : '';
-      });
       if (c.active) return;
       Array.prototype.forEach.call(document.querySelectorAll('[data-coupon-only]'), function (el) { el.hidden = true; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-price-sku]'), function (el) {
         var prod = p.products.filter(function (x) { return x.sku === el.getAttribute('data-price-sku'); })[0];
-        if (prod) el.innerHTML = window.inr(prod.list_price_paise).replace(/\.00$/, '') + '<span>+GST</span>';
+        if (prod) el.innerHTML = '&#8377;' + (prod.list_price_paise / 100).toLocaleString('en-IN') + '<span>+GST</span>';
       });
     }).catch(function () {});
   }

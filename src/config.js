@@ -23,9 +23,10 @@ export const PRODUCTS = {
 export const COMBO = { skus: ['ghost', 'greywind'], pricePaise: 49_999_00, label: 'Ghost + Greywind combo' };
 
 // Launch coupon: percent off items that aren't in a combo pair (the combo is
-// always the better price, so the two never stack). Works for the first
-// `maxOrders` paid orders that used it.
-export const COUPON = { code: 'WARG20', percent: 20, maxOrders: 100 };
+// always the better price, so the two never stack). Works until `validUntil`
+// (end of 20 November, India time), for at most `maxOrders` paid orders.
+// The discounted price is rounded down to whole rupees (₹23,999, not ₹23,999.20).
+export const COUPON = { code: 'WARG20', percent: 20, maxOrders: 100, validUntil: '2026-11-20T23:59:59+05:30', validUntilText: '20 November 2026' };
 
 export const GST_RATE_BP = 1800;   // 18%, in basis points
 export const MAX_QUANTITY = 9;     // ten or more is a bulk order (see prebook page)

@@ -3,7 +3,7 @@
 // every other path is served straight from the static files.
 //
 // Public
-//   GET  /api/products                       prices, coupon (uses left), combo, states
+//   GET  /api/products                       prices, coupon (active or not), combo, states
 //   POST /api/quote                          price a list of items for a state
 //   GET  /api/orders/:n?t=token              order page from an email link
 //   POST /api/webhooks/razorpay              Razorpay webhook
@@ -27,7 +27,7 @@
 //   GET /api/admin/service;  POST /api/admin/service/:sr
 
 import { PRODUCTS, STATES, MAX_QUANTITY, GST_RATE_BP, COMBO, COUPON } from './config.js';
-import { comboShares, couponUnitDiscount } from './pricing.js';
+import { comboShares, couponUnitDiscount, couponExpired } from './pricing.js';
 import { validateAddress, validateItems, checkoutAddresses } from './validate.js';
 import { json, safeEqual, orderToken, readJson, httpError } from './util.js';
 import * as auth from './auth.js';
@@ -49,7 +49,8 @@ async function products(env) {
       list_price_paise: p.listPricePaise,
       coupon_price_paise: p.listPricePaise - couponUnitDiscount(p.sku),
     })),
-    coupon: { code: COUPON.code, percent: COUPON.percent, max_orders: COUPON.maxOrders, left, active: left > 0 },
+    // How many uses are left is not published; only whether it still works.
+    coupon: { code: COUPON.code, percent: COUPON.percent, valid_until: COUPON.validUntil, valid_until_text: COUPON.validUntilText, active: left > 0 && !couponExpired() },
     combo: { skus: COMBO.skus, label: COMBO.label, price_paise: COMBO.pricePaise, saving_paise: comboShares().total },
     gst_rate_bp: GST_RATE_BP, max_quantity: MAX_QUANTITY,
     seller_state: env.SELLER_STATE || 'GA', razorpay_key_id: env.RAZORPAY_KEY_ID || null,

@@ -128,7 +128,7 @@
     if (!info || !info.active) return;
     $('coupon-box').hidden = false;
     $('coupon-code').value = info.code;
-    $('coupon-msg').textContent = info.percent + '% off, for the first ' + info.max_orders + ' orders (' + info.left + ' left). Not combined with the combo price.';
+    $('coupon-msg').textContent = info.percent + '% off, valid until ' + info.valid_until_text + '. Not combined with the combo price.';
   }
   $('coupon-apply').onclick = function () {
     if (coupon) { coupon = null; refresh(); return; }       // the button says Remove once applied
