@@ -57,7 +57,7 @@
       hint.hidden = false;
       hint.textContent = (q.comboPairs && q.lines.every(function (l) { return l.quantity === q.comboPairs; }))
         ? 'Combo price applied. (It beats the ' + coupon.code + ' coupon, so the coupon isn\u2019t needed.)'
-        : 'Coupon ' + coupon.code + ': ' + coupon.percent + '% off, first ' + coupon.max_orders + ' orders. Apply it at checkout.';
+        : 'Coupon ' + coupon.code + ': ' + coupon.percent + '% off, valid until ' + coupon.valid_until_text + '. Apply it at checkout.';
     } else hint.hidden = true;
     $('c-gst').textContent = window.inr(q.gstPaise);
     $('c-total').textContent = window.inr(q.totalPaise);

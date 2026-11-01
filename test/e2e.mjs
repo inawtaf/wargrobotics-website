@@ -76,8 +76,10 @@ await step('products and cart quotes are public', async () => {
   const p = await anon.call('GET', '/api/products');
   assert.equal(p.data.products.length, 2);
   assert.equal(p.data.google_enabled, true);
-  assert.deepEqual(p.data.products.map(x => [x.sku, x.list_price_paise, x.coupon_price_paise]), [['ghost', 2_999_900, 2_399_920], ['greywind', 3_599_900, 2_879_920]]);
-  assert.deepEqual(p.data.coupon, { code: 'WARG20', percent: 20, max_orders: 100, left: 100, active: true });
+  assert.deepEqual(p.data.products.map(x => [x.sku, x.list_price_paise, x.coupon_price_paise]), [['ghost', 2_999_900, 2_399_900], ['greywind', 3_599_900, 2_879_900]]);
+  const couponLive = Date.now() <= Date.parse('2026-11-20T23:59:59+05:30');
+  assert.deepEqual(p.data.coupon, { code: 'WARG20', percent: 20, valid_until: '2026-11-20T23:59:59+05:30', valid_until_text: '20 November 2026', active: couponLive });
+  assert.equal('left' in p.data.coupon, false, 'how many are left is not published');
   assert.equal(p.data.combo.price_paise, 4_999_900);
   assert.equal(p.data.combo.saving_paise, 1_599_900);
   const q = await anon.call('POST', '/api/quote', { items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 2 }], state_code: 'MH' });
@@ -522,36 +524,38 @@ await step('service request: created, team and customer emailed, admin update sh
 });
 
 await step('coupon: applied at checkout, shown everywhere, counted once paid', async () => {
-  const left = (await anon.call('GET', '/api/products')).data.coupon.left;
+  if (!(await anon.call('GET', '/api/products')).data.coupon.active) {   // after 20 Nov 2026 the coupon is refused
+    await asha.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 1 }] });
+    assert.match((await asha.call('POST', '/api/orders', { delivery_address: ADDR, coupon: 'WARG20', dry_run: true })).data.fields.coupon, /has ended/);
+    return;
+  }
   await asha.call('PUT', '/api/cart', { items: [{ sku: 'ghost', quantity: 2 }, { sku: 'greywind', quantity: 1 }] });
   const cart = (await asha.call('GET', '/api/cart?state_code=GA&coupon=warg20')).data.quote;
   assert.equal(cart.coupon.status, 'applied');
-  assert.equal(cart.subtotalPaise, 4_999_900 + 2_399_920);
+  assert.equal(cart.subtotalPaise, 4_999_900 + 2_399_900);
   assert.equal((await asha.call('POST', '/api/orders', { delivery_address: ADDR, coupon: 'WARG50', dry_run: true })).data.fields.coupon, 'WARG50 is not a valid coupon.');
   const rev = (await asha.call('POST', '/api/orders', { delivery_address: ADDR, coupon: 'WARG20', dry_run: true })).data.review.quote;
-  assert.deepEqual(rev.discounts.map(d => [d.kind, d.paise]), [['combo', 1_599_900], ['coupon', 599_980]]);
+  assert.deepEqual(rev.discounts.map(d => [d.kind, d.paise]), [['combo', 1_599_900], ['coupon', 600_000]]);
   const r = await asha.call('POST', '/api/orders', { delivery_address: ADDR, coupon: 'WARG20' });
   assert.equal(r.status, 201, JSON.stringify(r.data));
   assert.equal(r.data.amount_paise, rev.totalPaise);
-  assert.equal((await anon.call('GET', '/api/products')).data.coupon.left, left, 'an unpaid order does not use a coupon');
   const o = await payByWebhook(r.data, 'CPN');
   assert.equal(o.coupon_code, 'WARG20');
-  assert.equal(o.coupon_discount_paise, 599_980);
+  assert.equal(o.coupon_discount_paise, 600_000);
   assert.equal(o.combo_discount_paise, 1_599_900);
   assert.equal(o.list_subtotal_paise, 2 * 2_999_900 + 3_599_900);
-  assert.equal((await anon.call('GET', '/api/products')).data.coupon.left, left - 1);
   const inv = (await mockCalls()).filter(c => c.path === '/zoho/invoices' && c.method === 'POST').pop();
   const ghostLine = inv.body.line_items.find(l => l.item_id === 'item_ghost');
-  assert.equal(ghostLine.discount, 13272.05, 'combo share + coupon on the spare Ghost');
+  assert.equal(ghostLine.discount, 13272.25, 'combo share + coupon on the spare Ghost');
   assert.match(ghostLine.description, /1 in combo, 1 with WARG20 \(20% off\)/);
   const conf = (await mockCalls()).find(c => c.headers.idem === `${o.order_number}-confirmation`);
   assert.match(conf.body.html, /Coupon WARG20/);
   assert.match(conf.body.html, /Ghost \+ Greywind combo/);
   const view = (await asha.call('GET', `/api/account/orders/${o.order_number}`)).data.order;
   assert.equal(view.coupon_code, 'WARG20');
-  assert.equal(view.items.find(i => i.sku === 'ghost').discount_paise, 1_327_205);
+  assert.equal(view.items.find(i => i.sku === 'ghost').discount_paise, 1_327_225);
   const csv = await (await fetch(SITE + '/api/admin/orders.csv', { headers: { authorization: 'Bearer ' + ADMIN } })).text();
-  assert.match(csv, new RegExp(`${o.order_number}.*WARG20,5999\\.80`));
+  assert.match(csv, new RegExp(`${o.order_number}.*WARG20,6000\\.00`));
 });
 
 // ------------------------------------------------------------------ billing addresses (31 Oct)

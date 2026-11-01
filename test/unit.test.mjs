@@ -22,7 +22,8 @@ const good = {
 };
 const quote = ({ sku, quantity, buyerState, sellerState, coupon }) =>
   quoteCart({ items: [{ sku, quantity }], buyerState, sellerState, coupon });
-const C = (code = 'WARG20', usesLeft = 50) => ({ code, usesLeft });
+// A fixed 'now' inside the coupon's validity, so these tests keep passing after it ends.
+const C = (code = 'WARG20', usesLeft = 50) => ({ code, usesLeft, now: Date.parse('2026-11-01T12:00:00+05:30') });
 
 test('list prices: Ghost ₹29,999, Greywind ₹35,999, GST 18% on top', () => {
   const ka = quote({ sku: 'ghost', quantity: 1, buyerState: 'KA', sellerState: 'KA' });
@@ -70,11 +71,11 @@ test('combo: one Ghost + one Greywind = ₹49,999 before GST, for every pair', (
 test('coupon WARG20: 20% off items outside a combo; never stacked on the combo', () => {
   const g = quote({ sku: 'ghost', quantity: 1, buyerState: 'GA', sellerState: 'GA', coupon: C('warg20') });
   assert.equal(g.coupon.status, 'applied');
-  assert.equal(g.couponDiscountPaise, 599_980);
-  assert.equal(g.subtotalPaise, 2_399_920);         // ₹23,999.20
+  assert.equal(g.couponDiscountPaise, 600_000);
+  assert.equal(g.subtotalPaise, 2_399_900);         // ₹23,999: whole rupees
   assert.deepEqual(g.discounts.map(d => d.label), ['Coupon WARG20 (20% off)']);
   const mix = quoteCart({ items: [{ sku: 'ghost', quantity: 2 }, { sku: 'greywind', quantity: 1 }], buyerState: 'GA', sellerState: 'GA', coupon: C() });
-  assert.equal(mix.subtotalPaise, 4_999_900 + 2_399_920, 'one combo + the spare Ghost at 20% off');
+  assert.equal(mix.subtotalPaise, 4_999_900 + 2_399_900, 'one combo + the spare Ghost at 20% off');
   assert.equal(mix.lines.find(l => l.sku === 'ghost').discountLabel, '1 in combo, 1 with WARG20 (20% off)');
   const pair = quoteCart({ items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 1 }], buyerState: 'GA', sellerState: 'GA', coupon: C() });
   assert.equal(pair.subtotalPaise, 4_999_900, 'combo only');
@@ -88,6 +89,12 @@ test('coupon refused when wrong or used up', () => {
   const done = quote({ sku: 'ghost', quantity: 1, coupon: C('WARG20', 0) });
   assert.equal(done.coupon.status, 'used_up');
   assert.match(done.coupon.message, /first 100 orders/);
+  const late = quote({ sku: 'ghost', quantity: 1, coupon: { code: 'WARG20', usesLeft: 50, now: Date.parse('2026-11-21T00:00:01+05:30') } });
+  assert.equal(late.coupon.status, 'used_up');
+  assert.match(late.coupon.message, /valid until 20 November 2026/);
+  assert.equal(late.discountPaise, 0);
+  const lastDay = quote({ sku: 'ghost', quantity: 1, coupon: { code: 'WARG20', usesLeft: 50, now: Date.parse('2026-11-20T23:30:00+05:30') } });
+  assert.equal(lastDay.coupon.status, 'applied', 'still valid on the evening of 20 November');
   assert.equal(done.subtotalPaise, 2_999_900);
 });
 
@@ -356,15 +363,15 @@ test('resend: each email only when it makes sense for the order', () => {
 
 test('confirmation email shows full prices, the combo and coupon savings, and the discounted subtotal', () => {
   const o = { order_number: 'WR-311026-COMB', customer_name: 'Asha Rao', email: 'a@b.co', phone: '+919845012345', address_line1: '4, Rua de Ourem', city: 'Panaji', state_code: 'GA', pincode: '403001',
-    items: [{ product_name: 'Warg Ghost', quantity: 2, unit_price_paise: 2999900, discount_paise: 1327205, subtotal_paise: 4672595, discount_label: '1 in combo, 1 with WARG20 (20% off)' },
+    items: [{ product_name: 'Warg Ghost', quantity: 2, unit_price_paise: 2999900, discount_paise: 1327225, subtotal_paise: 4672575, discount_label: '1 in combo, 1 with WARG20 (20% off)' },
             { product_name: 'Warg Greywind', quantity: 1, unit_price_paise: 3599900, discount_paise: 872675, subtotal_paise: 2727225, discount_label: '1 in combo' }],
-    list_subtotal_paise: 9599700, combo_discount_paise: 1599900, coupon_code: 'WARG20', coupon_discount_paise: 599980,
-    subtotal_paise: 7399820, gst_paise: 1331968, total_paise: 8731788, tax_kind: 'intra', link_token: 't' };
+    list_subtotal_paise: 9599700, combo_discount_paise: 1599900, coupon_code: 'WARG20', coupon_discount_paise: 600000,
+    subtotal_paise: 7399800, gst_paise: 1331964, total_paise: 8731764, tax_kind: 'intra', link_token: 't' };
   const html = confirmationEmail({}, o, { hasInvoice: true }).html;
   assert.match(html, /Warg Ghost × 2<\/td><td[^>]*>₹59,998\.00/);
   assert.match(html, /Ghost \+ Greywind combo<\/td><td[^>]*>− ₹15,999\.00/);
-  assert.match(html, /Coupon WARG20<\/td><td[^>]*>− ₹5,999\.80/);
-  assert.match(html, /Subtotal after discounts<\/td><td[^>]*>₹73,998\.20/);
+  assert.match(html, /Coupon WARG20<\/td><td[^>]*>− ₹6,000\.00/);
+  assert.match(html, /Subtotal after discounts<\/td><td[^>]*>₹73,998\.00/);
 });
 
 test('every customer page links the four policy pages in its footer', () => {
@@ -385,4 +392,15 @@ test('grievance officer and account deletion are published', () => {
   }
   assert.match(read('privacy.html'), /id="delete"[\s\S]*Delete my Warg account/);
   assert.match(read('account.html'), /href="\/privacy#delete"/);
+});
+
+test('coupon prices are whole rupees, and the site never shows how many coupons are left', () => {
+  const root = new URL('..', import.meta.url);
+  for (const sku of Object.keys(PRODUCTS)) assert.equal(quote({ sku, quantity: 1, coupon: { code: 'WARG20', usesLeft: 1, now: Date.parse('2026-11-01T12:00:00+05:30') } }).subtotalPaise % 100, 0, sku);
+  for (const f of ['index.html', 'ghost.html', 'greywind.html']) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    assert.doesNotMatch(html, /\.20<|data-coupon-left|left\)/, f);
+    assert.match(html, /valid till 20 Nov/, f);
+  }
+  assert.doesNotMatch(readFileSync(new URL('site.js', root), 'utf8'), /coupon-left|\.left\b/);
 });
