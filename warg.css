@@ -1475,3 +1475,15 @@ mark.fill{ background:#ffe08a; color:#5a3d00; padding:0 3px; }
 .prod-info .prod-spec{ margin-bottom:12px; }
 .prod-info dd{ margin:0; text-align:right; font-size:13px; color:var(--ink); }
 .foot .foot-seller{ max-width:none; }
+
+/* ---------- "Launching soon" in place of a buy button (Raven, Pro) ----------
+   Plain text, not a control: same height as a .btn so the cards keep their
+   rhythm, amber like the other "to come" notes, no box and no hover. */
+.soon-note{
+  display:inline-flex; align-items:center; margin:0; padding:15px 0; line-height:1.2;
+  font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:12.5px; font-weight:600;
+  letter-spacing:0.14em; text-transform:uppercase; color:var(--amber-700); cursor:default;
+}
+.prod-body .soon-note{ display:flex; justify-content:center; width:100%; }
+.phero-buy .soon-note{ margin-top:14px; margin-left:8px; vertical-align:top; }
+.sec-cta .soon-note{ margin-right:16px; vertical-align:top; }
