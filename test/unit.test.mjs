@@ -380,7 +380,7 @@ test('confirmation email shows full prices, the combo and coupon savings, and th
 
 test('every customer page links the four policy pages in its footer', () => {
   const root = new URL('..', import.meta.url);
-  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html')) {
+  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html' && n !== 'prebook.html')) {
     const html = readFileSync(new URL(f, root), 'utf8');
     const foot = html.slice(html.indexOf('<footer'));
     for (const p of ['terms', 'refunds', 'shipping', 'privacy', 'warranty']) assert.match(foot, new RegExp(`href="/?${p}(\\.html)?"`), `${f} → ${p}`);
@@ -440,7 +440,7 @@ test('invoice numbers with slashes make safe file names', () => {
 test('compliance: seller details in every footer; product pages carry the Legal Metrology details; terms cover the Warg clauses', () => {
   const root = new URL('..', import.meta.url);
   const read = f => readFileSync(new URL(f, root), 'utf8');
-  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html')) {
+  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html' && n !== 'prebook.html')) {
     const foot = read(f).slice(read(f).indexOf('<footer'));
     assert.match(foot, /class="foot-seller">Sold by .*Registered address: .*Panaji, Goa 403001.*GSTIN .*hello@wargrobotics\.com.*Grievance Officer/s, f);
   }
@@ -458,4 +458,28 @@ test('compliance: seller details in every footer; product pages carry the Legal 
   assert.match(read('shipping.html'), /Delhivery/); assert.match(read('shipping.html'), /PIN code/); assert.match(read('shipping.html'), /risk .*pass to you when the parcel is delivered/is);
   assert.match(read('refunds.html'), /original payment method/i); assert.match(read('refunds.html'), /5 to 7 working days/);
   assert.match(read('warranty.html'), /12 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
+});
+
+test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon, /prebook forwards to the products', () => {
+  const root = new URL('../', import.meta.url);
+  const read = f => readFileSync(new URL(f, root), 'utf8');
+  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'prebook.html')) {
+    const html = read(f);
+    assert.doesNotMatch(html, /pre-?book/i, f + ' still mentions pre-booking');
+    assert.doesNotMatch(html, /href="\/?prebook/, f + ' still links to /prebook');
+    const nav = html.match(/<a class="btn btn-solid nav-buy" href="([^"]+)">([^<]+)<\/a>/);
+    if (nav) assert.deepEqual([nav[1].replace('index.html', ''), nav[2]], ['#products', 'Buy now'], f);
+  }
+  const index = read('index.html');
+  const raven = index.slice(index.indexOf('card-raven'), index.indexOf('</article>', index.indexOf('card-raven')));
+  assert.match(raven, /flag-soon">Launching soon</);
+  assert.match(raven, /<p class="soon-note">Launching soon<\/p>/);
+  assert.doesNotMatch(raven, /class="btn/, 'Raven has no button');
+  assert.equal((index.match(/flag-live">Available now</g) || []).length, 2, 'Ghost and Greywind are available');
+  for (const f of ['ghost.html', 'greywind.html']) {
+    const html = read(f);
+    assert.match(html, /href="\/cart\?add=(ghost|greywind)">Buy/, f + ' can still be bought');
+    assert.ok((html.match(/<p class="soon-note">Launching soon<\/p>/g) || []).length >= 2, f + ': Pro shows Launching soon');
+  }
+  assert.match(read('prebook.html'), /url=\/#products/);
 });
