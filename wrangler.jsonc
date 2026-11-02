@@ -46,7 +46,7 @@
   "vars": {
     "SITE_URL": "https://wargrobotics.com",
     "SELLER_STATE": "GA",
-    "RAZORPAY_KEY_ID": "rzp_test_Tu8pVtqmLfZYng",
+    "RAZORPAY_KEY_ID": "rzp_live_TvKFHmIOrLQgMD",
     "EMAIL_FROM": "Warg Robotics <orders@wargrobotics.com>",
     "EMAIL_REPLY_TO": "hello@wargrobotics.com",
     "ORDER_NOTIFY_EMAIL": "hello@wargrobotics.com",
