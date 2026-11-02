@@ -1461,3 +1461,17 @@ sup.fn a:hover{ text-decoration:underline; }
 mark.fill{ background:#ffe08a; color:#5a3d00; padding:0 3px; }
 .foot-legal{ display:flex; gap:18px; flex-wrap:wrap; }
 .kit-item:last-child:nth-child(3n+2){ grid-column:span 2; }
+/* GST-inclusive price, shown smaller beside the price before GST */
+.prod-incl{ margin:6px 0 0; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:13px; letter-spacing:.02em; color:var(--ink-2); }
+.cmp-price .incl, td .incl{ display:block; font-size:.82em; color:var(--ink-3); font-weight:400; }
+.foot-seller{ margin:0; padding:0 0 22px; font-size:11.5px; line-height:1.7; color:rgba(247,248,250,0.5); max-width:none; }
+.foot-seller a{ color:rgba(247,248,250,0.7); }
+.foot-seller mark.fill{ font-size:11px; }
+.legal-seller{ padding:14px 18px; background:var(--s-raised); border:1px solid var(--line-2); margin-bottom:22px; }
+.legal-seller p{ margin:0 0 6px; font-size:14px; }
+.legal ol{ margin:0 0 12px; padding-left:22px; display:grid; gap:6px; }
+.prod-info{ margin-top:22px; border:1px solid var(--line-2); background:var(--s-raised); padding:0 16px; }
+.prod-info summary{ cursor:pointer; padding:12px 0; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); }
+.prod-info .prod-spec{ margin-bottom:12px; }
+.prod-info dd{ margin:0; text-align:right; font-size:13px; color:var(--ink); }
+.foot .foot-seller{ max-width:none; }

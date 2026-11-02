@@ -60,6 +60,8 @@
         : 'Coupon ' + coupon.code + ': ' + coupon.percent + '% off, valid until ' + coupon.valid_until_text + '. Apply it at checkout.';
     } else hint.hidden = true;
     $('c-gst').textContent = window.inr(q.gstPaise);
+    $('c-round').hidden = !q.roundOffPaise;
+    $('c-round-v').textContent = window.inr(q.roundOffPaise || 0);
     $('c-total').textContent = window.inr(q.totalPaise);
     summary.hidden = false;
   }

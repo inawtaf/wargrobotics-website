@@ -66,6 +66,9 @@ export async function readJson(request) {
   try { return JSON.parse(text || '{}'); } catch { throw Object.assign(new Error('Invalid request.'), { status: 400 }); }
 }
 
+// "WR/26-27/0001" -> "WR-26-27-0001": invoice numbers with slashes, safe as a file name.
+export const safeFileName = s => String(s || 'invoice').replace(/[\/\\]+/g, '-').replace(/[^\w.-]/g, '_');
+
 export const httpError = (status, message, extra) => Object.assign(new Error(message), { status, extra });
 
 export function newRequestNumber(prefix, date = new Date()) {

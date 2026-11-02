@@ -108,8 +108,16 @@ export function quoteCart({ items, buyerState, sellerState, coupon = {} }) {   /
     gstPaise: gst,
     taxKind,
     taxLines,
-    totalPaise: subtotal + gst,
+    // The amount to pay is rounded to whole rupees ("Round off" on the invoice),
+    // so the GST-inclusive prices shown on the site are exactly what is charged.
+    roundOffPaise: roundOff(subtotal + gst),
+    totalPaise: subtotal + gst + roundOff(subtotal + gst),
   };
 }
+
+const roundOff = paise => Math.round(paise / 100) * 100 - paise;
+
+// One unit's price including GST, as shown on the site: ₹29,999 -> ₹35,399.
+export const inclusivePaise = paise => { const t = paise + gstOn(paise); return t + roundOff(t); };
 
 export const rupees = paise => (paise / 100).toFixed(2);

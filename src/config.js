@@ -7,6 +7,7 @@ export const PRODUCTS = {
     name: 'Warg Ghost',
     line: '720p90 · 8 GB onboard',
     listPricePaise: 29_999_00,
+    hsn: null,                     // e.g. '8525' once your CA confirms; also set on the Zoho item
     zohoItemVar: 'ZOHO_ITEM_ID_GHOST',
   },
   greywind: {
@@ -14,6 +15,7 @@ export const PRODUCTS = {
     name: 'Warg Greywind',
     line: '1080p30 / 720p90 · 16 GB onboard',
     listPricePaise: 35_999_00,
+    hsn: null,
     zohoItemVar: 'ZOHO_ITEM_ID_GREYWIND',
   },
 };
