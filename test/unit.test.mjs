@@ -483,3 +483,16 @@ test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon,
   }
   assert.match(read('prebook.html'), /url=\/#products/);
 });
+
+test('site matches the datasheet: 720p60, 8 MP IMX219, setup in the browser, downloads over Wi-Fi', () => {
+  const root = new URL('../', import.meta.url);
+  for (const f of ['index.html', 'ghost.html', 'greywind.html', 'support.html']) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    for (const bad of [/720p ?90/i, /90 ?fps/i, /ninety/i, /Android/, /\bUSB\b/, /2 MP\b/, /Betaflight/, /through the app/, /Mobile app/])
+      assert.doesNotMatch(html, bad, f + ' still says ' + bad);
+  }
+  assert.match(PRODUCTS.ghost.line, /720p60/);
+  assert.match(PRODUCTS.greywind.line, /720p60/);
+  const idx = readFileSync(new URL('index.html', root), 'utf8');
+  assert.equal((idx.match(/PDF &middot; A5 &middot; 8 pages/g) || []).length, 2);
+});
