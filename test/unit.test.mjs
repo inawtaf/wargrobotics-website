@@ -457,7 +457,7 @@ test('compliance: seller details in every footer; product pages carry the Legal 
   for (const re of [/Information Technology Act, 2000/, /SPDI Rules/, /Digital Personal Data Protection Act, 2023/, /id="delete"/, /Grievance Officer/]) assert.match(privacy, re, `privacy: ${re}`);
   assert.match(read('shipping.html'), /Delhivery/); assert.match(read('shipping.html'), /PIN code/); assert.match(read('shipping.html'), /risk .*pass to you when the parcel is delivered/is);
   assert.match(read('refunds.html'), /original payment method/i); assert.match(read('refunds.html'), /5 to 7 working days/);
-  assert.match(read('warranty.html'), /12 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
+  assert.match(read('warranty.html'), /6 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
 });
 
 test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon, /prebook forwards to the products', () => {
