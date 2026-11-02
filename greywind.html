@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="Warg Greywind: 1080p at 30 fps or 720p at 60 fps, 16 GB of onboard recording, and a Linux compute module on the Pro.">
 <meta name="twitter:image" content="img/og.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102c">
+<link rel="stylesheet" href="warg.css?v=20261102d">
 
 <a class="skip" href="#main">Skip to content</a>
 <div class="masthead masthead-flat on-dark">
@@ -150,6 +150,8 @@
             <div><dt>Transmission frequency</dt><dd>5.8 GHz</dd></div>
             <div><dt>Display port</dt><dd>HDMI</dd></div>
             <div><dt>Connectivity</dt><dd>Wi-Fi, for setup and downloads</dd></div>
+              <div><dt>Telemetry</dt><dd>Two-way MAVLink: ArduPilot, PX4, INAV</dd></div>
+              <div><dt>On-screen display</dt><dd>14 items, your choice</dd></div>
           </dl>
         </div>
         <div class="spec-group">
@@ -160,7 +162,7 @@
             <div><dt>Air unit dimensions</dt><dd>6 x 5 x 3 cm plus camera</dd></div>
             <div><dt>Ground unit dimensions</dt><dd>6 x 5 x 3 cm</dd></div>
             <div><dt>Air unit weight</dt><dd>50g</dd></div>
-            <div><dt>Setup</dt><dd>Any phone browser, no app</dd></div>
+            <div><dt>Setup</dt><dd>Web app in any phone browser</dd></div>
             <div><dt>Software updates</dt><dd>12 months</dd></div>
             <div><dt>Warranty</dt><dd>12 months</dd></div>
         </dl>
@@ -178,13 +180,120 @@
       <div class="kit" data-stagger>
         <div class="kit-item"><h4>Air unit</h4><p>Camera and transmitter. One camera plus one box, 6 &times; 5 &times; 3 cm, onto the vehicle.</p></div>
         <div class="kit-item"><h4>Ground unit</h4><p>One box the same size - receiver with HDMI out.</p></div>
-        <div class="kit-item"><h4>Setup from your phone</h4><p>Pairing, settings, recordings and updates from a web page on the ground unit&rsquo;s own Wi-Fi. No app to install.</p></div>
+        <div class="kit-item"><h4>Ground station web app</h4><p>Pairing, settings, OSD, recordings and updates from your phone&rsquo;s browser, on the ground unit&rsquo;s own Wi-Fi. No app to install. <a href="#web-app">See what it does</a>.</p></div>
       </div>
       <figure class="shot kit-shot" data-reveal>
         <img src="img/kit-arrives.webp" alt="What arrives in the box: the air unit, its antenna, four bolts and one power lead" width="1092" height="890">
       </figure>
     </div>
   </section>
+  <!-- ============ ground station web app ============
+       Comes with every unit. Screens are from the app itself; the setup
+       screen's password and QR codes are replaced with placeholders. ==== -->
+  <section class="sec" id="web-app">
+    <div class="wrap">
+      <div class="shead" data-stagger>
+        <p class="t-eyebrow">Ground station web app &middot; included</p>
+        <h2 class="t-section">Your whole FPV link, in your phone&rsquo;s browser.</h2>
+        <p class="t-lede">Join the ground unit&rsquo;s Wi-Fi, open one page, and see, set and record everything on both ends of the link. No app to install, no laptop, no cables.</p>
+      </div>
+      <figure class="gsa-hero" data-reveal>
+        <img src="img/gs-hero.webp" alt="The live video with its on-screen display on an HDMI screen, beside the web app's Home tab on a phone" width="1400" height="1057" loading="lazy">
+      </figure>
+      <div class="gsa-pillars" data-stagger>
+        <div><p class="gsa-n">01 &middot; Watch</p><p>Link health, video and flight data, live.</p></div>
+        <div><p class="gsa-n">02 &middot; Tune</p><p>Camera, radio, OSD and telemetry, from one page.</p></div>
+        <div><p class="gsa-n">03 &middot; Keep</p><p>Record on the drone, download to your phone.</p></div>
+      </div>
+
+      <div class="gsa-row" data-reveal>
+        <figure class="gsa-fig"><img src="img/gs-connect.webp" alt="The ground unit's screen showing the Wi-Fi name and two QR codes" width="1000" height="577" loading="lazy"></figure>
+        <div>
+          <h3 class="gsa-h">Connect in three steps</h3>
+          <ol class="gsa-steps">
+            <li><b>Power both units.</b> The screen shows the Wi-Fi name, password and two QR codes.</li>
+            <li><b>Scan code 1</b> to join the ground unit&rsquo;s Wi-Fi.</li>
+            <li><b>Scan code 2</b>, or open 10.71.0.1. You&rsquo;re in.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="gsa-grid" data-stagger>
+        <article class="gsa-card">
+          <figure class="gsa-fig"><img src="img/gs-status.webp" alt="Home tab: link up, with four checks all OK" width="755" height="572" loading="lazy"></figure>
+          <p class="gsa-tag">Home</p><h3>Is everything OK? One look tells you.</h3>
+          <p>Four checks, from the ground radio to the video, plus the frequency, resolution and frame rate actually received. If a check fails, it says why.</p>
+        </article>
+        <article class="gsa-card">
+          <figure class="gsa-fig"><img src="img/gs-history.webp" alt="Link history: each drop with its likely cause" width="760" height="592" loading="lazy"></figure>
+          <p class="gsa-tag">Home</p><h3>Every drop, explained</h3>
+          <p>Link history lists each drop with its likely cause: weak signal, power loss or wrong pairing. Flight mode, altitude, GPS and battery sit alongside.</p>
+        </article>
+        <article class="gsa-card">
+          <figure class="gsa-fig"><img src="img/gs-camera.webp" alt="Vehicle tab: camera resolution, frame rate, orientation and noise reduction" width="539" height="660" loading="lazy"></figure>
+          <p class="gsa-tag">Vehicle</p><h3>Make the picture yours</h3>
+          <p>Colour looks for bright sun or low light in one tap, live sharpness, contrast, exposure and white balance, and focus assist. A failed change reverts by itself.</p>
+        </article>
+        <article class="gsa-card">
+          <figure class="gsa-fig"><img src="img/gs-live-radio.webp" alt="Radio: link quality, signal, noise margin and antennas" width="800" height="524" loading="lazy"></figure>
+          <p class="gsa-tag">Radio and pairing</p><h3>One page sets both ends of the link</h3>
+          <p>Change channel, bandwidth or power once and both units switch together. If the vehicle doesn&rsquo;t answer within 35 s, both go back by themselves. Pairing takes about a minute.</p>
+        </article>
+        <article class="gsa-card">
+          <figure class="gsa-fig"><img src="img/gs-alert-batt.webp" alt="On-screen warnings for battery and link" width="660" height="367" loading="lazy"></figure>
+          <p class="gsa-tag">Alerts</p><h3>Warned in time</h3>
+          <p>Yellow is a warning, red is critical, for battery and link. A hot radio lowers its own power to keep the link alive, and tells you.</p>
+        </article>
+        <article class="gsa-card">
+          <figure class="gsa-fig"><img src="img/gs-pair.webp" alt="Pairing a vehicle from the web app" width="800" height="451" loading="lazy"></figure>
+          <p class="gsa-tag">System</p><h3>Looks after itself</h3>
+          <p>Signed updates for both units, never while armed, rolled back if a unit doesn&rsquo;t come back healthy. A page password, and one-button restarts.</p>
+        </article>
+      </div>
+
+      <div class="gsa-rec" data-reveal>
+        <div class="gsa-rec-head">
+          <p class="gsa-tag">Recording</p>
+          <h3 class="gsa-h">Record on the drone. Download to your phone.</h3>
+          <p>Saved as MP4 on the vehicle, in the same quality as your live view. Press Start, fly with REC on your screen, then tap Download after landing. Files copy over Wi-Fi, never over the video link, and an interrupted download picks up where it stopped.</p>
+        </div>
+        <figure class="gsa-fig"><img src="img/gs-rec-steps.webp" alt="Start a recording, REC on the OSD, download as MP4" width="1400" height="276" loading="lazy"></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ on-screen display and telemetry ============ -->
+  <section class="sec sunk" id="osd">
+    <div class="wrap">
+      <div class="shead" data-stagger>
+        <p class="t-eyebrow">On-screen display</p>
+        <h2 class="t-section">Everything you need, over the video</h2>
+        <p class="t-lede">Flight data from your flight controller and link data from the radio, drawn on the live picture. Show all fourteen items, or only the ones you fly with.</p>
+      </div>
+      <figure class="gsa-osd" data-reveal>
+        <img src="img/gs-osd.webp" alt="The live picture with the on-screen display, items numbered one to nine" width="1600" height="902" loading="lazy">
+      </figure>
+      <ol class="gsa-legend" data-stagger>
+        <li><b>Mode, armed, timer.</b> Flight mode and time in the air.</li>
+        <li><b>Compass.</b> Heading tape and degrees.</li>
+        <li><b>Link.</b> Signal, noise margin, video bitrate and a quality bar.</li>
+        <li><b>Recording, latency.</b> REC while recording; camera delay in ms.</li>
+        <li><b>Horizon.</b> Artificial horizon with pitch ladder.</li>
+        <li><b>Speed, throttle.</b> Speed and throttle %.</li>
+        <li><b>Altitude.</b> Height and climb rate.</li>
+        <li><b>Battery.</b> Voltage, per-cell voltage, current, mAh used, %.</li>
+        <li><b>Home, GPS.</b> Arrow and distance home; satellites and fix.</li>
+      </ol>
+      <div class="gsa-row" data-reveal>
+        <figure class="gsa-fig"><img src="img/gs-telemetry.webp" alt="Flight controller to air unit, over 5.8 GHz to the ground unit, then to the OSD, the web app and your GCS app" width="1400" height="340" loading="lazy"></figure>
+        <div>
+          <h3 class="gsa-h">Two-way MAVLink, over the same link as video</h3>
+          <p class="gsa-p">Works with ArduPilot, PX4 and INAV; no extra telemetry radio. On the ground unit&rsquo;s Wi-Fi, QGroundControl or Mission Planner on UDP port 14551 connects by itself. Let the GCS fly the vehicle, or only watch. Only complete MAVLink messages from your own network reach the vehicle.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="sec sunk" id="compare">
     <div class="wrap">
       <div class="shead" data-stagger>

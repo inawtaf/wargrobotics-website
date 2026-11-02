@@ -494,5 +494,18 @@ test('site matches the datasheet: 720p60, 8 MP IMX219, setup in the browser, dow
   assert.match(PRODUCTS.ghost.line, /720p60/);
   assert.match(PRODUCTS.greywind.line, /720p60/);
   const idx = readFileSync(new URL('index.html', root), 'utf8');
-  assert.equal((idx.match(/PDF &middot; A5 &middot; 8 pages/g) || []).length, 2);
+  assert.equal((idx.match(/PDF &middot; A5 &middot; 12 pages/g) || []).length, 2);
+});
+
+test('product pages and home page show the ground station web app and the OSD', () => {
+  const root = new URL('../', import.meta.url);
+  for (const f of ['ghost.html', 'greywind.html']) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    assert.match(html, /id="web-app"/, f);
+    assert.match(html, /id="osd"/, f);
+    assert.match(html, /UDP port 14551/, f);
+    assert.doesNotMatch(html, /10-minute|10 minutes/, f + ': recording file length is not mentioned');
+    for (const img of html.match(/img\/gs-[\w-]+\.webp/g)) assert.ok(readdirSync(new URL('img/', root)).includes(img.slice(4)), img);
+  }
+  assert.match(readFileSync(new URL('index.html', root), 'utf8'), /href="ghost.html#web-app"/);
 });
