@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="High resolution FPV cameras. Digital video at 60 ms glass to glass, recorded onboard while it streams, out to any HDMI screen.">
 <meta name="twitter:image" content="img/og.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102c">
+<link rel="stylesheet" href="warg.css?v=20261102d">
 
 <a class="skip" href="#main">Skip to content</a>
 
@@ -121,11 +121,11 @@
            the row reading straight whatever the value underneath does. -->
       <div class="figures" data-stagger>
         <div class="fig-cell"><p class="k">Glass to glass</p><div class="v">60<span>ms</span></div></div>
-        <div class="fig-cell"><p class="k">Record and live</p><div class="v">1080p<span>/4K</span></div></div>
+        <div class="fig-cell"><p class="k">Record and live</p><div class="v">1080p</div></div>
         <div class="fig-cell"><p class="k">Range</p><div class="v">5<span>km</span></div></div>
         <div class="fig-cell"><p class="k">Isolated from flight-critical systems</p><div class="v">Companion computer</div></div>
         <div class="fig-cell"><p class="k">Out to any screen</p><div class="v">HDMI</div></div>
-        <div class="fig-cell"><p class="k">Betaflight and INAV</p><div class="v">OSD</div></div>
+        <div class="fig-cell"><p class="k">ArduPilot, PX4, INAV</p><div class="v">MAVLink</div></div>
       </div>
     </div>
   </section>
@@ -184,7 +184,7 @@
           </div>
           <div class="feat-body">
             <h3 id="fcR-h">Record while you fly</h3>
-            <p class="car-line">One click HD photos and video recording.</p>
+            <p class="car-line">HD video, recorded onboard while it streams.</p>
             <button class="car-more" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popR">
               More detail<span aria-hidden="true">&#43;</span>
             </button>
@@ -222,18 +222,18 @@
         <dl class="pop-pts">
             <div><dt>HD digital</dt><dd>No analogue stage, so no static, no rolling interference and no slow fade at the edge of range.</dd></div>
             <div><dt>60 ms glass to glass</dt><dd>Measured end to end on the bench rather than summed from component datasheets.</dd></div>
-            <div><dt>Frame rate where it counts</dt><dd>720p at 90 fps on Ghost for fast flying, 1080p at 30 fps on Greywind for detail, with 720p90 available on it too.</dd></div>
+            <div><dt>Frame rate where it counts</dt><dd>720p at 60 fps on Ghost for fast flying, 1080p at 30 fps on Greywind for detail, with 720p60 available on it too.</dd></div>
             <div><dt>Long range transmission</dt><dd>Up to 5&nbsp;km between the air unit and the ground unit.</dd></div>
         </dl>
       </div>
       <div class="pop" id="pop2" role="dialog" aria-labelledby="pop2-h" hidden>
         <button class="pop-x" type="button" aria-label="Close">&times;</button>
         <h3 id="pop2-h">Ready to go</h3>
-        <p class="pop-body">No soldering, no firmware rabbit hole, no forum thread at midnight. The module arrives bound and configured, and everything you change afterwards you change from your app.</p>
+        <p class="pop-body">No soldering, no firmware rabbit hole, no forum thread at midnight. The module arrives bound and configured, and everything you change afterwards you change from your phone&rsquo;s browser.</p>
         <dl class="pop-pts">
             <div><dt>Plug and play</dt><dd>One cable to power and four bolts to mount. Nothing to flash before you get a picture.</dd></div>
             <div><dt>Five minute setup</dt><dd>Box to first frame in about five minutes, including binding the ground unit.</dd></div>
-            <div><dt>Mobile and web app</dt><dd>Channel, bitrate, recording and firmware from your phone. Updates arrive over the air.</dd></div>
+            <div><dt>Set up from your phone</dt><dd>Channel, power, video mode and recording from a web page on the ground unit&rsquo;s own Wi-Fi. No app to install. Updates arrive over the air.</dd></div>
         </dl>
       </div>
       <div class="pop" id="pop4" role="dialog" aria-labelledby="pop4-h" hidden>
@@ -248,11 +248,11 @@
       <div class="pop" id="popR" role="dialog" aria-labelledby="popR-h" hidden>
         <button class="pop-x" type="button" aria-label="Close">&times;</button>
         <h3 id="popR-h">Record while you fly</h3>
-        <p class="pop-body">The module records to its own storage at the same time as it streams to your screen. You are not choosing between seeing the flight and keeping it, and the recording is written on the air unit rather than reconstructed from the transmitted stream.</p>
+        <p class="pop-body">The module records to its own storage at the same time as it streams to your screen. You are not choosing between seeing the flight and keeping it, and the recording is saved on the air unit at the same quality as the live stream.</p>
         <dl class="pop-pts">
             <div><dt>Live and record together</dt><dd>Both run at once. Link going down does not take the recording with it.</dd></div>
             <div><dt>Onboard storage</dt><dd>8&nbsp;GB on Ghost, 16&nbsp;GB on Greywind. No card to buy, lose or forget.</dd></div>
-            <div><dt>Straight off over USB</dt><dd>Plug the air unit into a computer and pull the files. No proprietary reader and no app in the middle.</dd></div>
+            <div><dt>Download over Wi-Fi</dt><dd>Open the ground unit&rsquo;s page on your phone or computer and download the files as MP4. No card reader and no app in the middle.</dd></div>
         </dl>
       </div>
       <div class="pop" id="pop3" role="dialog" aria-labelledby="pop3-h" hidden>
@@ -271,6 +271,29 @@
        Named units, not a configurator. The card carries a name, one line
        of specification and a price; everything else is on the unit's own
        page. ==================================================== -->
+  <!-- ============ ground station web app ============ -->
+  <section class="sec" id="web-app">
+    <div class="wrap">
+      <div class="shead" data-stagger>
+        <p class="t-eyebrow">Ground station web app &middot; included with every unit</p>
+        <h2 class="t-section">Your whole FPV link, in your phone&rsquo;s browser.</h2>
+        <p class="t-lede">Join the ground unit&rsquo;s Wi-Fi, open one page, and see, set and record everything: link health, the on-screen display, camera and radio settings, recordings and updates. No app to install.</p>
+      </div>
+      <figure class="gsa-hero" data-reveal>
+        <img src="img/gs-hero.webp" alt="The live video with its on-screen display on an HDMI screen, beside the web app's Home tab on a phone" width="1400" height="1057" loading="lazy">
+      </figure>
+      <div class="gsa-pillars" data-stagger style="margin-bottom:28px">
+        <div><p class="gsa-n">01 &middot; Watch</p><p>Link health, video and flight data, live, with every drop explained.</p></div>
+        <div><p class="gsa-n">02 &middot; Tune</p><p>Camera, radio, OSD and telemetry for both units, from one page.</p></div>
+        <div><p class="gsa-n">03 &middot; Keep</p><p>Record on the drone in live quality, download to your phone over Wi-Fi.</p></div>
+      </div>
+      <div class="gsa-cta">
+        <a class="btn btn-solid" href="ghost.html#web-app">See what the web app does</a>
+        <a class="btn btn-line" href="ghost.html#osd">The on-screen display</a>
+      </div>
+    </div>
+  </section>
+
   <section class="sec sunk" id="products">
     <div class="wrap">
       <div class="shead shead-c" data-stagger>
@@ -294,8 +317,8 @@
                 <h3>Ghost</h3>
                 <p class="prod-rider">Jon</p>
               </div>
-              <p class="prod-line">720p90 &middot; 8&nbsp;GB onboard</p>
-              <p class="prod-note">Air unit, ground unit and the app. Digital video at 60&nbsp;ms glass to glass, recorded onboard while it streams.</p>
+              <p class="prod-line">720p60 &middot; 8&nbsp;GB onboard</p>
+              <p class="prod-note">Air unit and ground unit, set up from your phone. Digital video at 60&nbsp;ms glass to glass, recorded onboard while it streams.</p>
               <div class="prod-price">
                 <div class="prod-strike" data-coupon-only>
                   <p class="prod-was">&#8377;29,999</p>
@@ -337,8 +360,8 @@
                 <h3>Greywind</h3>
                 <p class="prod-rider">Robb</p>
               </div>
-              <p class="prod-line">1080p30 / 720p90 &middot; 16&nbsp;GB onboard</p>
-              <p class="prod-note">The same link and the same app as Ghost, with the detail of a 1080p frame when you want it.</p>
+              <p class="prod-line">1080p30 / 720p60 &middot; 16&nbsp;GB onboard</p>
+              <p class="prod-note">The same link and the same setup as Ghost, with the detail of a 1080p frame when you want it.</p>
               <div class="prod-price">
                 <div class="prod-strike" data-coupon-only>
                   <p class="prod-was">&#8377;35,999</p>
@@ -628,15 +651,15 @@
     <div class="wrap">
       <h2 id="dl-h" class="t-eyebrow">Brochures</h2>
       <div class="dl" data-stagger>
-        <a class="dl-item" href="print/warg-brochure-b2c.pdf" download>
+        <a class="dl-item" href="print/warg-brochure-b2c.pdf?v=20261102c" download>
           <span class="dl-nm">The cameras</span>
-          <span class="dl-sub">For pilots and hobbyists. The three units, what each one gives you and what it costs.</span>
-          <span class="dl-meta">PDF &middot; A4 &middot; 4 pages</span>
+          <span class="dl-sub">For pilots and hobbyists. The three units, what each one gives you, how it sets up and what it costs.</span>
+          <span class="dl-meta">PDF &middot; A5 &middot; 12 pages</span>
         </a>
-        <a class="dl-item" href="print/warg-brochure-b2b.pdf" download>
+        <a class="dl-item" href="print/warg-brochure-b2b.pdf?v=20261102c" download>
           <span class="dl-nm">A camera you can build on</span>
-          <span class="dl-sub">For integrators and businesses. The platform, the compute module and what runs on it.</span>
-          <span class="dl-meta">PDF &middot; A4 &middot; 4 pages</span>
+          <span class="dl-sub">For integrators and businesses. The link, how it plugs into your stack, and the compute module.</span>
+          <span class="dl-meta">PDF &middot; A5 &middot; 12 pages</span>
         </a>
       </div>
     </div>

@@ -1487,3 +1487,43 @@ mark.fill{ background:#ffe08a; color:#5a3d00; padding:0 3px; }
 .prod-body .soon-note{ display:flex; justify-content:center; width:100%; }
 .phero-buy .soon-note{ margin-top:14px; margin-left:8px; vertical-align:top; }
 .sec-cta .soon-note{ margin-right:16px; vertical-align:top; }
+
+/* ---------- ground station web app and OSD (product pages) ---------- */
+.gsa-hero{ margin:0; background:#0A0A0D; clip-path:var(--clip-md); }
+.gsa-hero img{ display:block; width:100%; height:auto; }
+.gsa-pillars{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(16px,3vw,40px); margin:clamp(22px,3vw,32px) 0 clamp(48px,6vw,80px); }
+.gsa-pillars p{ margin:0; font-size:15.5px; line-height:1.55; color:var(--ink-2); }
+.gsa-n, .gsa-tag{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent-700) !important; margin:0 0 8px !important; }
+.gsa-row{ display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:clamp(20px,4vw,56px); align-items:center; margin-bottom:clamp(48px,6vw,80px); }
+.gsa-fig{ margin:0; border:1px solid var(--line-2); background:#fff; overflow:hidden; }
+.gsa-fig img{ display:block; width:100%; height:auto; }
+.gsa-h{ font-family:'Space Grotesk','Inter',sans-serif; font-weight:500; font-size:clamp(20px,2.2vw,26px); letter-spacing:-0.01em; margin:0 0 14px; }
+.gsa-p{ margin:0; font-size:15px; line-height:1.65; color:var(--ink-2); }
+.gsa-steps{ margin:0; padding:0; list-style:none; counter-reset:s; }
+.gsa-steps li{ counter-increment:s; position:relative; padding:0 0 14px 38px; font-size:15px; line-height:1.55; color:var(--ink-2); }
+.gsa-steps li::before{ content:counter(s); position:absolute; left:0; top:-3px; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:22px; color:var(--accent-700); }
+.gsa-steps b, .gsa-legend b{ color:var(--ink); font-weight:600; }
+.gsa-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(20px,2.6vw,32px); margin-bottom:clamp(48px,6vw,80px); }
+.gsa-card .gsa-fig{ aspect-ratio:4/3; }
+.gsa-card .gsa-fig img{ height:100%; object-fit:cover; object-position:top left; }
+.gsa-card .gsa-tag{ margin-top:16px !important; }
+.gsa-card h3{ font-family:'Space Grotesk','Inter',sans-serif; font-weight:500; font-size:19px; margin:0 0 8px; letter-spacing:-0.006em; }
+.gsa-card p{ margin:0; font-size:14.5px; line-height:1.6; color:var(--ink-2); }
+.gsa-rec{ display:grid; gap:20px; }
+.gsa-rec-head{ max-width:70ch; }
+.gsa-rec-head p:last-child{ margin:0; font-size:15px; line-height:1.65; color:var(--ink-2); }
+.gsa-osd{ margin:0; clip-path:var(--clip-md); }
+.gsa-osd img{ display:block; width:100%; height:auto; }
+.gsa-legend{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px clamp(16px,3vw,40px); margin:clamp(22px,3vw,32px) 0 clamp(48px,6vw,72px); padding:0; list-style:none; counter-reset:l; }
+.gsa-legend li{ counter-increment:l; position:relative; padding-left:30px; font-size:14.5px; line-height:1.55; color:var(--ink-2); }
+.gsa-legend li::before{ content:counter(l); position:absolute; left:0; top:1px; width:20px; height:20px; border-radius:50%; background:var(--accent-700); color:#fff; font-family:'IBM Plex Mono',monospace; font-size:11px; line-height:20px; text-align:center; }
+#osd .gsa-row{ margin-bottom:0; }
+#osd .gsa-fig{ background:#F7F8FA; }
+@media (max-width:860px){
+  .gsa-grid, .gsa-legend{ grid-template-columns:1fr 1fr; }
+  .gsa-row{ grid-template-columns:1fr; }
+}
+@media (max-width:560px){
+  .gsa-grid, .gsa-legend, .gsa-pillars{ grid-template-columns:1fr; }
+}
+.gsa-cta{ display:flex; gap:12px; flex-wrap:wrap; }

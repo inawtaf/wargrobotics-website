@@ -457,7 +457,7 @@ test('compliance: seller details in every footer; product pages carry the Legal 
   for (const re of [/Information Technology Act, 2000/, /SPDI Rules/, /Digital Personal Data Protection Act, 2023/, /id="delete"/, /Grievance Officer/]) assert.match(privacy, re, `privacy: ${re}`);
   assert.match(read('shipping.html'), /Delhivery/); assert.match(read('shipping.html'), /PIN code/); assert.match(read('shipping.html'), /risk .*pass to you when the parcel is delivered/is);
   assert.match(read('refunds.html'), /original payment method/i); assert.match(read('refunds.html'), /5 to 7 working days/);
-  assert.match(read('warranty.html'), /12 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
+  assert.match(read('warranty.html'), /6 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
 });
 
 test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon, /prebook forwards to the products', () => {
@@ -482,4 +482,30 @@ test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon,
     assert.ok((html.match(/<p class="soon-note">Launching soon<\/p>/g) || []).length >= 2, f + ': Pro shows Launching soon');
   }
   assert.match(read('prebook.html'), /url=\/#products/);
+});
+
+test('site matches the datasheet: 720p60, 8 MP IMX219, setup in the browser, downloads over Wi-Fi', () => {
+  const root = new URL('../', import.meta.url);
+  for (const f of ['index.html', 'ghost.html', 'greywind.html', 'support.html']) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    for (const bad of [/720p ?90/i, /90 ?fps/i, /ninety/i, /Android/, /\bUSB\b/, /2 MP\b/, /Betaflight/, /through the app/, /Mobile app/])
+      assert.doesNotMatch(html, bad, f + ' still says ' + bad);
+  }
+  assert.match(PRODUCTS.ghost.line, /720p60/);
+  assert.match(PRODUCTS.greywind.line, /720p60/);
+  const idx = readFileSync(new URL('index.html', root), 'utf8');
+  assert.equal((idx.match(/PDF &middot; A5 &middot; 12 pages/g) || []).length, 2);
+});
+
+test('product pages and home page show the ground station web app and the OSD', () => {
+  const root = new URL('../', import.meta.url);
+  for (const f of ['ghost.html', 'greywind.html']) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    assert.match(html, /id="web-app"/, f);
+    assert.match(html, /id="osd"/, f);
+    assert.match(html, /UDP port 14551/, f);
+    assert.doesNotMatch(html, /10-minute|10 minutes/, f + ': recording file length is not mentioned');
+    for (const img of html.match(/img\/gs-[\w-]+\.webp/g)) assert.ok(readdirSync(new URL('img/', root)).includes(img.slice(4)), img);
+  }
+  assert.match(readFileSync(new URL('index.html', root), 'utf8'), /href="ghost.html#web-app"/);
 });
