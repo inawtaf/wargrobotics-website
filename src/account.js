@@ -2,7 +2,7 @@
 // Every handler gets (request, env, ctx, user?) and returns a Response.
 
 import { PRODUCTS, MAX_QUANTITY } from './config.js';
-import { json, readJson, httpError, nowIso, newRequestNumber, sha256Hex } from './util.js';
+import { json, readJson, httpError, nowIso, newRequestNumber, sha256Hex, safeFileName } from './util.js';
 import { validateAddress, validateItems, validateRegistration, validateEmail, passwordProblem, normalisePhone, clean } from './validate.js';
 import * as auth from './auth.js';
 import * as google from './google.js';
@@ -460,7 +460,7 @@ export async function invoicePdf(request, env, ctx, user, n) {
   return new Response(pdf, {
     headers: {
       'content-type': 'application/pdf',
-      'content-disposition': `attachment; filename="${(o.invoice_number || o.order_number).replace(/[^\w.-]/g, '_')}.pdf"`,
+      'content-disposition': `attachment; filename="${safeFileName(o.invoice_number || o.order_number)}.pdf"`,
       'cache-control': 'private, no-store',
     },
   });

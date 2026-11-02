@@ -213,6 +213,7 @@
     if (o.coupon_code) row('Coupon used', o.coupon_code);
     row('Subtotal after discounts', inr(o.subtotal_paise));
     row(o.tax_kind === 'intra' ? 'CGST + SGST 18%' : 'IGST 18%', inr(o.gst_paise));
+    if (o.total_paise - o.subtotal_paise - o.gst_paise) row('Round off', inr(o.total_paise - o.subtotal_paise - o.gst_paise));
     row('Total', inr(o.total_paise), 't');
 
     $('d-pay').textContent = [

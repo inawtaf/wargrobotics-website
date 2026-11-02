@@ -1,7 +1,7 @@
 // Transactional email through Resend (https://resend.com/docs/api-reference/emails/send-email).
 // The wording lives in this file: edit the templates below to change what buyers read.
 
-import { escapeHtml as h, inr, base64FromBytes } from './util.js';
+import { escapeHtml as h, inr, base64FromBytes, safeFileName } from './util.js';
 import { STATE_BY_CODE } from './config.js';
 import { billingOf, placeOfSupply } from './billing.js';
 
@@ -73,7 +73,7 @@ export function testEmail(env) {
   };
 }
 
-export const pdfAttachment = (filename, bytes) => ({ filename, content: base64FromBytes(bytes) });
+export const pdfAttachment = (filename, bytes) => ({ filename: safeFileName(filename.replace(/\.pdf$/i, '')) + '.pdf', content: base64FromBytes(bytes) });
 
 // ---------------------------------------------------------------- layout
 
@@ -107,7 +107,8 @@ ${o.combo_discount_paise ? row('Ghost + Greywind combo', '− ' + inr(o.combo_di
 ${o.coupon_discount_paise ? row(`Coupon ${h(o.coupon_code || '')}`, '− ' + inr(o.coupon_discount_paise)) : ''}
 ${row(o.combo_discount_paise || o.coupon_discount_paise ? 'Subtotal after discounts' : 'Subtotal', inr(o.subtotal_paise))}
 ${tax}
-${row('Total paid', inr(o.total_paise), true)}
+${o.total_paise - o.subtotal_paise - o.gst_paise ? row('Round off', inr(o.total_paise - o.subtotal_paise - o.gst_paise)) : ''}
+${row('Total paid (incl. GST)', inr(o.total_paise), true)}
 </table>`;
 }
 
@@ -134,7 +135,7 @@ const orderLink = (env, o) =>
 
 export function confirmationEmail(env, o, { hasInvoice }) {
   const first = h(o.customer_name.split(' ')[0]);
-  const html = layout(`Order ${o.order_number} confirmed`, [
+  const html = layout(`Order ${o.order_number} received`, [
     p(`Hi ${first}, thank you for your order. Your payment has been received.`),
     orderTable(o),
     p('<b>Delivering to</b>'),
@@ -144,12 +145,12 @@ export function confirmationEmail(env, o, { hasInvoice }) {
       ? `Your GST invoice ${h(o.invoice_number || '')} is attached.`
       : 'Your GST invoice will follow in a separate email shortly.'),
     p('<b>What happens next</b>'),
-    p('We test and pack each unit before dispatch. When it ships we email you the courier and tracking number, with instructions for receiving the parcel.'),
+    p('We test and pack each unit before dispatch. When it ships we email you the courier and tracking number, with instructions for receiving the parcel. Your order is accepted when it is dispatched; if for any reason we can\'t fulfil it, we refund you in full.'),
     btn(orderLink(env, o), 'View your order'),
     p(`You can also track this order and download the invoice from <a href="${site(env)}/account" style="color:#2a00ff">your account</a>.`),
     p('Questions? Reply to this email and quote your order number.'),
   ].join(''));
-  const text = `Order ${o.order_number} confirmed.
+  const text = `Order ${o.order_number} received. Payment received.
 
 ${o.summary}
 Total paid: ${inr(o.total_paise)} (incl. GST)
@@ -158,7 +159,7 @@ ${hasInvoice ? 'Your GST invoice is attached.' : 'Your GST invoice will follow s
 We will email tracking details when it ships.
 
 View your order: ${orderLink(env, o)}`;
-  return { subject: `Order ${o.order_number} confirmed – Warg Robotics`, html, text };
+  return { subject: `Order ${o.order_number} received – Warg Robotics`, html, text };
 }
 
 export function invoiceEmail(env, o) {

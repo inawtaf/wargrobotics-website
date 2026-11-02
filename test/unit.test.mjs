@@ -30,7 +30,8 @@ test('list prices: Ghost ₹29,999, Greywind ₹35,999, GST 18% on top', () => {
   assert.equal(ka.summary, 'Warg Ghost × 1');
   assert.equal(ka.subtotalPaise, 2_999_900);
   assert.equal(ka.gstPaise, 539_982);
-  assert.equal(ka.totalPaise, 3_539_882);           // ₹35,398.82
+  assert.equal(ka.roundOffPaise, 18);
+  assert.equal(ka.totalPaise, 3_539_900);           // ₹35,398.82 rounded to ₹35,399
   assert.equal(ka.taxKind, 'intra');
   assert.deepEqual(ka.taxLines.map(l => l.paise), [269_991, 269_991]);
   assert.equal(ka.discountPaise, 0);
@@ -41,7 +42,8 @@ test('list prices: Ghost ₹29,999, Greywind ₹35,999, GST 18% on top', () => {
   assert.equal(mh.gstPaise, 1_295_964);
   assert.equal(mh.taxKind, 'inter');
   assert.equal(mh.taxLines.length, 1);
-  assert.equal(mh.totalPaise, 8_495_764);
+  assert.equal(mh.roundOffPaise, 36);
+  assert.equal(mh.totalPaise, 8_495_800);
 });
 
 test('tax lines always add up to the GST total (odd paise), with and without discounts', () => {
@@ -49,7 +51,9 @@ test('tax lines always add up to the GST total (odd paise), with and without dis
     const r = quote({ sku, quantity: q, buyerState: 'KA', sellerState: 'KA', coupon });
     assert.equal(r.taxLines.reduce((s, l) => s + l.paise, 0), r.gstPaise);
     assert.equal(r.subtotalPaise, r.listSubtotalPaise - r.discountPaise);
-    assert.equal(r.totalPaise, r.subtotalPaise + r.gstPaise);
+    assert.equal(r.totalPaise, r.subtotalPaise + r.gstPaise + r.roundOffPaise);
+    assert.equal(r.totalPaise % 100, 0, 'whole rupees');
+    assert.ok(Math.abs(r.roundOffPaise) <= 50);
   }
 });
 
@@ -103,7 +107,7 @@ test('cart: mixed products, totals add up', () => {
   assert.equal(q.listSubtotalPaise, 2_999_900 + 2 * 3_599_900);
   assert.equal(q.subtotalPaise, 4_999_900 + 3_599_900);
   assert.equal(q.gstPaise, q.lines.reduce((s, l) => s + l.gstPaise, 0));
-  assert.equal(q.totalPaise, q.subtotalPaise + q.gstPaise);
+  assert.equal(q.totalPaise, q.subtotalPaise + q.gstPaise + q.roundOffPaise);
   assert.equal(q.itemCount, 3);
   assert.equal(q.summary, 'Warg Ghost × 1, Warg Greywind × 2');
   assert.throws(() => quoteCart({ items: [] }));
@@ -379,7 +383,7 @@ test('every customer page links the four policy pages in its footer', () => {
   for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html')) {
     const html = readFileSync(new URL(f, root), 'utf8');
     const foot = html.slice(html.indexOf('<footer'));
-    for (const p of ['terms', 'refunds', 'shipping', 'privacy']) assert.match(foot, new RegExp(`href="/?${p}(\\.html)?"`), `${f} → ${p}`);
+    for (const p of ['terms', 'refunds', 'shipping', 'privacy', 'warranty']) assert.match(foot, new RegExp(`href="/?${p}(\\.html)?"`), `${f} → ${p}`);
   }
 });
 
@@ -404,4 +408,54 @@ test('coupon prices are whole rupees, and the site never shows how many coupons 
     assert.match(html, /valid till 20 Nov/, f);
   }
   assert.doesNotMatch(readFileSync(new URL('site.js', root), 'utf8'), /coupon-left|\.left\b/);
+});
+
+// ------------------------------------------------------------------ 2 Nov: GST-inclusive display, invoices
+import { inclusivePaise } from '../src/pricing.js';
+import { safeFileName } from '../src/util.js';
+import { COMBO } from '../src/config.js';
+
+test('GST-inclusive prices shown on the site are whole rupees and equal what one unit costs', () => {
+  assert.equal(inclusivePaise(2_999_900), 3_539_900);   // Ghost  ₹35,399
+  assert.equal(inclusivePaise(3_599_900), 4_247_900);   // Greywind ₹42,479
+  assert.equal(inclusivePaise(COMBO.pricePaise), 5_899_900);   // combo ₹58,999
+  assert.equal(inclusivePaise(2_399_900), 2_831_900);   // Ghost with WARG20 ₹28,319
+  assert.equal(inclusivePaise(2_879_900), 3_398_300);   // Greywind with WARG20 ₹33,983
+  for (const sku of Object.keys(PRODUCTS)) {
+    assert.equal(quote({ sku, quantity: 1, buyerState: 'GA', sellerState: 'GA' }).totalPaise, inclusivePaise(PRODUCTS[sku].listPricePaise), sku);
+  }
+  const root = new URL('..', import.meta.url);
+  for (const [f, needles] of [['ghost.html', ['35,399', '28,319', '58,999']], ['greywind.html', ['42,479', '33,983', '58,999']], ['index.html', ['28,319', '33,983', '58,999']]]) {
+    const html = readFileSync(new URL(f, root), 'utf8');
+    for (const n of needles) assert.match(html, new RegExp(`&#8377;${n} incl\\. GST`), `${f} ${n}`);
+  }
+});
+
+test('invoice numbers with slashes make safe file names', () => {
+  assert.equal(safeFileName('WR/26-27/0001'), 'WR-26-27-0001');
+  assert.equal(safeFileName('INV-000001'), 'INV-000001');
+  assert.equal(safeFileName('a b"c'), 'a_b_c');
+});
+
+test('compliance: seller details in every footer; product pages carry the Legal Metrology details; terms cover the Warg clauses', () => {
+  const root = new URL('..', import.meta.url);
+  const read = f => readFileSync(new URL(f, root), 'utf8');
+  for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html')) {
+    const foot = read(f).slice(read(f).indexOf('<footer'));
+    assert.match(foot, /class="foot-seller">Sold by .*Registered address: .*Panaji, Goa 403001.*GSTIN .*Phone .*hello@wargrobotics\.com.*Grievance Officer/s, f);
+  }
+  for (const [f, mrp] of [['ghost.html', '35,399'], ['greywind.html', '42,479']]) {
+    const html = read(f);
+    for (const re of [new RegExp(`MRP \\(incl\\. of all taxes\\)</dt><dd>&#8377;${mrp}`), /Country of origin<\/dt><dd>India/, /Manufacturer<\/dt>/, /Model<\/dt>/, /warranty\.html/, /refunds\.html/]) assert.match(html, re, `${f} ${re}`);
+  }
+  const terms = read('terms.html');
+  for (const re of [/5\.725&ndash;5\.875 GHz de-licensed band/, /Equipment Type Approval/, /Drone Rules, 2021/, /jamming/, /unlawful surveillance/, /indicative/, /limited to the price you paid/, /Consumer Protection Act, 2019/,
+    /SCOMET/, /do not ship outside India/, /licensed to you, not sold/, /reverse engineer/, /decrypt/, /Courts at Goa/, /consumer commission/, /GSTIN/, /accepted when we dispatch it/, /Failed payments/, /within 48 hours/, /within one month/]) {
+    assert.match(terms, re, `terms: ${re}`);
+  }
+  const privacy = read('privacy.html');
+  for (const re of [/Information Technology Act, 2000/, /SPDI Rules/, /Digital Personal Data Protection Act, 2023/, /id="delete"/, /Grievance Officer/]) assert.match(privacy, re, `privacy: ${re}`);
+  assert.match(read('shipping.html'), /Delhivery/); assert.match(read('shipping.html'), /PIN code/); assert.match(read('shipping.html'), /risk .*pass to you when the parcel is delivered/is);
+  assert.match(read('refunds.html'), /original payment method/i); assert.match(read('refunds.html'), /5 to 7 working days/);
+  assert.match(read('warranty.html'), /12 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
 });

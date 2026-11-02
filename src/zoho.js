@@ -6,7 +6,7 @@
 // your CA can maintain it.
 
 import { nowSec } from './util.js';
-import { STATE_BY_CODE } from './config.js';
+import { STATE_BY_CODE, PRODUCTS } from './config.js';
 import { billingOf, placeOfSupply } from './billing.js';
 
 const apiBase = env => env.ZOHO_API_BASE || 'https://www.zohoapis.in/books/v3';
@@ -56,6 +56,8 @@ async function call(env, method, path, { body, query = {}, raw = false } = {}) {
   }
   return data;
 }
+
+const roundOffOf = o => o.total_paise - o.subtotal_paise - o.gst_paise;
 
 // Zoho India GST treatment: registered business, unregistered business, or consumer.
 export const gstTreatment = o => (o.gstin ? 'business_gst' : o.business_name ? 'business_none' : 'consumer');
@@ -147,6 +149,7 @@ export async function createPaidInvoice(env, order) {
           gst_treatment: gstTreatment(order),
           ...(order.gstin ? { gst_no: order.gstin } : {}),
           is_inclusive_tax: false,
+          is_reverse_charge_applied: false,   // Rule 46: tax is not payable on reverse charge
           // Combo and coupon show as line discounts (an amount), taken off
           // before GST, so the invoice lists the full price and the saving.
           ...(order.items.some(it => it.discount_paise) ? { discount_type: 'item_level', is_discount_before_tax: true } : {}),
@@ -155,9 +158,12 @@ export async function createPaidInvoice(env, order) {
             quantity: it.quantity,
             rate: it.unit_price_paise / 100,
             tax_id: taxId,
+            ...(PRODUCTS[it.sku]?.hsn ? { hsn_or_sac: PRODUCTS[it.sku].hsn } : {}),
             ...(it.discount_paise ? { discount: Number((it.discount_paise / 100).toFixed(2)), description: `Discount: ${it.discount_label}` } : {}),
             ...(it.price_type === 'offer' ? { description: 'Offer price' } : {}),
           })),
+          // The order total is rounded to whole rupees; Zoho shows the difference as a round-off line.
+          ...(roundOffOf(order) ? { adjustment: roundOffOf(order) / 100, adjustment_description: 'Round off' } : {}),
           notes: `Paid online via Razorpay (payment ${order.razorpay_payment_id}).`,
         },
       });
@@ -209,9 +215,28 @@ export async function check(env) {
     out.push({ name: k, ok: taxIds.has(String(env[k] || '').trim()), detail: taxIds.has(String(env[k] || '').trim()) ? 'found in Zoho' : 'not found among this organisation\'s taxes (run scripts/zoho-setup.mjs ids)' });
   }
   const items = (await call(env, 'GET', '/items')).items || [];
-  const itemIds = new Set(items.map(i => String(i.item_id)));
-  for (const k of ['ZOHO_ITEM_ID_GHOST', 'ZOHO_ITEM_ID_GREYWIND']) {
-    out.push({ name: k, ok: itemIds.has(String(env[k] || '').trim()), detail: itemIds.has(String(env[k] || '').trim()) ? 'found in Zoho' : 'not found among this organisation\'s items' });
+  for (const p of Object.values(PRODUCTS)) {
+    const id = String(env[p.zohoItemVar] || '').trim();
+    const item = items.find(i => String(i.item_id) === id);
+    out.push({ name: p.zohoItemVar, ok: Boolean(item), detail: item ? `found in Zoho (${item.name || p.name})` : 'not found among this organisation\'s items' });
+    if (item) {
+      const hsn = String(item.hsn_or_sac || '').trim();
+      const want = p.hsn ? String(p.hsn) : null;
+      out.push({ name: `${p.name}: HSN`, ok: Boolean(hsn) && (!want || hsn === want),
+        detail: !hsn ? 'no HSN code on the Zoho item: Items → edit → HSN Code' : want && hsn !== want ? `Zoho has ${hsn}, the site sends ${want}: make them the same` : `HSN ${hsn}` });
+    }
+  }
+  // Supplier details printed on every invoice (GST Rule 46).
+  try {
+    const org = (await call(env, 'GET', `/organizations/${env.ZOHO_ORG_ID}`)).organization || {};
+    const state = String(org.address?.state || org.state || '').trim();
+    const seller = STATE_BY_CODE[env.SELLER_STATE || 'GA']?.name;
+    out.push({ name: 'Organisation state', ok: state ? state.toLowerCase() === String(seller).toLowerCase() : null,
+      detail: state ? (state.toLowerCase() === String(seller).toLowerCase() ? `${state}: matches SELLER_STATE, so CGST + SGST apply within ${seller}` : `Zoho says ${state} but SELLER_STATE is ${seller}: fix Settings → Organization Profile`) : 'could not read the state from Zoho; check Settings → Organization Profile' });
+    const gstin = String(org.tax_reg_no || org.gst_no || org.gstin || '').trim();
+    out.push({ name: 'Organisation GSTIN', ok: gstin ? true : null, detail: gstin ? `GSTIN ${gstin}` : 'could not read a GSTIN from Zoho; check Settings → Taxes → GST settings' });
+  } catch (e) {
+    out.push({ name: 'Organisation profile', ok: null, detail: `could not read it: ${e.message}` });
   }
   return out;
 }

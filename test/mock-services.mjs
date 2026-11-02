@@ -63,8 +63,10 @@ http.createServer((req, res) => {
       Object.assign(c, { billing_address: body.billing_address, shipping_address: body.shipping_address });
       return send(res, 200, { code: 0, contact: c });
     }
+    if (p === '/__invoice-prefix') { state.invoicePrefix = url.searchParams.get('p') || ''; return send(res, 200, { ok: true }); }
+    if (p === '/zoho/organizations/org_1') return send(res, 200, { code: 0, organization: { name: 'Warg Robotics Private Limited', address: { state: 'Goa' }, tax_reg_no: '30ABCDE1234F1Z5' } });
     if (p === '/zoho/settings/taxes') return send(res, 200, { code: 0, taxes: [{ tax_id: 'tax_intra' }, { tax_id: 'tax_inter' }] });
-    if (p === '/zoho/items' && req.method === 'GET') return send(res, 200, { code: 0, items: [{ item_id: 'item_ghost' }, { item_id: 'item_greywind' }] });
+    if (p === '/zoho/items' && req.method === 'GET') return send(res, 200, { code: 0, items: [{ item_id: 'item_ghost', name: 'Warg Ghost', hsn_or_sac: '8525' }, { item_id: 'item_greywind', name: 'Warg Greywind', hsn_or_sac: '8525' }] });
     if (p === '/zoho/invoices' && req.method === 'GET') {
       return send(res, 200, { code: 0, invoices: state.invoices.filter(i => i.reference_number === url.searchParams.get('reference_number')) });
     }
@@ -74,8 +76,8 @@ http.createServer((req, res) => {
       const total = body.line_items.reduce((t, li) => {
         const net = Math.round((li.rate * li.quantity - (Number(li.discount) || 0)) * 100);
         return t + net + Math.round(net * 0.18);
-      }, 0) / 100;
-      const inv = { invoice_id: 'inv_' + state.nextInvoice, invoice_number: 'INV-' + String(state.nextInvoice++).padStart(6, '0'), reference_number: body.reference_number, total, status: 'draft' };
+      }, 0) / 100 + (Number(body.adjustment) || 0);
+      const inv = { invoice_id: 'inv_' + state.nextInvoice, invoice_number: (state.invoicePrefix || 'INV-') + String(state.nextInvoice++).padStart(state.invoicePrefix ? 4 : 6, '0'), reference_number: body.reference_number, total, status: 'draft' };
       state.invoices.push(inv);
       return send(res, 201, { code: 0, invoice: inv });
     }

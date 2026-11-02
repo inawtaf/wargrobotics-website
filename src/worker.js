@@ -27,7 +27,7 @@
 //   GET /api/admin/service;  POST /api/admin/service/:sr
 
 import { PRODUCTS, STATES, MAX_QUANTITY, GST_RATE_BP, COMBO, COUPON } from './config.js';
-import { comboShares, couponUnitDiscount, couponExpired } from './pricing.js';
+import { comboShares, couponUnitDiscount, couponExpired, inclusivePaise } from './pricing.js';
 import { validateAddress, validateItems, checkoutAddresses } from './validate.js';
 import { json, safeEqual, orderToken, readJson, httpError } from './util.js';
 import * as auth from './auth.js';
@@ -48,10 +48,12 @@ async function products(env) {
       sku: p.sku, name: p.name, line: p.line,
       list_price_paise: p.listPricePaise,
       coupon_price_paise: p.listPricePaise - couponUnitDiscount(p.sku),
+      list_price_incl_paise: inclusivePaise(p.listPricePaise),                              // MRP, incl. GST
+      coupon_price_incl_paise: inclusivePaise(p.listPricePaise - couponUnitDiscount(p.sku)),
     })),
     // How many uses are left is not published; only whether it still works.
     coupon: { code: COUPON.code, percent: COUPON.percent, valid_until: COUPON.validUntil, valid_until_text: COUPON.validUntilText, active: left > 0 && !couponExpired() },
-    combo: { skus: COMBO.skus, label: COMBO.label, price_paise: COMBO.pricePaise, saving_paise: comboShares().total },
+    combo: { skus: COMBO.skus, label: COMBO.label, price_paise: COMBO.pricePaise, price_incl_paise: inclusivePaise(COMBO.pricePaise), saving_paise: comboShares().total },
     gst_rate_bp: GST_RATE_BP, max_quantity: MAX_QUANTITY,
     seller_state: env.SELLER_STATE || 'GA', razorpay_key_id: env.RAZORPAY_KEY_ID || null,
     google_enabled: google.configured(env),
