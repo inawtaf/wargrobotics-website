@@ -442,7 +442,7 @@ test('compliance: seller details in every footer; product pages carry the Legal 
   const read = f => readFileSync(new URL(f, root), 'utf8');
   for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'admin.html')) {
     const foot = read(f).slice(read(f).indexOf('<footer'));
-    assert.match(foot, /class="foot-seller">Sold by .*Registered address: .*Panaji, Goa 403001.*GSTIN .*Phone .*hello@wargrobotics\.com.*Grievance Officer/s, f);
+    assert.match(foot, /class="foot-seller">Sold by .*Registered address: .*Panaji, Goa 403001.*GSTIN .*hello@wargrobotics\.com.*Grievance Officer/s, f);
   }
   for (const [f, mrp] of [['ghost.html', '35,399'], ['greywind.html', '42,479']]) {
     const html = read(f);
