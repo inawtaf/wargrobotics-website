@@ -78,6 +78,7 @@
     if (o.coupon_discount_paise) row('Coupon ' + o.coupon_code, '− ' + inr(o.coupon_discount_paise));
     row(o.combo_discount_paise || o.coupon_discount_paise ? 'Subtotal after discounts' : 'Subtotal', inr(o.subtotal_paise));
     row(o.tax_kind === 'intra' ? 'CGST 9% + SGST 9%' : 'IGST 18%', inr(o.gst_paise));
+    if (o.total_paise - o.subtotal_paise - o.gst_paise) row('Round off', inr(o.total_paise - o.subtotal_paise - o.gst_paise));
     row(o.status === 'created' ? 'Total' : 'Total paid', inr(o.total_paise), 'summary-total');
     aside.appendChild(dl);
     aside.appendChild(el('p', 'hint', 'Placed ' + date(o.paid_at || o.created_at) + (o.invoice_number ? ' · invoice ' + o.invoice_number : '')));

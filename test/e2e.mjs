@@ -85,7 +85,7 @@ await step('products and cart quotes are public', async () => {
   const q = await anon.call('POST', '/api/quote', { items: [{ sku: 'ghost', quantity: 1 }, { sku: 'greywind', quantity: 2 }], state_code: 'MH' });
   assert.equal(q.data.quote.taxKind, 'inter');
   assert.equal(q.data.quote.subtotalPaise, 4_999_900 + 3_599_900, 'one combo + one Greywind');
-  assert.equal(q.data.quote.totalPaise, 10_147_765);
+  assert.equal(q.data.quote.totalPaise, 10_147_800);
 });
 
 await step('writes from another site are refused (CSRF)', async () => {
@@ -193,7 +193,7 @@ await step('checkout: bad address refused with field errors', async () => {
 await step('checkout: order from the cart, price set by the server, address saved', async () => {
   const r = await asha.call('POST', '/api/orders', { address: ADDR, save_address: true, amount_paise: 100 });
   assert.equal(r.status, 201, JSON.stringify(r.data));
-  assert.equal(r.data.amount_paise, 10_147_765, 'combo price, set by the server');
+  assert.equal(r.data.amount_paise, 10_147_800, 'combo price, set by the server');
   assert.equal(r.data.quote.taxKind, 'intra');
   order1 = r.data;
   const a = await asha.call('GET', '/api/account/addresses');
@@ -218,6 +218,9 @@ await step('payment confirmed: paid, cart emptied, one invoice with two lines', 
   const inv = calls.find(c => c.path === '/zoho/invoices' && c.method === 'POST');
   assert.deepEqual(inv.body.line_items.map(l => [l.item_id, l.quantity, l.rate, l.tax_id, l.discount]), [['item_ghost', 1, 29999, 'tax_intra', 7272.25], ['item_greywind', 2, 35999, 'tax_intra', 8726.75]]);
   assert.equal(inv.body.discount_type, 'item_level');
+  assert.equal(inv.body.is_reverse_charge_applied, false, 'Rule 46: reverse charge stated as No');
+  assert.equal(inv.body.adjustment, 0.35, 'round-off to whole rupees');
+  assert.equal(inv.body.adjustment_description, 'Round off');
   assert.equal(inv.body.is_discount_before_tax, true);
   assert.match(inv.body.line_items[1].description, /1 in combo/);
   const conf = calls.find(c => c.headers.idem === `${order1.order_number}-confirmation`);
@@ -461,7 +464,7 @@ await step('resend an email on request', async () => {
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.equal(r.data.to, 'accounts@raodrones.example');
   const sent = (await emailsTo('accounts@raodrones.example')).pop();
-  assert.match(sent.body.subject, /confirmed/i);
+  assert.match(sent.body.subject, /received/i);
   assert.equal(sent.body.attachments[0].filename, 'INV-000001.pdf');
   const inv = await portal('POST', `/orders/${order1.order_number}/resend`, { which: 'invoice' });
   assert.equal(inv.status, 200);
@@ -839,6 +842,28 @@ await step('company name without a GSTIN: on the review, the email and the Zoho 
   assert.match(conf.body.html, /Fontainhas Labs/);
 });
 
+await step('invoices numbered in a financial-year series (WR/26-27/0001) attach as a safe file name', async () => {
+  await fetch(MOCK + '/__invoice-prefix?p=' + encodeURIComponent('WR/26-27/'));
+  const b = new Browser();
+  await googleSignIn(b, { sub: 'g-fy', email: 'fy@example.org', name: 'Fy Buyer' });
+  await b.call('PUT', '/api/cart', { items: [{ sku: 'greywind', quantity: 1 }] });
+  const r = await b.call('POST', '/api/orders', { delivery_address: { ...ADDR, name: 'Fy Buyer' } });
+  assert.equal(r.data.amount_paise, 4_247_900, 'Greywind: ₹42,479 incl. GST, as the product page says');
+  const o = await payByWebhook(r.data, 'FY');
+  await fetch(MOCK + '/__invoice-prefix');
+  assert.match(o.invoice_number, /^WR\/26-27\/\d{4}$/);
+  const conf = (await mockCalls()).find(c => c.headers.idem === `${o.order_number}-confirmation`);
+  assert.match(conf.body.attachments[0].filename, /^WR-26-27-\d{4}\.pdf$/);
+  const pdf = await b.raw('GET', `/api/account/orders/${o.order_number}/invoice`);
+  assert.match(pdf.headers.get('content-disposition'), /filename="WR-26-27-\d{4}\.pdf"/);
+  const p = (await anon.call('GET', '/api/products')).data;
+  assert.deepEqual(p.products.map(x => [x.sku, x.list_price_incl_paise, x.coupon_price_incl_paise]), [['ghost', 3_539_900, 2_831_900], ['greywind', 4_247_900, 3_398_300]]);
+  assert.equal(p.combo.price_incl_paise, 5_899_900);
+  const h = (await admin('GET', '/health')).data.sections.zoho;
+  assert.ok(h.find(x => x.name === 'Organisation state').ok);
+  assert.match(h.find(x => x.name === 'Warg Ghost: HSN').detail, /HSN 8525/);
+});
+
 await step('sign out everywhere', async () => {
   const second = new Browser();
   await second.call('POST', '/api/auth/login', { email: 'asha@example.com', password: 'yet another passphrase' });
@@ -847,7 +872,7 @@ await step('sign out everywhere', async () => {
 });
 
 await step('pages served; backend source and secrets are not', async () => {
-  for (const p of ['/login', '/account', '/cart', '/checkout', '/order', '/reset', '/terms', '/refunds', '/shipping', '/privacy', '/contact']) assert.equal((await fetch(SITE + p)).status, 200, p);
+  for (const p of ['/login', '/account', '/cart', '/checkout', '/order', '/reset', '/terms', '/refunds', '/shipping', '/privacy', '/warranty', '/contact']) assert.equal((await fetch(SITE + p)).status, 200, p);
   for (const p of ['/src/worker.js', '/src/auth.js', '/migrations/0002_accounts.sql', '/wrangler.jsonc', '/.dev.vars', '/.dev.vars.example', '/package.json', '/test/e2e.mjs']) {
     assert.equal((await fetch(SITE + p)).status, 404, p);
   }

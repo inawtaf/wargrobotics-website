@@ -173,7 +173,7 @@
       });
       var total = document.querySelector('.summary-total');
       Array.prototype.forEach.call(document.querySelectorAll('.summary-lines .tax-row'), function (el) { el.remove(); });
-      (sc ? quote.taxLines : [{ label: 'GST 18%', paise: quote.gstPaise }]).forEach(function (l) {
+      (sc ? quote.taxLines : [{ label: 'GST 18%', paise: quote.gstPaise }]).concat(quote.roundOffPaise ? [{ label: 'Round off', paise: quote.roundOffPaise }] : []).forEach(function (l) {
         var row = document.createElement('div'); row.className = 'tax-row';
         var dt = document.createElement('dt'); dt.textContent = l.label;
         var dd = document.createElement('dd'); dd.textContent = window.inr(l.paise);
@@ -220,8 +220,9 @@
     r.quote.discounts.forEach(function (d) { row(d.label, '− ' + window.inr(d.paise), 'disc'); });
     row(r.quote.discounts.length ? 'Subtotal after discounts' : 'Subtotal', window.inr(r.quote.subtotalPaise));
     r.quote.taxLines.forEach(function (l) { row(l.label, window.inr(l.paise)); });
+    if (r.quote.roundOffPaise) row('Round off', window.inr(r.quote.roundOffPaise));
     row('Delivery', 'Free');
-    row('Total to pay', window.inr(r.quote.totalPaise), 'total');
+    row('Total to pay (incl. GST)', window.inr(r.quote.totalPaise), 'total');
     box.appendChild(t);
     box.hidden = false;
     $('co-fields').hidden = true;

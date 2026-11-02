@@ -220,6 +220,10 @@
         var prod = p.products.filter(function (x) { return x.sku === el.getAttribute('data-price-sku'); })[0];
         if (prod) el.innerHTML = '&#8377;' + (prod.list_price_paise / 100).toLocaleString('en-IN') + '<span>+GST</span>';
       });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-incl-sku]'), function (el) {
+        var prod = p.products.filter(function (x) { return x.sku === el.getAttribute('data-incl-sku'); })[0];
+        if (prod) el.textContent = '(\u20b9' + (prod.list_price_incl_paise / 100).toLocaleString('en-IN') + ' incl. GST)';
+      });
     }).catch(function () {});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', couponPrices); else couponPrices();

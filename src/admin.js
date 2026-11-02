@@ -96,6 +96,7 @@ export async function csv(request, env) {
     ['Combo discount (INR)', r => ((r.combo_discount_paise || 0) / 100).toFixed(2)],
     ['Coupon', 'coupon_code'], ['Coupon discount (INR)', r => ((r.coupon_discount_paise || 0) / 100).toFixed(2)],
     ['Subtotal after discounts (INR)', r => (r.subtotal_paise / 100).toFixed(2)], ['GST (INR)', r => (r.gst_paise / 100).toFixed(2)],
+    ['Round off (INR)', r => ((r.total_paise - r.subtotal_paise - r.gst_paise) / 100).toFixed(2)],
     ['Total (INR)', r => (r.total_paise / 100).toFixed(2)], ['Tax', r => (r.tax_kind === 'intra' ? 'CGST+SGST' : 'IGST')],
     ['Invoice', 'invoice_number'], ['Customer', 'customer_name'], ['Business', 'business_name'], ['GSTIN', 'gstin'],
     ['Email', 'email'], ['Phone', 'phone'], ['Address', r => [r.address_line1, r.address_line2].filter(Boolean).join(', ')],

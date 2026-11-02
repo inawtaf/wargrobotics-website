@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261031i">
+<link rel="stylesheet" href="warg.css?v=20261102b">
 </head>
 <body>
 
@@ -58,7 +58,8 @@
           <div><dt>Price</dt><dd id="c-subtotal"></dd></div>
           <div id="c-disc-anchor" hidden></div>
           <div class="tax-row"><dt>GST 18%</dt><dd id="c-gst"></dd></div>
-          <div class="summary-total"><dt>Total</dt><dd id="c-total"></dd></div>
+          <div id="c-round" hidden><dt>Round off</dt><dd id="c-round-v"></dd></div>
+          <div class="summary-total"><dt>Total (incl. GST)</dt><dd id="c-total"></dd></div>
         </dl>
         <a class="btn btn-solid btn-lg" id="to-checkout" href="/checkout" style="width:100%;justify-content:center">Checkout</a>
         <p class="coupon-hint" id="c-coupon" hidden></p>
@@ -72,12 +73,13 @@
   <div class="wrap">
     <div class="foot-base">
       <span>&copy; 2026 Warg Robotics &middot; Panaji, Goa &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a></span>
-      <nav class="foot-legal" aria-label="Policies"><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/shipping">Shipping</a><a href="/privacy">Privacy</a><a href="/contact">Contact</a><a href="/contact#grievance">Grievance officer</a></nav>
+      <nav class="foot-legal" aria-label="Policies"><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/shipping">Shipping</a><a href="/warranty">Warranty</a><a href="/privacy">Privacy</a><a href="/contact">Contact</a><a href="/contact#grievance">Grievance officer</a></nav>
     </div>
+    <p class="foot-seller">Sold by <mark class="fill">[LEGAL NAME]</mark> &middot; Registered address: 7th Floor, Opp. Shram Shakti Bhawan, Patto Road, Panaji, Goa 403001 &middot; GSTIN <mark class="fill">[GSTIN]</mark> &middot; Phone <mark class="fill">[PHONE]</mark> &middot; <a href="mailto:hello@wargrobotics.com">hello@wargrobotics.com</a> &middot; Grievance Officer: <a href="tel:+918668923286">+91 86689 23286</a>, <a href="mailto:grievance@wargrobotics.com">grievance@wargrobotics.com</a></p>
   </div>
 </footer>
 
-<script src="site.js?v=20261101a" defer></script>
-<script src="cart-page.js?v=20261101a" defer></script>
+<script src="site.js?v=20261102a" defer></script>
+<script src="cart-page.js?v=20261102a" defer></script>
 </body>
 </html>
