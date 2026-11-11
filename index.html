@@ -1,6 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="analytics.js?v=20261018c"></script>
+<script src="analytics.js?v=20261109i"></script>
 <title>Warg Robotics</title>
 <meta name="description" content="High resolution FPV cameras. Digital video at 60 ms glass to glass, recorded onboard while it streams, out to any HDMI screen.">
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -11,15 +14,19 @@
 <meta property="og:site_name" content="Warg Robotics">
 <meta property="og:title" content="Warg Robotics">
 <meta property="og:description" content="High resolution FPV cameras. Digital video at 60 ms glass to glass, recorded onboard while it streams, out to any HDMI screen.">
-<meta property="og:image" content="img/og.jpg">
+<meta property="og:image" content="https://wargrobotics.com/img/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:url" content="https://wargrobotics.com/">
+<link rel="canonical" href="https://wargrobotics.com/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Warg Robotics">
 <meta name="twitter:description" content="High resolution FPV cameras. Digital video at 60 ms glass to glass, recorded onboard while it streams, out to any HDMI screen.">
-<meta name="twitter:image" content="img/og.jpg">
+<meta name="twitter:image" content="https://wargrobotics.com/img/og.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102d">
+<link rel="stylesheet" href="warg.css?v=20261109i">
+</head>
+<body>
 
 <a class="skip" href="#main">Skip to content</a>
 
@@ -28,15 +35,13 @@
   <nav class="nav">
     <div class="wrap">
       <a class="lockup" href="#top" aria-label="Warg Robotics home">
-        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="494" height="198">
       </a>
       <div class="nav-links">
         <a href="#features" aria-current="page">Features</a>
         <a href="#products">Products</a>
-        <a href="#tech">How it works</a>
-        <a href="#deployments">Deployments</a>
       </div>
-      <a class="btn btn-solid nav-buy" href="#products">Buy now</a>
+      <a class="btn btn-solid nav-buy" href="#products">See the cameras</a>
     </div>
   </nav>
 
@@ -64,17 +69,21 @@
    <header class="hero">
     <div class="wrap hero-inner">
 
+      <!-- The wordmark is artwork now, not Space Grotesk set large: the logo's
+           own WARG has softened letterform terminals that no weight of the
+           typeface reproduces. The alt carries the heading text, so there is
+           no separate visually-hidden span. -->
       <div class="wordmark hero-wordmark">
-        <h1 class="wordmark-word"><span aria-hidden="true">WARG</span><span class="visually-hidden">Warg &mdash; high resolution FPV cameras</span></h1>
+        <h1 class="wordmark-word"><img src="img/wordmark.svg" alt="Warg &mdash; high resolution FPV cameras" width="261" height="70"></h1>
         <p class="wordmark-sub" aria-hidden="true"><span>WIRELESS</span><span>DIGITAL</span><span>FPV</span></p>
       </div>
 
       <!-- Uppercased in CSS, not in the markup, so it is announced as words. -->
-      <p class="hero-desc">Real world unreal experience</p>
+      <p class="hero-desc">Real world, unreal experiences.</p>
 
       <div class="hero-cta">
-        <a class="btn btn-solid btn-lg" href="#products">Buy now</a>
-        <a class="btn btn-line btn-lg" href="contact.html">Contact us</a>
+        <a class="btn btn-solid btn-lg" href="#products">See the cameras</a>
+        <a class="btn btn-line btn-lg" href="/contact">Contact us</a>
       </div>
     </div>
    </header>
@@ -91,10 +100,8 @@
     <nav aria-label="Product sections">
       <a href="#products">Products</a>
       <a href="#features">Features</a>
-      <a href="#tech">How it works</a>
-      <a href="#deployments">Deployments</a>
     </nav>
-    <a class="btn btn-solid" href="#products">Buy now</a>
+    <a class="btn btn-solid" href="#products">See the cameras</a>
   </div>
 </div>
 
@@ -112,7 +119,7 @@
     <div class="wrap">
       <div class="made" data-reveal>
         <span class="rule" aria-hidden="true"></span>
-        <p>Designed and <em>Made in India</em></p>
+        <p>Designed and <em>made in India</em></p>
         <span class="rule" aria-hidden="true"></span>
       </div>
       <!-- Label above the value, not below it. A value that wraps to two lines
@@ -130,11 +137,153 @@
     </div>
   </section>
 
+  <section class="sec" id="products">
+    <div class="wrap">
+      <div class="shead shead-c" data-stagger>
+        <h2 class="t-section">Meet our Wargs</h2>
+      </div>
+
+      <div class="car">
+        <div class="car-track prods" id="prod-track" role="group" aria-label="Products">
+        <article class="prod car-card">
+          <div class="prod-shot">
+            <img src="img/card-ghost.webp" alt="Warg Ghost air unit" width="1600" height="1200">
+            <span class="prod-flag flag-live">Available now</span>
+          </div>
+          <div class="prod-body">
+            <div class="var" role="tablist" aria-label="Ghost and Ghost Pro">
+              <button class="var-tab" type="button" role="tab" id="vt-ghost" aria-controls="vp-ghost" aria-selected="true">Ghost</button>
+              <button class="var-tab is-pro" type="button" role="tab" id="vt-ghost-pro" aria-controls="vp-ghost-pro" aria-selected="false" tabindex="-1">Ghost Pro</button>
+            </div>
+            <div class="prod-face" role="tabpanel" id="vp-ghost" aria-labelledby="vt-ghost" tabindex="0">
+              <div class="prod-name">
+                <h3>Ghost</h3>
+                <p class="prod-rider">Jon</p>
+              </div>
+              <p class="prod-line">720p60 &middot; 8&nbsp;GB onboard</p>
+              <p class="prod-note">Air unit and ground unit, set up from your phone. Digital video at 60&nbsp;ms glass to glass, recorded onboard while it streams.</p>
+              <div class="prod-price">
+                <div class="prod-strike" data-coupon-only>
+                  <p class="prod-was">&#8377;29,999</p>
+                  <p class="prod-save">20% off with WARG20</p>
+                </div>
+                <p class="prod-offer" data-price-sku="ghost">&#8377;23,999<span>+GST</span></p>
+                <p class="prod-incl" data-incl-sku="ghost">(&#8377;28,319 incl. GST)</p>
+              </div>
+              <div class="prod-cta">
+                <a class="btn btn-solid" href="/cart?add=ghost">Buy now</a>
+                <a class="btn btn-line" href="/ghost">Learn more</a>
+              </div>
+            </div>
+            <div class="prod-face is-pro" role="tabpanel" id="vp-ghost-pro" aria-labelledby="vt-ghost-pro" tabindex="0" hidden>
+              <div class="prod-name">
+                <h3>Ghost Pro</h3>
+                <p class="prod-rider">Compute module</p>
+              </div>
+              <p class="prod-line">ARM 64 &middot; 2&ndash;8&nbsp;GB RAM &middot; SDK</p>
+              <p class="prod-note">The whole of Ghost, with a Linux compute module on top of it. Your own code runs on the aircraft, on the full-rate frame, isolated from anything flight-critical.</p>
+              <div class="prod-price">
+                <p class="prod-tba">Priced on the configuration</p>
+              </div>
+              <p class="prod-terms">Quoted, not listed</p>
+              <p class="soon-note">Launching soon</p>
+              <div class="prod-cta">
+                <a class="btn btn-line" href="/ghost?variant=pro">Learn more</a>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="prod car-card">
+          <div class="prod-shot">
+            <img src="img/card-greywind.webp" alt="Warg Greywind air unit" width="1600" height="1200">
+            <span class="prod-flag flag-live">Available now</span>
+          </div>
+          <div class="prod-body">
+            <div class="var" role="tablist" aria-label="Greywind and Greywind Pro">
+              <button class="var-tab" type="button" role="tab" id="vt-greywind" aria-controls="vp-greywind" aria-selected="true">Greywind</button>
+              <button class="var-tab is-pro" type="button" role="tab" id="vt-greywind-pro" aria-controls="vp-greywind-pro" aria-selected="false" tabindex="-1">Greywind Pro</button>
+            </div>
+            <div class="prod-face" role="tabpanel" id="vp-greywind" aria-labelledby="vt-greywind" tabindex="0">
+              <div class="prod-name">
+                <h3>Greywind</h3>
+                <p class="prod-rider">Robb</p>
+              </div>
+              <p class="prod-line">1080p30 / 720p60 &middot; 16&nbsp;GB onboard</p>
+              <p class="prod-note">The same link and the same setup as Ghost, with the detail of a 1080p frame when you want it.</p>
+              <div class="prod-price">
+                <div class="prod-strike" data-coupon-only>
+                  <p class="prod-was">&#8377;35,999</p>
+                  <p class="prod-save">20% off with WARG20</p>
+                </div>
+                <p class="prod-offer" data-price-sku="greywind">&#8377;28,799<span>+GST</span></p>
+                <p class="prod-incl" data-incl-sku="greywind">(&#8377;33,983 incl. GST)</p>
+              </div>
+              <div class="prod-cta">
+                <a class="btn btn-solid" href="/cart?add=greywind">Buy now</a>
+                <a class="btn btn-line" href="/greywind">Learn more</a>
+              </div>
+            </div>
+            <div class="prod-face is-pro" role="tabpanel" id="vp-greywind-pro" aria-labelledby="vt-greywind-pro" tabindex="0" hidden>
+              <div class="prod-name">
+                <h3>Greywind Pro</h3>
+                <p class="prod-rider">Compute module</p>
+              </div>
+              <p class="prod-line">ARM 64 &middot; 2&ndash;8&nbsp;GB RAM &middot; SDK</p>
+              <p class="prod-note">The whole of Greywind, with the same Linux compute module on top of it. One airframe, one power feed, your code beside the camera.</p>
+              <div class="prod-price">
+                <p class="prod-tba">Priced on the configuration</p>
+              </div>
+              <p class="prod-terms">Quoted, not listed</p>
+              <p class="soon-note">Launching soon</p>
+              <div class="prod-cta">
+                <a class="btn btn-line" href="/greywind?variant=pro">Learn more</a>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="prod car-card">
+          <div class="prod-shot">
+            <img src="img/card-raven.webp" alt="Warg Raven air unit" width="1600" height="1200">
+            <span class="prod-flag flag-soon">Launching soon</span>
+          </div>
+          <div class="prod-body">
+            <div class="prod-face">
+              <div class="prod-name">
+                <h3>Raven</h3>
+                <p class="prod-rider">Bran</p>
+              </div>
+              <!-- PLACEHOLDER FIGURES. Raven's resolution, frame rates and
+                   storage have not been supplied; these are dummy values in
+                   the same format as the other two so the row reads evenly.
+                   Replace before publication. -->
+              <p class="prod-line">4K30 / 1080p60 &middot; 32&nbsp;GB onboard</p>
+              <p class="prod-note">Records above what it transmits. The specification is provisional and may change before launch.</p>
+              <div class="prod-price">
+                <p class="prod-tba">Price to confirm</p>
+              </div>
+              <p class="prod-terms">Full specification to follow</p>
+              <p class="soon-note">Launching soon</p>
+            </div>
+          </div>
+        </article>
+        </div>
+
+        <div class="car-ui" hidden>
+          <div class="car-dots" aria-label="Product"></div>
+          <div class="car-arrows">
+            <button class="car-arr" type="button" data-dir="-1" aria-label="Previous products">&#8592;</button>
+            <button class="car-arr" type="button" data-dir="1" aria-label="Next products">&#8594;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ features ============
        Same card as the product line: picture on top, then the claim and a
        way into the detail. The diagrams that used to sit here have gone;
        these want real footage and photography. ===================== -->
-  <section class="sec" id="features">
+  <section class="sec sunk" id="features">
     <div class="wrap">
       <div class="shead shead-c" data-stagger>
         <h2 class="t-section">Five reasons to change your video link</h2>
@@ -282,364 +431,86 @@
       <figure class="gsa-hero" data-reveal>
         <img src="img/gs-hero.webp" alt="The live video with its on-screen display on an HDMI screen, beside the web app's Home tab on a phone" width="1400" height="1057" loading="lazy">
       </figure>
-      <div class="gsa-pillars" data-stagger style="margin-bottom:28px">
+      <div class="gsa-pillars gsa-pillars-tight" data-stagger>
         <div><p class="gsa-n">01 &middot; Watch</p><p>Link health, video and flight data, live, with every drop explained.</p></div>
         <div><p class="gsa-n">02 &middot; Tune</p><p>Camera, radio, OSD and telemetry for both units, from one page.</p></div>
         <div><p class="gsa-n">03 &middot; Keep</p><p>Record on the drone in live quality, download to your phone over Wi-Fi.</p></div>
       </div>
       <div class="gsa-cta">
-        <a class="btn btn-solid" href="ghost.html#web-app">See what the web app does</a>
-        <a class="btn btn-line" href="ghost.html#osd">The on-screen display</a>
+        <a class="btn btn-solid" href="/web-app">See what the web app does</a>
+        <a class="btn btn-line" href="/web-app#osd">The on-screen display</a>
       </div>
     </div>
   </section>
 
-  <section class="sec sunk" id="products">
-    <div class="wrap">
-      <div class="shead shead-c" data-stagger>
-        <h2 class="t-section">Meet our Wargs</h2>
-      </div>
-
-      <div class="car">
-        <div class="car-track prods" id="prod-track" role="group" aria-label="Products">
-        <article class="prod car-card">
-          <div class="prod-shot">
-            <img src="img/card-ghost.webp" alt="Warg Ghost air unit" width="1600" height="1200">
-            <span class="prod-flag flag-live">Available now</span>
-          </div>
-          <div class="prod-body">
-            <div class="var" role="tablist" aria-label="Ghost and Ghost Pro">
-              <button class="var-tab" type="button" role="tab" id="vt-ghost" aria-controls="vp-ghost" aria-selected="true">Ghost</button>
-              <button class="var-tab is-pro" type="button" role="tab" id="vt-ghost-pro" aria-controls="vp-ghost-pro" aria-selected="false" tabindex="-1">Ghost Pro</button>
-            </div>
-            <div class="prod-face" role="tabpanel" id="vp-ghost" aria-labelledby="vt-ghost" tabindex="0">
-              <div class="prod-name">
-                <h3>Ghost</h3>
-                <p class="prod-rider">Jon</p>
-              </div>
-              <p class="prod-line">720p60 &middot; 8&nbsp;GB onboard</p>
-              <p class="prod-note">Air unit and ground unit, set up from your phone. Digital video at 60&nbsp;ms glass to glass, recorded onboard while it streams.</p>
-              <div class="prod-price">
-                <div class="prod-strike" data-coupon-only>
-                  <p class="prod-was">&#8377;29,999</p>
-                  <p class="prod-save">20% off with WARG20</p>
-                </div>
-                <p class="prod-offer" data-price-sku="ghost">&#8377;23,999<span>+GST</span></p>
-                <p class="prod-incl" data-incl-sku="ghost">(&#8377;28,319 incl. GST)</p>
-              </div>
-              <p class="prod-terms"><span data-coupon-only>Coupon WARG20 at checkout, valid till 20 Nov<br></span>Ghost + Greywind together: <b>&#8377;49,999</b> +GST (&#8377;58,999 incl. GST)</p>
-              <a class="btn btn-solid" href="/cart?add=ghost">Buy now</a>
-            </div>
-            <div class="prod-face is-pro" role="tabpanel" id="vp-ghost-pro" aria-labelledby="vt-ghost-pro" tabindex="0" hidden>
-              <div class="prod-name">
-                <h3>Ghost Pro</h3>
-                <p class="prod-rider">Compute module</p>
-              </div>
-              <p class="prod-line">ARM 64 &middot; 2&ndash;8&nbsp;GB RAM &middot; SDK</p>
-              <p class="prod-note">The whole of Ghost, with a Linux compute module on top of it. Your own code runs on the aircraft, on the full-rate frame, isolated from anything flight-critical.</p>
-              <div class="prod-price">
-                <p class="prod-tba">Priced on the configuration</p>
-              </div>
-              <p class="prod-terms">Quoted, not listed</p>
-              <p class="soon-note">Launching soon</p>
-            </div>
-          </div>
-        </article>
-        <article class="prod car-card">
-          <div class="prod-shot">
-            <img src="img/card-greywind.webp" alt="Warg Greywind air unit" width="1600" height="1200">
-            <span class="prod-flag flag-live">Available now</span>
-          </div>
-          <div class="prod-body">
-            <div class="var" role="tablist" aria-label="Greywind and Greywind Pro">
-              <button class="var-tab" type="button" role="tab" id="vt-greywind" aria-controls="vp-greywind" aria-selected="true">Greywind</button>
-              <button class="var-tab is-pro" type="button" role="tab" id="vt-greywind-pro" aria-controls="vp-greywind-pro" aria-selected="false" tabindex="-1">Greywind Pro</button>
-            </div>
-            <div class="prod-face" role="tabpanel" id="vp-greywind" aria-labelledby="vt-greywind" tabindex="0">
-              <div class="prod-name">
-                <h3>Greywind</h3>
-                <p class="prod-rider">Robb</p>
-              </div>
-              <p class="prod-line">1080p30 / 720p60 &middot; 16&nbsp;GB onboard</p>
-              <p class="prod-note">The same link and the same setup as Ghost, with the detail of a 1080p frame when you want it.</p>
-              <div class="prod-price">
-                <div class="prod-strike" data-coupon-only>
-                  <p class="prod-was">&#8377;35,999</p>
-                  <p class="prod-save">20% off with WARG20</p>
-                </div>
-                <p class="prod-offer" data-price-sku="greywind">&#8377;28,799<span>+GST</span></p>
-                <p class="prod-incl" data-incl-sku="greywind">(&#8377;33,983 incl. GST)</p>
-              </div>
-              <p class="prod-terms"><span data-coupon-only>Coupon WARG20 at checkout, valid till 20 Nov<br></span>Ghost + Greywind together: <b>&#8377;49,999</b> +GST (&#8377;58,999 incl. GST)</p>
-              <a class="btn btn-solid" href="/cart?add=greywind">Buy now</a>
-            </div>
-            <div class="prod-face is-pro" role="tabpanel" id="vp-greywind-pro" aria-labelledby="vt-greywind-pro" tabindex="0" hidden>
-              <div class="prod-name">
-                <h3>Greywind Pro</h3>
-                <p class="prod-rider">Compute module</p>
-              </div>
-              <p class="prod-line">ARM 64 &middot; 2&ndash;8&nbsp;GB RAM &middot; SDK</p>
-              <p class="prod-note">The whole of Greywind, with the same Linux compute module on top of it. One airframe, one power feed, your code beside the camera.</p>
-              <div class="prod-price">
-                <p class="prod-tba">Priced on the configuration</p>
-              </div>
-              <p class="prod-terms">Quoted, not listed</p>
-              <p class="soon-note">Launching soon</p>
-            </div>
-          </div>
-        </article>
-        <article class="prod car-card">
-          <div class="prod-shot">
-            <img src="img/card-raven.webp" alt="Warg Raven air unit" width="1600" height="1200">
-            <span class="prod-flag flag-soon">Launching soon</span>
-          </div>
-          <div class="prod-body">
-            <div class="prod-face">
-              <div class="prod-name">
-                <h3>Raven</h3>
-                <p class="prod-rider">Bran</p>
-              </div>
-              <!-- PLACEHOLDER FIGURES. Raven's resolution, frame rates and
-                   storage have not been supplied; these are dummy values in
-                   the same format as the other two so the row reads evenly.
-                   Replace before publication. -->
-              <p class="prod-line">4K30 / 1080p60 &middot; 32&nbsp;GB onboard</p>
-              <p class="prod-note">Records above what it transmits. The specification is provisional and may change before launch.</p>
-              <div class="prod-price">
-                <p class="prod-tba">Price to confirm</p>
-              </div>
-              <p class="prod-terms">Full specification to follow</p>
-              <p class="soon-note">Launching soon</p>
-            </div>
-          </div>
-        </article>
-        </div>
-
-        <div class="car-ui" hidden>
-          <div class="car-dots" aria-label="Product"></div>
-          <div class="car-arrows">
-            <button class="car-arr" type="button" data-dir="-1" aria-label="Previous products">&#8592;</button>
-            <button class="car-arr" type="button" data-dir="1" aria-label="Next products">&#8594;</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <!-- ============ the signal path ============
        The latency total only means something once you can see what it is
        crossing, so the five stages are drawn on the hardware they happen
        in rather than as an abstract bar. ======================== -->
-  <section class="sec-lg" id="tech">
+
+
+  <!-- ============ owner reviews ============
+       The rail and the card markup are final; the content is NOT. Every card
+       below is a brief for a review that still has to be collected. Nothing
+       here may be written for them — a made-up customer review is a fake
+       review. Replace each placeholder with a real, attributable quote:
+
+         <article class="car-card review">
+           <blockquote class="review-q">Their words.</blockquote>
+           <p class="review-who"><b>Name</b><span>What they fly, where</span></p>
+         </article>
+
+       Every card below is PLACEHOLDER COPY, tagged as such on the card itself.
+       Swap each one for a real, attributable quote and drop the .review-tag
+       line; delete the section entirely if it would ship before they exist. -->
+  <section class="sec sunk" id="reviews">
     <div class="wrap">
-      <div class="shead shead-c" data-stagger>
-        <h2 class="t-section">Where the sixty milliseconds goes</h2>
-        <p class="t-lede">Five stages, in series, from the light hitting the sensor to the picture on your screen.</p>
+      <div class="shead" data-stagger>
+        <h2 class="t-section">What owners say</h2>
+        <p class="t-lede">Four reviews to collect. Each card names the pilot worth asking.</p>
       </div>
-
-      <div class="path" data-reveal>
-        <svg viewBox="0 0 720 212" class="path-svg" role="img"
-             aria-label="Signal path: camera to transmitter by cable, transmitter to receiver over the air, receiver to any HDMI screen by cable. Sensor 12 ms, encode 16 ms, air link 11 ms, decode 13 ms, display 8 ms.">
-          <g class="pk-line" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <!-- camera -->
-            <rect class="pk-fill" x="34" y="64" width="48" height="44" rx="2"/>
-            <circle class="pk-fill" cx="34" cy="86" r="13"/>
-            <circle class="pk-lens" cx="34" cy="86" r="6"/>
-            <!-- cable to the transmitter -->
-            <path class="pk-cable" d="M82 86c20 0 22 14 34 14s16-14 24-14"/>
-            <!-- transmitter -->
-            <rect class="pk-fill" x="140" y="58" width="104" height="56" rx="2"/>
-            <path d="M166 58V40M218 58V40"/>
-            <circle class="pk-node" cx="166" cy="37" r="3"/>
-            <circle class="pk-node" cx="218" cy="37" r="3"/>
-            <text class="pk-in" x="192" y="92" text-anchor="middle">TX</text>
-            <!-- over the air -->
-            <g class="pk-rf">
-              <path d="M258 72a22 22 0 0 1 0 28"/>
-              <path d="M272 62a38 38 0 0 1 0 48"/>
-              <path d="M286 52a54 54 0 0 1 0 68"/>
-            </g>
-            <!-- receiver -->
-            <rect class="pk-fill" x="330" y="58" width="104" height="56" rx="2"/>
-            <path d="M356 58V40M408 58V40"/>
-            <circle class="pk-node" cx="356" cy="37" r="3"/>
-            <circle class="pk-node" cx="408" cy="37" r="3"/>
-            <text class="pk-in" x="382" y="92" text-anchor="middle">RX</text>
-            <!-- cable to the screen -->
-            <path class="pk-cable" d="M434 86c20 0 22 14 34 14s16-14 26-14"/>
-            <!-- any HDMI screen -->
-            <rect class="pk-fill" x="494" y="42" width="140" height="88" rx="2"/>
-            <rect class="pk-screen" x="506" y="54" width="116" height="64"/>
-            <path d="M564 130v14M538 144h52"/>
-          </g>
-          <g class="pk-label" text-anchor="middle">
-            <text x="58" y="172">CAMERA</text>
-            <text x="192" y="172">TRANSMITTER</text>
-            <text x="288" y="172">AIR</text>
-            <text x="382" y="172">RECEIVER</text>
-            <text x="564" y="172">ANY HDMI SCREEN</text>
-          </g>
-          <g class="pk-ms" text-anchor="middle">
-            <text x="58" y="196">12 ms</text>
-            <text x="192" y="196">23 ms</text>
-            <text x="288" y="196">0 ms</text>
-            <text x="382" y="196">18 ms</text>
-            <text x="564" y="196">7 ms</text>
-          </g>
-        </svg>
-      </div>
-
-      <p class="path-foot" data-reveal><b>60 ms</b> end to end, measured on the bench rather than summed from component datasheets.</p>
-    </div>
-  </section>
-
-  <section class="sec sunk" id="deployments">
-    <div class="wrap">
-      <div class="shead shead-c" data-stagger>
-        <h2 class="t-section">What can it do</h2>
-        <p class="t-lede">Three jobs the module is doing today, with what we have proven on each and what is still ahead of us.</p>
-      </div>
-
-      <div class="dep" data-reveal>
-        <div class="dep-list" role="tablist" aria-label="Deployment platforms">
-          <button class="dep-tab" role="tab" id="t1" aria-controls="p1" aria-selected="true">FPV and freestyle</button>
-          <button class="dep-tab" role="tab" id="t2" aria-controls="p2" aria-selected="false" tabindex="-1">Computer vision</button>
-          <button class="dep-tab" role="tab" id="t3" aria-controls="p3" aria-selected="false" tabindex="-1">Remote cockpit</button>
-          <!--<button class="dep-tab" role="tab" id="t4" aria-controls="p4" aria-selected="false" tabindex="-1">Research platforms</button>-->
+      <div class="car" data-reveal>
+        <div class="car-track reviews" role="group" aria-label="Owner reviews">
+          <article class="car-card review">
+            <p class="review-tag">Placeholder &middot; Racing</p>
+            <blockquote class="review-q">Placeholder. Two or three sentences in the pilot&rsquo;s own words about how the link held through gates and under hard banking, and what they flew before this. Roughly this long.</blockquote>
+            <p class="review-who"><b>Reviewer name</b><span>What they race, where</span></p>
+          </article>
+          <article class="car-card review">
+            <p class="review-tag">Placeholder &middot; Commercial</p>
+            <blockquote class="review-q">Placeholder. A short one &mdash; some reviews will be two lines, and the cards still have to line up.</blockquote>
+            <p class="review-who"><b>Reviewer name</b><span>What they shoot, where</span></p>
+          </article>
+          <article class="car-card review">
+            <p class="review-tag">Placeholder &middot; Integrator</p>
+            <blockquote class="review-q">Placeholder. The longest of the four, so the rail is tested at its worst: what they built on the Pro compute module, how long it took to get it flying, what they had to work around, and what they would tell someone starting the same job today.</blockquote>
+            <p class="review-who"><b>Reviewer name</b><span>What they build, where</span></p>
+          </article>
+          <article class="car-card review">
+            <p class="review-tag">Placeholder &middot; First unit</p>
+            <blockquote class="review-q">Placeholder. Setting both ends up from a phone, with no app and no laptop, and how long that actually took on the first try.</blockquote>
+            <p class="review-who"><b>Reviewer name</b><span>What they fly, where</span></p>
+          </article>
         </div>
-
-        <div class="dep-panel" role="tabpanel" id="p1" aria-labelledby="t1" tabindex="0">
-          <div class="dep-body">
-            <figure class="shot dep-shot">
-              <img src="img/dep-quad.webp" alt="A five-inch FPV quadcopter with a Warg air unit bolted to the top plate" width="1536" height="1024">
-            </figure>
-            <div class="dep-meta">
-              <span class="status status-live">In production</span>
-              <h3>FPV and freestyle</h3>
-              <p>The original case, and still the hardest. Below about a hundred milliseconds the link stops being something a pilot compensates for, which is the entire point.</p>
-              <div class="twocol">
-                <div class="ok"><h4>Proven</h4><ul>
-                  <li>Up to 60 ms sustained through gates and tight lines</li>
-                  <li>Link holds under hard banking and prop wash</li>
-                </ul></div>
-                <div class="gap"><h4>In pipeline</h4><ul>
-                  <li>Channel diversity and frequency hopping</li>
-                  <li>4k recording</li>
-                  <li>Head-tracking and IO integration</li>
-                </ul></div>
-              </div>
-            </div>
+        <div class="car-ui" hidden>
+          <div class="car-dots" aria-label="Review"></div>
+          <div class="car-arrows">
+            <button class="car-arr" type="button" data-dir="-1" aria-label="Previous reviews">&#8592;</button>
+            <button class="car-arr" type="button" data-dir="1" aria-label="Next reviews">&#8594;</button>
           </div>
         </div>
-
-        <div class="dep-panel" role="tabpanel" id="p2" aria-labelledby="t2" tabindex="0" hidden>
-          <div class="dep-body">
-            <figure class="shot dep-shot">
-              <img src="img/dep-inspection.webp" alt="Aerial view of a concrete and steel industrial structure from standoff distance" width="1600" height="900">
-            </figure>
-            <div class="dep-meta">
-              <span class="status status-trial">Field trials</span>
-              <h3>Computer vision</h3>
-              <p>Opens up autonomous behaviour, not just assisted piloting. For anything reactive (obstacle avoidance, target tracking, gimbal/gesture control), round-trip latency is often the difference between "works" and "oscillates or crashes."</p>
-              <div class="twocol">
-                <div class="ok"><h4>Proven</h4><ul>
-                  <li>Stable link at extended standoff</li>
-                  <li>Onboard compute powered by Warg SDK</li>
-                </ul></div>
-                <div class="gap"><h4>In pipeline</h4><ul>
-                  <li>Thermal and multispectral camera support</li>
-                  <li>NVIDIA Jetson compatibility</li>
-                </ul></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="dep-panel" role="tabpanel" id="p3" aria-labelledby="t3" tabindex="0" hidden>
-          <div class="dep-body">
-            <figure class="shot dep-shot">
-              <img src="img/dep-rover.webp" alt="A tracked ground rover carrying a Warg air unit, seen from a low angle" width="1600" height="900">
-            </figure>
-            <div class="dep-meta">
-              <span class="status status-trial">Field trials</span>
-              <h3>Remote cockpit</h3>
-              <p>Range and encryption matter more than latency here. Assets sit a long way from an operator, and the footage is often evidence, so the transport has to be defensible as well as clear.</p>
-              <div class="twocol">
-                <div class="ok"><h4>Proven</h4><ul>
-                  <li>Survives sustained chassis vibration</li>
-                  <li>Low mounting height</li>
-                </ul></div>
-                <div class="gap"><h4>In pipeline</h4><ul>
-                  <li>Gimbal compatibility</li>
-                  <li>Headtracking support</li>
-                  <li>Long range support up to 25&nbsp;km</li>
-                </ul></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
-
-
-      <!-- The rule below introduced the custom-and-bulk block, so it is
-           commented out with it rather than left ruling off nothing.
-      <div class="sec-split" data-reveal></div>
-      <div class="shead shead-c" data-stagger>
-        <h2 class="t-section">Built around your constraint</h2>
-        <p class="t-lede">For a manufacturer or an integrator, the module is specified to your vehicle instead of the other way round.</p>
-      </div>
-
-      <div class="b2b" data-stagger>
-        <div class="b2b-item">
-          <h4>Imaging to your optical path</h4>
-          <ul>
-            <li>Lens and field of view selected per airframe</li>
-            <li>Sensor swapped where the light demands it</li>
-            <li>Global shutter for measurement work</li>
-          </ul>
-        </div>
-        <div class="b2b-item">
-          <h4>Transport tuned to your environment</h4>
-          <ul>
-            <li>Channel and frequency plan per deployment</li>
-            <li>Bitrate matched to the link budget</li>
-            <li>Range specified to your regulatory ceiling</li>
-          </ul>
-        </div>
-        <div class="b2b-item">
-          <h4>Chassis cut to your vehicle</h4>
-          <ul>
-            <li>Mount pattern and stack height to fit</li>
-            <li>Connector orientation and cable exit</li>
-            <li>Weight budget agreed before tooling</li>
-          </ul>
-        </div>
-        <div class="b2b-item">
-          <h4>An open feed you can build on</h4>
-          <ul>
-            <li>Standard output into your own pipeline</li>
-            <li>Feeds image-processing and detection layers</li>
-            <li>No proprietary decoder in the path</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="sec-cta sec-cta-c sec-cta-stack" data-reveal>
-        <span class="hint">For bulk orders, OEM programmes and custom specifications</span>
-        <a class="btn btn-solid" href="contact.html">Talk to us about a build</a>
-      </div>
-  -->
     </div>
   </section>
 
   <section class="sec-lg close" id="contact">
     <div class="wrap" data-stagger>
-      <h2 class="t-section" style="max-width:20ch; margin-inline:auto">Tell us what you need.</h2>
-      <p class="t-lede" style="text-align:center">Buy Ghost and Greywind online, or talk to us about a bulk order or a custom build. We answer from Goa, usually the same day.</p>
+      <h2 class="t-section">Tell us what you need.</h2>
+      <p class="t-lede">Buy Ghost and Greywind online, or talk to us about a bulk order or a custom build. We answer from Goa, usually the same day.</p>
       <div class="row">
-        <a class="btn btn-solid btn-lg" href="#products">Buy now</a>
-        <a class="btn btn-line btn-lg" href="contact.html">Contact us</a>
+        <a class="btn btn-solid btn-lg" href="#products">See the cameras</a>
+        <a class="btn btn-line btn-lg" href="/contact">Contact us</a>
       </div>
     </div>
   </section>
@@ -673,7 +544,7 @@
     <div class="foot-grid">
       <div class="foot-brand">
         <span class="lockup">
-          <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+          <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="494" height="198">
         </span>
         <p>Precision-engineered vision systems. Low-latency digital video transmission for vehicles that move.</p>
         <p class="foot-made">Designed and made in India</p>
@@ -683,21 +554,19 @@
         <ul>
           <li><a href="#features">Features</a></li>
           <li><a href="#products">Products</a></li>
-          <li><a href="#tech">How it works</a></li>
-          <li><a href="#deployments">Deployments</a></li>
-          <li><a href="index.html#products">Buy now</a></li>
-          <li><a href="contact.html">Contact us</a></li>
-          <li><a href="support.html">Service and warranty</a></li>
+          <li><a href="#products">See the cameras</a></li>
+          <li><a href="/contact">Contact us</a></li>
+          <li><a href="/support">Service and warranty</a></li>
         </ul>
       </div>
       <div>
         <h4>Policies</h4>
         <ul>
-          <li><a href="terms.html">Terms of sale and use</a></li>
-          <li><a href="refunds.html">Returns, refunds and cancellation</a></li>
-          <li><a href="shipping.html">Shipping and delivery</a></li>
-          <li><a href="warranty.html">Warranty</a></li>
-          <li><a href="privacy.html">Privacy policy</a></li>
+          <li><a href="/terms">Terms of sale and use</a></li>
+          <li><a href="/refunds">Returns, refunds and cancellation</a></li>
+          <li><a href="/shipping">Shipping and delivery</a></li>
+          <li><a href="/warranty">Warranty</a></li>
+          <li><a href="/privacy">Privacy policy</a></li>
         </ul>
       </div>
       <div>
@@ -716,5 +585,8 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261102a" defer></script>
-<script src="warg.js?v=20260928m"></script>
+<script src="site.js?v=20261109i" defer></script>
+<script src="warg.js?v=20261109i"></script>
+
+</body>
+</html>

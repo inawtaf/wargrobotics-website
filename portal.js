@@ -194,7 +194,7 @@
       o.billing_line1 ? 'Bill to: ' + o.billing_name : 'Bill to: same as delivery',
       o.billing_line1 ? o.billing_line1 : null, o.billing_line2 || null,
       o.billing_line1 ? o.billing_city + ', ' + o.billing_state_code + ' ' + o.billing_pincode : null,
-      o.gstin ? 'GSTIN ' + o.gstin : null,
+      o.gstin ? 'GSTIN ' + o.gstin + (o.gstin_verified_at ? ' (verified Active ' + when(o.gstin_verified_at) + ')' : ' (not verified: placed before checks began)') : null,
       'Place of supply: ' + (o.place_of_supply || o.state_code) + (o.tax_kind === 'intra' ? ' (CGST+SGST)' : ' (IGST)')
     ].filter(function (l) { return l !== null && l !== undefined; }).join('\n').replace(/\n{3,}/g, '\n\n');
     $('d-repeat').textContent = (d.account ? 'Account email ' + (d.account.email_verified ? 'confirmed' : 'NOT confirmed') + '. ' : '') +
@@ -377,7 +377,7 @@
 
   // ---------------------------------------------------------------- setup check
   var healthRan = false;
-  var SECTION = { settings: 'Settings and secrets', database: 'Database', google: 'Google sign-in', email: 'Email (Resend)', razorpay: 'Razorpay', zoho: 'Zoho Books' };
+  var SECTION = { settings: 'Settings and secrets', database: 'Database', google: 'Google sign-in', email: 'Email (Resend)', razorpay: 'Razorpay', gstin: 'GSTIN check (Cashfree)', zoho: 'Zoho Books' };
   function healthFlash(box, msg, bad) { box.hidden = !msg; box.textContent = msg || ''; box.className = 'p-flash' + (bad ? ' bad' : ''); }
   function runHealth() {
     healthRan = true;

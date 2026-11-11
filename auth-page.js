@@ -30,10 +30,16 @@
   // Already signed in? Skip the page.
   window.WargMe().then(function (d) { if (d.user) go(); });
 
-  $('google-btn').href = '/api/auth/google?next=' + encodeURIComponent(next);
+  var tablist = document.querySelector('.auth-tabs');
+  var rule = document.querySelector('.or-rule');
+  var google = $('google-btn');
+  var tabs = [$('tab-signin'), $('tab-register')];
+  var googleOff = false;
+
+  google.href = '/api/auth/google?next=' + encodeURIComponent(next);
   // Hide Google where it isn't set up (e.g. branch previews) instead of failing after the click.
   api('/products').then(function (p) {
-    if (p.google_enabled === false) { $('google-btn').hidden = true; document.querySelector('.or-rule').hidden = true; }
+    if (p.google_enabled === false) { googleOff = true; google.hidden = true; rule.hidden = true; }
   }).catch(function () {});
   if (q.get('error')) show(q.get('error'));
   if (q.get('verify') === 'done') show('Your email is confirmed. Sign in to continue.', true);
@@ -41,18 +47,37 @@
   if (/^\/order\?/.test(next)) show('Sign in to see your order. Use the account the order email was sent to.', true);
   if (next === '/checkout') show('Sign in or create an account to place your order. Your cart is kept.', true);
 
-  function tab(which) {
-    var isReg = which === 'register';
-    $('tab-signin').setAttribute('aria-selected', String(!isReg));
-    $('tab-register').setAttribute('aria-selected', String(isReg));
-    signin.hidden = isReg || which === 'forgot';
+  /* Forgot is not a third tab — it replaces the chooser entirely. A two-tab
+     list cannot honestly describe three panels, and this one used to report
+     "Sign in" as selected while the Forgot form was the one on screen. */
+  function tab(which, keepFocus) {
+    var isReg = which === 'register', isForgot = which === 'forgot';
+    tabs[0].setAttribute('aria-selected', String(!isReg));
+    tabs[1].setAttribute('aria-selected', String(isReg));
+    tabs.forEach(function (t) { t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1; });
+    tablist.hidden = isForgot;
+    if (!googleOff) { google.hidden = isForgot; rule.hidden = isForgot; }
+    signin.hidden = isReg || isForgot;
     register.hidden = !isReg;
-    forgot.hidden = which !== 'forgot';
-    var first = (isReg ? register : which === 'forgot' ? forgot : signin).querySelector('input');
+    forgot.hidden = !isForgot;
+    if (keepFocus) return;
+    var first = (isForgot ? forgot : isReg ? register : signin).querySelector('input');
     if (first) first.focus();
   }
-  $('tab-signin').onclick = function () { tab('signin'); };
-  $('tab-register').onclick = function () { tab('register'); };
+  tabs[0].onclick = function () { tab('signin'); };
+  tabs[1].onclick = function () { tab('register'); };
+  // Real tabs are a single tab stop with arrow keys between them.
+  tablist.addEventListener('keydown', function (e) {
+    var i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    var n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1
+          : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+    if (n < 0) return;
+    e.preventDefault();
+    n = (n + tabs.length) % tabs.length;
+    tab(n === 1 ? 'register' : 'signin', true);
+    tabs[n].focus();
+  });
   $('show-forgot').onclick = function () { $('fo-email').value = $('si-email').value; tab('forgot'); };
   $('back-signin').onclick = function () { tab('signin'); };
   if (location.hash === '#register') tab('register');

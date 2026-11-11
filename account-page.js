@@ -9,6 +9,13 @@
     open: 'Open', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' };
   var KIND = { repair: 'Repair', warranty: 'Warranty claim', return: 'Return', setup: 'Setup help', other: 'Other' };
   function pill(status) { return el('span', 'pill ' + status, STATUS[status] || status); }
+  // State names, for both account.html and order.html. renderOrder printed the
+  // bare GST code, so an address read "Panaji, 30 403001".
+  var states = {};
+  var statesReady = api('/products').then(function (p) {
+    (p.states || []).forEach(function (s) { states[s.code] = s.name; });
+  }).catch(function () {});
+  function stateName(code) { return states[code] || code; }
 
   // ---------------------------------------------------------------- one order (shared)
   function renderOrder(box, o, opts) {
@@ -32,11 +39,11 @@
     }
     if (o.address_line1) {
       left.appendChild(el('h2', 'field-legend', 'Delivering to'));
-      left.appendChild(el('p', 't-body', [o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
+      left.appendChild(el('p', 't-body', [o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + stateName(o.state_code) + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
       var b = o.billing;
       if (b && (!b.same || o.gstin || o.business_name)) {
         left.appendChild(el('h2', 'field-legend', 'Billed to'));
-        left.appendChild(el('p', 't-body', [o.business_name, b.same ? 'Same as delivery address' : [b.name, b.address_line1, b.address_line2, b.city + ', ' + b.state_code + ' ' + b.pincode].filter(Boolean).join(', '), o.gstin && 'GSTIN ' + o.gstin].filter(Boolean).join(' · ')));
+        left.appendChild(el('p', 't-body', [o.business_name, b.same ? 'Same as delivery address' : [b.name, b.address_line1, b.address_line2, b.city + ', ' + stateName(b.state_code) + ' ' + b.pincode].filter(Boolean).join(', '), o.gstin && 'GSTIN ' + o.gstin].filter(Boolean).join(' · ')));
       }
     }
     var actions = el('div', 'card-actions');
@@ -118,7 +125,7 @@
         : o.status === 'processing' ? 'We are testing and packing your order. Tracking follows by email when it ships.'
         : o.status === 'shipped' ? 'Delivery instructions are in your email.' : '';
     };
-    load();
+    statesReady.then(load);
     return;
   }
 
@@ -177,7 +184,10 @@
       orders.forEach(function (o) {
         var c = el('div', 'card');
         var head = el('div', 'card-head');
-        var t = el('p', 'card-title', o.order_number + ' · ' + inr(o.total_paise));
+        // An order number and a total are data, so both are mono and tabular.
+        var t = el('p', 'card-title');
+        t.appendChild(el('span', 'card-id', o.order_number));
+        t.appendChild(el('span', 'card-total', inr(o.total_paise)));
         head.appendChild(t); head.appendChild(pill(o.status));
         c.appendChild(head);
         c.appendChild(el('p', 'card-meta', date(o.paid_at || o.created_at) + ' · ' + o.summary));
@@ -218,7 +228,7 @@
         head.appendChild(el('p', 'card-title', s.subject)); head.appendChild(pill(s.status));
         c.appendChild(head);
         c.appendChild(el('p', 'card-meta', s.request_number + ' · ' + KIND[s.kind] + (s.order_number ? ' · order ' + s.order_number : '') + ' · ' + date(s.created_at)));
-        if (s.team_note) { var n2 = el('p', 't-body'); n2.style.marginTop = '10px'; n2.textContent = 'Our update: ' + s.team_note; c.appendChild(n2); }
+        if (s.team_note) { c.appendChild(el('p', 't-body card-note', 'Our update: ' + s.team_note)); }
         box.appendChild(c);
       });
     });
@@ -233,10 +243,9 @@
   });
 
   // ---------------------------------------------------------------- addresses
-  var states = {};
   api('/products').then(function (p) {
     var sel = $('af-state');
-    p.states.forEach(function (s) { states[s.code] = s.name; var o = el('option', '', s.name); o.value = s.code; sel.appendChild(o); });
+    p.states.forEach(function (s) { var o = el('option', '', s.name); o.value = s.code; sel.appendChild(o); });
   });
   var aForm = $('address-form');
   function loadAddresses() {
@@ -247,10 +256,12 @@
         var c = el('div', 'card');
         var head = el('div', 'card-head');
         head.appendChild(el('p', 'card-title', (a.label ? a.label + ' · ' : '') + a.name));
-        if (a.is_default) head.appendChild(el('span', 'pill paid', 'Default delivery'));
-        if (a.is_default_billing) head.appendChild(el('span', 'pill processing', 'Default billing'));
+        // These mark a choice, not an order status — they borrowed `paid` and
+        // `processing` only for their colours.
+        if (a.is_default) head.appendChild(el('span', 'pill pill-mark', 'Default delivery'));
+        if (a.is_default_billing) head.appendChild(el('span', 'pill pill-mark', 'Default billing'));
         c.appendChild(head);
-        c.appendChild(el('p', 'card-meta', [a.business_name, a.address_line1, a.address_line2, a.city + ', ' + (states[a.state_code] || a.state_code) + ' ' + a.pincode, a.phone, a.gstin && 'GSTIN ' + a.gstin].filter(Boolean).join(', ')));
+        c.appendChild(el('p', 'card-meta', [a.business_name, a.address_line1, a.address_line2, a.city + ', ' + (states[a.state_code] || a.state_code) + ' ' + a.pincode, a.phone, a.gstin && 'GSTIN ' + a.gstin + (a.gstin_verified_at ? ' \u2713' : '')].filter(Boolean).join(', ')));
         var acts = el('div', 'card-actions');
         var ed = el('button', 'btn btn-line', 'Edit'); ed.type = 'button'; ed.onclick = function () { editAddress(a); };
         acts.appendChild(ed);
@@ -272,11 +283,15 @@
       });
     });
   }
+  var gstCheck = window.WargGstin($('af-gstin'), $('af-biz'), function () { return aForm.elements.state_code.value; });
   function editAddress(a) {
-    F.clear(aForm);
+    F.clear(aForm); gstCheck.reset();
     ['id', 'label', 'name', 'phone', 'address_line1', 'address_line2', 'city', 'pincode', 'state_code', 'business_name', 'gstin'].forEach(function (k) {
       aForm.elements[k].value = a ? (a[k] || '') : '';
     });
+    if (a && a.gstin) $('af-biz').readOnly = true;   // a saved GSTIN carries its verified legal name
+    // Open the business section only when this address actually uses it.
+    $('af-business').open = Boolean(a && (a.gstin || a.business_name));
     aForm.elements.is_default.checked = Boolean(a && a.is_default);
     aForm.elements.is_default_billing.checked = Boolean(a && a.is_default_billing);
     $('af-h').textContent = a ? 'Edit address' : 'Add an address';
@@ -329,7 +344,7 @@
       api('/account/google/unlink', { method: 'POST' }).then(function () { me.google_linked = false; googleState(); })
         .catch(function (e) { $('side-status').textContent = e.message; });
     };
-    $('signout').onclick = $('signout-top').onclick = function () { window.WargSignOut(); };
+    $('signout').onclick = function () { window.WargSignOut(); };
     $('delete-acct').href = 'mailto:hello@wargrobotics.com?subject=' + encodeURIComponent('Delete my Warg account') +
       '&body=' + encodeURIComponent('Please delete my Warg Robotics account and personal data.\n\nAccount email: ' + me.email);
     $('signout-all').onclick = function () { api('/auth/logout-all', { method: 'POST' }).then(function () { location.href = '/login'; }); };
