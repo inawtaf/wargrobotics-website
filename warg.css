@@ -120,6 +120,30 @@ a{color:inherit;}
 }
 .t-lede{ font-size:clamp(16.5px,1.5vw,19px); line-height:1.6; color:var(--ink-2); max-width:62ch; margin:0; text-wrap:pretty; }
 .t-body{ font-size:15px; line-height:1.62; color:var(--ink-2); max-width:64ch; margin:0; text-wrap:pretty; }
+/* A link in running prose takes the accent. Globally `a{color:inherit}`, so
+   these were being coloured one at a time with an inline style. */
+.t-body a{ color:var(--accent-700); }
+/* Type carries no default margin here, so a heading that introduces a block
+   states its own gap. These replace per-page inline styles. */
+/* Analytics consent. A notice, not a modal: it does not trap focus or block
+   the page, because nothing has been set yet and reading the site does not
+   depend on answering. */
+.consent{
+  position:fixed; left:0; right:0; bottom:0; z-index:300;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:clamp(16px,3vw,32px); flex-wrap:wrap;
+  padding:clamp(14px,2vw,18px) clamp(16px,4vw,40px);
+  background:var(--s-raised); border-top:1px solid var(--line-2);
+}
+.consent-text{ margin:0; max-width:72ch; font-size:13.5px; line-height:1.55; color:var(--ink-2); }
+.consent-text a{ color:var(--accent-700); }
+.consent-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.consent-row .btn{ height:40px; padding:0 18px; font-size:13.5px; }
+@media (max-width:620px){ .consent{ flex-direction:column; align-items:stretch; } }
+
+.sec-head{ margin-bottom:22px; }
+.sec-head-tight{ margin-bottom:8px; }
+.sec-intro{ margin-bottom:26px; }
 .t-small{ font-size:13.5px; line-height:1.55; color:var(--ink-2); margin:0; }
 .t-eyebrow{
   font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:500;
@@ -163,7 +187,15 @@ a{color:inherit;}
 .nav-links a:hover,.nav-links a[aria-current="page"]{ color:var(--paper); }
 /* Height rather than padding, so the logo can be set to the same number. */
 .nav-buy{ height:48px; padding:0 24px; font-size:14px; flex:none; }
-@media (max-width:880px){ .nav-links{ display:none; } .nav-buy{ margin-left:auto; } }
+/* The bar carries three more things than it was measured for — site.js injects
+   Sign in / Account, Sign out and Cart — so the links give way earlier than the
+   old 880px, which left "How it works" stacking three words deep around 1000px.
+   Below 700px the primary button goes too: it was being clipped at the right
+   edge on a phone, and the hero's own call to action is directly beneath it.
+   Written `.nav .nav-buy`, not `.nav-buy`: `.btn` sets display and is declared
+   after this block, so at equal specificity it won and the button stayed. */
+@media (max-width:1080px){ .nav-links{ display:none; } .nav-buy{ margin-left:auto; } }
+@media (max-width:700px){ .nav .nav-buy{ display:none; } }
 
 .lockup{ display:inline-flex; align-items:center; text-decoration:none; }
 /* Supplied as artwork rather than drawn inline: colour.png carries the light
@@ -255,14 +287,13 @@ a{color:inherit;}
 .hero-seq{ position:relative; }
 .hero-stage{ position:relative; }
 .js-anim .hero-stage{
-  --fade:clamp(100px,14.5vh,200px);
   z-index:1;
   position:relative; min-height:100dvh; overflow:clip;
   display:flex; align-items:center;
-  /* Reserve the fade's band so centred content sits above it, and hold open
-     a margin at the top so the hardware does not sit hard against the nav. */
-  padding-top:clamp(84px,10vh,136px);
-  padding-bottom:var(--fade);
+  /* Even padding top and bottom: the bottom used to reserve a fade band that
+     dissolved the footage into the section below. The footage now simply ends
+     where the dark masthead ends, so the hero content centres properly. */
+  padding-block:clamp(84px,10vh,136px);
 }
 /* The stage is a row flex container and .hero is its only in-flow child, so
    at the default `flex: 0 1 auto` it shrinks to its content and parks at
@@ -270,14 +301,10 @@ a{color:inherit;}
    which reads as "centred" until you notice the whole block sits left of the
    real centre. Make the hero fill the main axis. */
 .js-anim .hero-stage > .hero{ flex:1 1 auto; min-width:0; padding-block:0; }
-/* Without this the footage stops dead at the section boundary and reads as a
-   seam. The fade sits above the feed and below the copy, so the picture
-   dissolves into the ground the next section starts on. */
-.js-anim .hero-stage::after{
-  content:""; position:absolute; inset:auto 0 0 0; height:var(--fade); z-index:1;
-  background:linear-gradient(180deg, rgba(10,10,13,0) 0%, rgba(10,10,13,0.55) 42%, rgba(10,10,13,0.92) 76%, #0A0A0D 100%);
-  pointer-events:none;
-}
+/* The footage used to dissolve into the section below through a tall dark
+   gradient. The hero is the dark masthead and the page below it is light, so
+   it now ends on a clean edge instead — which is what the theme lock says the
+   boundary between them is. */
 .hero-inner{ position:relative; z-index:2; width:100%; }
 /* hero entry runs on load with a CSS cascade stagger. No IntersectionObserver
    above the fold: if the observer is slow or never fires, the hero must still
@@ -299,10 +326,11 @@ a{color:inherit;}
    to guarantee white type stays legible over a bright sky. */
 .feed-media{ display:block; width:100%; height:100%; object-fit:cover; filter:brightness(0.82) contrast(1.02); }
 .js-anim .feed-media{ position:absolute; inset:0; }
-/* The chosen shot has a bright sky, and the wordmark is white, so the middle
-   of the frame needs holding down harder than a decorative scrim would. */
-.feed-scrim{ position:absolute; inset:0; background:
-  linear-gradient(180deg, rgba(10,10,13,0.74) 0%, rgba(10,10,13,0.34) 46%, rgba(10,10,13,0.78) 100%); }
+/* The chosen shot has a bright sky and the wordmark is white with no
+   text-shadow, so legibility rests entirely on this and on filter:brightness
+   on .feed-media. Flat, not a gradient — but do not lighten it: check the
+   wordmark against any new clip before shipping one. */
+.feed-scrim{ position:absolute; inset:0; background:rgba(10,10,13,0.58); }
 
 .js-anim .hero-cam img{ backface-visibility:hidden; }
 /* diegetic HUD: this is a camera feed, so a record flag and the latency
@@ -506,6 +534,8 @@ sup.fn a:hover{ text-decoration:underline; }
 /* ---------- contact close ---------- */
 .close{ text-align:center; }
 .close .t-lede{ margin:18px auto 0; }
+.close .t-section{ max-width:24ch; margin-inline:auto; }
+.close .t-small{ margin-top:18px; color:var(--ink-3); }
 .close .row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:30px; }
 
 /* ---------- footer ---------- */
@@ -569,16 +599,19 @@ sup.fn a:hover{ text-decoration:underline; }
    looking like a card that failed to reach the edge. */
 @media (max-width:640px){ .car-card{ flex:0 0 calc(100% - 46px); } }
 .car-line{ margin:0; font-size:15.5px; line-height:1.5; color:var(--ink-2); max-width:34ch; }
-.car-more{
+/* `.car-more` is the detail-popup TRIGGER and warg.js binds it. `.link-more`
+   is the same mark with no behaviour behind it — use it for a plain link that
+   wants this look, and never borrow `.car-more` for one. */
+.car-more,.link-more{
   appearance:none; border:0; background:transparent; cursor:pointer; padding:0; margin-top:16px;
   display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
   font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; font-weight:500;
   letter-spacing:0.12em; text-transform:uppercase; color:var(--accent-700);
   transition:color 200ms var(--ease);
 }
-.car-more span{ font-size:14px; line-height:1; transition:transform 240ms var(--ease); }
-.car-more:hover{ color:var(--accent-900); }
-.car-more:hover span,.car-more[aria-expanded="true"] span{ transform:rotate(90deg); }
+.car-more span,.link-more span{ font-size:14px; line-height:1; transition:transform 240ms var(--ease); }
+.car-more:hover,.link-more:hover{ color:var(--accent-900); }
+.car-more:hover span,.car-more[aria-expanded="true"] span,.link-more:hover span{ transform:rotate(90deg); }
 .car-ui{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; }
 .car-dots{ display:flex; gap:7px; }
 .car-dot{
@@ -800,6 +833,12 @@ sup.fn a:hover{ text-decoration:underline; }
 }
 .open-note b{ color:var(--amber-700); font-weight:600; }
 
+/* Visually hidden but read aloud — for live regions and for labels whose role
+   the visual design carries some other way. */
+.vh{
+  position:absolute; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
 .skip{ position:absolute; left:-9999px; }
 .skip:focus{ left:12px; top:12px; z-index:1000; background:var(--accent-700); color:#fff; padding:12px 18px; }
 
@@ -1086,28 +1125,15 @@ sup.fn a:hover{ text-decoration:underline; }
    then opens into daylight blue. The dot grid is a single ink-tinted colour:
    it is invisible against the dark top and surfaces on its own as the ground
    lightens, so one layer does the whole gradient. */
+/* Was a nine-stop ramp from near-black to near-white with a dot grid over it,
+   carrying 290px of empty padding so the ramp had room to run. The step from
+   the dark masthead to the light page is now just that — a step — and the
+   section earns its separation the way every other one does, with a deeper
+   ground from the same palette. */
 .ident{
   position:relative;
-  padding-block:clamp(150px,20vw,290px) clamp(56px,7vw,96px);
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(28,30,34,0.12) 1.1px, transparent 1.7px),
-    linear-gradient(180deg,
-      #0A0A0D 0%,
-      #15181D 9%,
-      #3A3E46 19%,
-      #74797F 29%,
-      #ADB1B7 39%,
-      #D9DBDF 50%,
-      #EFF0F3 64%,
-      #F4F6F9 100%);
-  background-size:24px 24px, 100% 100%;
-}
-/* The dots ran at full strength right up to the section boundary, which read
-   as a seam against the plain ground below. Fade them into it instead. */
-.ident::after{
-  content:""; position:absolute; inset:auto 0 0 0; z-index:0; pointer-events:none;
-  height:clamp(90px,13vw,190px);
-  background:linear-gradient(180deg, rgba(247,248,250,0) 0%, var(--s-base) 92%, var(--s-base) 100%);
+  padding-block:clamp(64px,7.5vw,104px);
+  background:var(--s-sunk);
 }
 .ident > .wrap{ position:relative; z-index:1; }
 
@@ -1133,18 +1159,18 @@ sup.fn a:hover{ text-decoration:underline; }
   margin:0 0 calc(-1 * clamp(10px,2.2vw,34px));
 }
 .wordmark-cam img{ display:block; width:100%; height:auto; filter:drop-shadow(0 16px 30px rgba(0,0,0,0.6)); }
-.wordmark-word{
-  z-index:1; margin:0;
-  font-family:'Space Grotesk','Inter',sans-serif; font-weight:700;
-  font-size:var(--word); line-height:0.82; letter-spacing:-0.05em;
-  color:#FFFFFF; white-space:nowrap; user-select:none;
-  -webkit-text-stroke:0.012em #FFFFFF;   /* fattens the stem past the 700 cut */
-  /* No shadow at all. The accent blooms went first because they spilled a
-     purple halo; the dark shadow that replaced them went too, at the client's
-     request. Legibility over the footage is carried by .feed-scrim and the
-     brightness filter on .feed-media instead — if the clip is ever swapped,
-     check the wordmark against it before shipping. */
-}
+/* Artwork, not type. The 2.61 is the width the Space Grotesk setting used to
+   occupy per 1px of --word (568px at --word 217.6px) — holding it keeps the
+   lockup the same width, so the WIRELESS / DIGITAL / FPV spread below is
+   unchanged. Both scale off --word, so the ratio holds at every size. */
+.wordmark-word{ z-index:1; margin:0; line-height:0; }
+.wordmark-word img{ display:block; width:calc(var(--word) * 2.61); height:auto; }
+/* No shadow on the wordmark at all. The accent blooms went first because they
+   spilled a purple halo; the dark shadow that replaced them went too, at the
+   client's request. Legibility over the footage is carried by .feed-scrim and
+   the brightness filter on .feed-media — if the clip is ever swapped, check
+   the wordmark against it before shipping. That still holds now it is
+   artwork: the PNG has no outline of its own. */
 .wordmark-sub{
   width:100%; display:flex; justify-content:space-between;
   margin:clamp(4px,0.7vw,12px) 0 0;
@@ -1336,9 +1362,15 @@ sup.fn a:hover{ text-decoration:underline; }
 .summary-lines > div{ display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:14px; }
 .summary-lines dt{ color:var(--ink-2); }
 .summary-lines dd{ margin:0; font-variant-numeric:tabular-nums; }
-.summary-total{ margin-top:6px; padding-top:10px !important; border-top:1px dashed var(--line-2); font-weight:600; font-size:16px !important; }
-.summary-total dt{ color:var(--ink); }
+.summary-total{ margin-top:10px; padding-top:14px; border-top:1px solid var(--line-2); align-items:baseline; }
+.summary-total dt{ color:var(--ink); font-weight:500; }
+.summary-total dd{
+  font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:24px; font-weight:500;
+  line-height:1.05; letter-spacing:-0.02em; color:var(--accent-700);
+}
 .summary .hint{ margin:0; font-size:12.5px; line-height:1.5; color:var(--ink-3); }
+.summary .summary-note{ margin-top:14px; }
+.btn-block{ width:100%; justify-content:center; }
 @media (max-width:900px){ .summary{ position:static; } }
 
 .order-steps{ list-style:none; margin:0 0 24px; padding:0; display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line-2); border:1px solid var(--line-2); }
@@ -1362,8 +1394,50 @@ sup.fn a:hover{ text-decoration:underline; }
 @media (max-width:880px){ .nav-acct{ margin-left:auto; } .nav-buy{ margin-left:0; } }
 @media (max-width:520px){ .nav-acct{ gap:12px; } .nav-acct a{ font-size:10.5px; } .nav .wrap{ gap:14px; } }
 
-/* ---------- account area ---------- */
-.auth{ max-width:460px; }
+/* ---------- account area ----------
+   Auth pages are one centred column at the measure the skill asks for. The
+   heading lives inside that column: a full-width left-aligned hero above a
+   centred form read as two unrelated pages stacked. */
+.auth{ max-width:420px; }
+.auth-h{
+  margin:0; font-family:'Space Grotesk','Inter',sans-serif; font-weight:600;
+  font-size:clamp(26px,3.4vw,32px); line-height:1.1; letter-spacing:-0.02em; color:var(--ink);
+}
+.auth-lede{ margin:10px 0 26px; font-size:14.5px; line-height:1.6; color:var(--ink-2); }
+.auth-sub{
+  margin:0 0 10px; font-family:'Space Grotesk','Inter',sans-serif;
+  font-weight:500; font-size:19px; color:var(--ink);
+}
+/* Primary action full width, the secondary route a text link beneath it —
+   not a second button competing with it. */
+.form-foot-block{ display:block; }
+.form-foot-block .link-btn{ display:inline-block; margin-top:14px; }
+.auth .form-status:not(:empty){ margin:0 0 18px; }
+
+/* ---------- account ----------
+   Deleting an account is irreversible and used to sit as a fourth identical
+   outlined button beside "Sign out". It gets its own block, in amber, which
+   is what amber means here. Red is not available: on this site red is the
+   Pro tier. */
+.acct-group + .acct-group{ margin-top:28px; }
+.acct-group .field-legend{ margin:0 0 10px; }
+.danger{ margin-top:28px; padding:18px 20px; background:var(--amber-050); border:1px solid var(--amber-400); }
+.danger .field-legend{ margin:0 0 8px; color:var(--amber-700); }
+.danger p{ margin:0 0 14px; font-size:13.5px; line-height:1.55; color:var(--ink-2); }
+.danger a{ color:var(--amber-700); }
+.danger .btn-line{ box-shadow:inset 0 0 0 1px var(--amber-400); color:var(--amber-700); }
+.danger .btn-line:hover{ box-shadow:inset 0 0 0 1px var(--amber-700); background:var(--paper); }
+
+/* An order number and a total are data, so they are mono and tabular. */
+.card-id{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:13px; letter-spacing:0.04em; color:var(--ink-2); }
+.card-total{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:17px; font-variant-numeric:tabular-nums; color:var(--ink); }
+.card-id + .card-total{ margin-left:12px; }
+.card-note{ margin:10px 0 0; }
+.pw-form{ margin-top:36px; }
+/* .disclose inside a form: tighter, and its fields need room beneath. */
+.disclose-field{ margin-top:18px; }
+.disclose-field summary{ padding:14px 0; }
+.disclose-field .field:last-child{ margin-bottom:6px; }
 .auth-tabs,.acct-tabs{ display:flex; gap:1px; background:var(--line-2); border:1px solid var(--line-2); margin-bottom:24px; flex-wrap:wrap; }
 .auth-tabs button,.acct-tabs a{
   flex:1; padding:14px 12px; background:var(--s-raised); border:0; cursor:pointer; text-align:center; text-decoration:none;
@@ -1387,20 +1461,138 @@ sup.fn a:hover{ text-decoration:underline; }
 .card-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
 .card-actions .btn{ height:40px; padding:0 16px; font-size:13px; }
 .pill{ display:inline-block; padding:3px 9px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; background:var(--s-sunk); color:var(--ink-2); }
-.pill.paid,.pill.open,.pill.in_progress{ background:var(--accent-100); color:var(--accent-900); }
-.pill.shipped,.pill.delivered,.pill.resolved{ background:#E3F4E8; color:#1D6B36; }
-.pill.warn{ background:var(--amber-050, #fdf3e1); color:var(--amber-700, #8a5a00); }
+/* Four levels, every one of them from the brand palette. The statuses used to
+   carry four hardcoded hexes — a green, a mustard and a maroon — none of which
+   is a token. There is no green in this system, and red is the Pro tier's
+   colour, so it cannot mean "cancelled". Hence: amber (this system's caveat
+   colour) for anything that needs you or went wrong, accent for anything in
+   progress, filled accent for in flight, and the quiet default chip for
+   terminal states that are simply done. */
+.pill.created{ background:var(--amber-050); color:var(--amber-700); }
+.pill.paid,.pill.processing,.pill.open,.pill.in_progress{ background:var(--accent-100); color:var(--accent-900); }
+.pill.shipped{ background:var(--accent-700); color:var(--paper); }
+.pill.delivered,.pill.resolved,.pill.closed{ box-shadow:inset 0 0 0 1px var(--line-2); }
+.pill.cancelled,.pill.refunded,.pill.warn{ background:var(--amber-050); color:var(--amber-700); }
+/* Not a status: marks a saved choice, such as a default address. */
+.pill-mark{ background:var(--accent-100); color:var(--accent-900); }
 .field label .pill{ margin-left:6px; vertical-align:1px; }
-.empty{ padding:28px; text-align:center; color:var(--ink-3); background:var(--s-raised); border:1px dashed var(--line-2); }
+/* ---------- cart ----------
+   The cart is a specification, so it is a hairline list and not a stack of
+   shadowed cards. The photograph identifies the unit, which lets the name sit
+   at body scale; quantity reuses .car-arr and remove reuses .car-more rather
+   than inventing controls that only exist here. */
+.empty{
+  padding:clamp(32px,5vw,52px) 28px; text-align:center;
+  background:var(--s-raised); border:1px solid var(--line-2);
+}
+.empty-h{
+  margin:0; font-family:'Space Grotesk','Inter',sans-serif; font-weight:500;
+  font-size:clamp(20px,2.6vw,25px); color:var(--ink);
+}
+.empty p{ margin:10px auto 22px; max-width:40ch; font-size:14.5px; line-height:1.6; color:var(--ink-2); }
 
-.cart-line{ display:grid; grid-template-columns:1fr auto auto; gap:16px; align-items:center; }
-@media (max-width:560px){ .cart-line{ grid-template-columns:1fr auto; } .cart-line .cart-price{ grid-column:1 / -1; } }
-.qty{ display:inline-flex; border:1px solid var(--line-2); }
-.qty button{ width:36px; height:36px; border:0; background:var(--s-sunk); cursor:pointer; font-size:16px; color:var(--ink); }
-.qty button:disabled{ opacity:.4; cursor:default; }
-.qty span{ min-width:36px; display:grid; place-items:center; font-variant-numeric:tabular-nums; }
-.cart-price{ text-align:right; font-variant-numeric:tabular-nums; }
-.cart-price s{ color:var(--ink-3); font-size:12.5px; margin-right:6px; }
+.cart-line{
+  display:grid; grid-template-columns:76px minmax(0,1fr) auto auto;
+  gap:clamp(14px,2vw,24px); align-items:center;
+}
+.cart-thumb{
+  width:76px; aspect-ratio:4/3; object-fit:contain; display:block;
+  background:var(--s-sunk); border:1px solid var(--line-2);
+}
+.cart-name{ margin:0; font-family:'Space Grotesk','Inter',sans-serif; font-weight:500; font-size:17px; }
+.cart-unit{ margin:3px 0 0; font-size:13px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.cart-off{
+  margin:7px 0 0; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px;
+  font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent-700);
+}
+
+.qty{ display:flex; align-items:center; gap:7px; }
+.qty .car-arr{ font-size:17px; }
+.qty output{
+  min-width:2ch; text-align:center; font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:15px; font-variant-numeric:tabular-nums;
+}
+
+.cart-right{ text-align:right; }
+.cart-price{ margin:0; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:16px; font-variant-numeric:tabular-nums; }
+.cart-price s{ display:block; margin-bottom:2px; color:var(--ink-3); font-size:12.5px; }
+/* Remove is secondary to the offer beside it, so it is not drawn in accent
+   until you are on it. */
+.cart-right .link-more{ margin-top:10px; color:var(--ink-3); }
+.cart-right .link-more:hover{ color:var(--accent-900); }
+
+/* A real offer the buyer has not taken yet, shown in the hairline stack so it
+   reads as part of the cart rather than an advertisement beside it. */
+.cart-suggest{
+  background:var(--accent-100); color:var(--accent-900);
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; flex-wrap:wrap; padding:16px clamp(16px,2.2vw,22px);
+}
+.cart-suggest p{ margin:0; font-size:14px; line-height:1.5; }
+.cart-note{ margin:14px 0 0; font-size:12.5px; line-height:1.6; color:var(--ink-3); }
+.cart-foot{ display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-top:18px; }
+
+/* Phone: the summary is below the items, so the total and the way out of the
+   page travel with the viewport until it comes into view. */
+/* `:not([hidden])` deliberately — a bare `display:flex` in the media query
+   beats the hidden attribute, and the bar appeared over an empty cart. */
+.cart-bar{ display:none; }
+@media (max-width:900px){
+  .cart-bar:not([hidden]){
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    position:sticky; bottom:0; z-index:40; margin-top:20px;
+    padding:12px clamp(14px,3vw,18px);
+    background:var(--s-raised); border:1px solid var(--line-2);
+  }
+  .cart-bar-l{
+    margin:0 0 1px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10px;
+    font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3);
+  }
+  .cart-bar-v{
+    margin:0; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:19px;
+    font-variant-numeric:tabular-nums; color:var(--accent-700);
+  }
+}
+
+/* ---------- checkout ----------
+   Three steps, one column of fields, and a summary that owns the money. */
+.order-steps.steps-3{ grid-template-columns:repeat(3,1fr); margin-bottom:28px; }
+.order-steps li[aria-current="step"]{
+  background:var(--accent-100); color:var(--accent-900); box-shadow:inset 0 3px 0 var(--accent-700);
+}
+.step-n{ margin-right:8px; color:var(--ink-3); }
+.order-steps li[aria-current="step"] .step-n{ color:var(--accent-700); }
+
+/* At the review step the summary rail would repeat the review's own totals
+   line for line, so the rail stands down and the review states the figures. */
+.checkout.reviewing{ grid-template-columns:1fr; }
+.checkout.reviewing .summary{ display:none; }
+
+.tax-note{ margin:14px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-3); }
+.check-save{ margin-top:14px; }
+.field-block{ margin-top:28px; }
+
+/* Here the add-on box is a disclosure, not a chosen extra: the filled accent
+   state made an optional B2B field the loudest thing on the page, and read as
+   "selected" next to the address radios that use the same fill. */
+.checkout .addon-toggle input:checked + .addon-box{
+  background:var(--s-raised); border-color:var(--line-3); box-shadow:inset 3px 0 0 var(--line-3);
+}
+.checkout .addon-toggle input:checked + .addon-box .addon-name{ color:var(--ink); }
+.checkout .addon-toggle:hover .addon-box{ background:var(--s-sunk); }
+
+/* Line price in the summary: what you pay, with the list price struck. It
+   used to show the list price alone, which reads as the amount due. */
+.summary-price{ margin:4px 0 0; font-size:13px; font-variant-numeric:tabular-nums; color:var(--ink-2); }
+.summary-price s{ color:var(--ink-3); margin-right:6px; }
+
+@media (max-width:620px){
+  .cart-line{ grid-template-columns:56px minmax(0,1fr) auto; row-gap:14px; }
+  .cart-thumb{ width:56px; align-self:start; }
+  .cart-line .cart-id{ grid-row:1; grid-column:2 / -1; }
+  .cart-line .qty{ grid-row:2; grid-column:2; }
+  .cart-line .cart-right{ grid-row:2; grid-column:3; }
+}
 
 .addr-pick{ display:grid; gap:1px; background:var(--line-2); border:1px solid var(--line-2); margin-top:10px; }
 .addr-pick label{ display:flex; gap:12px; align-items:flex-start; background:var(--s-raised); padding:14px 16px; cursor:pointer; font-size:14px; line-height:1.5; }
@@ -1416,8 +1608,6 @@ sup.fn a:hover{ text-decoration:underline; }
 .order-timeline li{ display:grid; grid-template-columns:120px 1fr; gap:12px; font-size:14px; line-height:1.5; }
 .order-timeline time{ color:var(--ink-3); font-size:13px; }
 @media (max-width:520px){ .order-steps li{ padding:12px 8px; font-size:9.5px; letter-spacing:.06em; } .order-timeline li{ grid-template-columns:1fr; gap:0; } }
-.pill.processing{ background:#FFF3D6; color:#7A5300; }
-.pill.cancelled,.pill.refunded{ background:#F3E3E3; color:#8A2C2C; }
 /* Header "Sign out": on small phones it lives on the account page only. */
 @media (max-width:520px){ .nav-signout{ display:none; } }
 /* Account + cart in the sticky bar that replaces the header once it has scrolled away. */
@@ -1440,7 +1630,10 @@ sup.fn a:hover{ text-decoration:underline; }
 .review td:last-child{ text-align:right; white-space:nowrap; }
 .review tr.total td{ font-weight:700; border-bottom:0; }
 .coupon-hint{ margin:12px 0 0; padding:10px 12px; background:var(--accent-100); color:var(--accent-900); font-size:13px; line-height:1.5; }
-.summary-lines .disc-row dd, .review tr.disc td:last-child{ color:#1D6B36; }
+/* A discount is a figure the buyer cares about, so it takes the accent. It
+   used to be a green that is not in this palette — and the label plus the
+   minus sign already say which direction it goes. */
+.summary-lines .disc-row dd, .review tr.disc td:last-child{ color:var(--accent-700); }
 .coupon-box{ margin:16px 0 4px; padding-top:14px; border-top:1px solid var(--line-2); }
 .coupon-row{ display:flex; gap:8px; margin-top:6px; }
 .coupon-row input{ flex:1; min-width:0; font:inherit; font-family:'IBM Plex Mono',monospace; letter-spacing:.06em; padding:10px 12px; border:1px solid var(--line-2); background:#fff; }
@@ -1493,6 +1686,50 @@ mark.fill{ background:#ffe08a; color:#5a3d00; padding:0 3px; }
 .gsa-hero img{ display:block; width:100%; height:auto; }
 .gsa-pillars{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(16px,3vw,40px); margin:clamp(22px,3vw,32px) 0 clamp(48px,6vw,80px); }
 .gsa-pillars p{ margin:0; font-size:15.5px; line-height:1.55; color:var(--ink-2); }
+/* The home page teases the web app, so its pillars sit tighter than the full
+   telling on each product page. */
+.gsa-pillars-tight{ margin-bottom:28px; }
+/* The way out of a product card to its own page, and out of the comparison to
+   the other unit's. Both cards and the comparison previously offered only an
+   add-to-cart, which left the product pages unreachable from the listing. */
+/* Two calls to action per card, stacked: the card is one of three on a rail,
+   so side by side they would be too narrow to read. The route to the product
+   page was a small mono text link and went unnoticed. */
+.prod-cta{ display:grid; gap:10px; }
+
+/* Owner reviews. The card is final; the copy in it is not — see `.review-tag`. */
+.review{ background:var(--s-raised); display:flex; flex-direction:column; }
+/* Amber, because amber means unverified here. This line is the only thing
+   stopping a placeholder reading as a real customer saying a real thing —
+   it goes in the same commit as the quote that replaces it. */
+.review-tag{
+  margin:0; padding:clamp(18px,2.2vw,24px) clamp(22px,2.6vw,30px) 0;
+  font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10px; font-weight:500;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--amber-700);
+}
+.review-tag + .review-q{ padding-top:12px; }
+/* The quote grows and the attribution rides at the foot, so four quotes of
+   four different lengths still line their names up. `margin-top:auto` on the
+   attribution did not do it here; `.feat-body .car-more` is the pattern that
+   works in these cards, and it grows the block above instead. */
+.review-q{
+  flex:1; margin:0; padding:clamp(22px,2.6vw,30px) clamp(22px,2.6vw,30px) 0;
+  font-family:'Space Grotesk','Inter',sans-serif; font-weight:500;
+  font-size:clamp(17px,1.8vw,20px); line-height:1.45; color:var(--ink); text-wrap:pretty;
+}
+.review-who{
+  margin:0; padding:18px clamp(22px,2.6vw,30px) clamp(22px,2.6vw,30px);
+  font-size:13px; line-height:1.5; color:var(--ink-3);
+}
+.review-who b{ display:block; font-weight:500; color:var(--ink-2); }
+
+/* The product hero has to clear the fold. Its own padding was a full section's
+   worth at both ends while the copy column already runs long. */
+.prod-hero{ padding-block:clamp(28px,3vw,44px) clamp(32px,3.2vw,44px); }
+.prod-hero .phero-spec > div{ padding:7px 0; }
+.prod-hero .phero-h{ margin-bottom:12px; }
+.prod-hero .phero-buy{ margin-top:clamp(18px,2vw,24px); }
+.cmp-more{ margin:18px 0 0; }
 .gsa-n, .gsa-tag{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent-700) !important; margin:0 0 8px !important; }
 .gsa-row{ display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:clamp(20px,4vw,56px); align-items:center; margin-bottom:clamp(48px,6vw,80px); }
 .gsa-fig{ margin:0; border:1px solid var(--line-2); background:#fff; overflow:hidden; }
@@ -1527,3 +1764,8 @@ mark.fill{ background:#ffe08a; color:#5a3d00; padding:0 3px; }
   .gsa-grid, .gsa-legend, .gsa-pillars{ grid-template-columns:1fr; }
 }
 .gsa-cta{ display:flex; gap:12px; flex-wrap:wrap; }
+.gst-status{ margin:6px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-3); }
+.gst-status:empty{ display:none; }
+.gst-status.ok{ color:#1F7A3A; }
+.gst-status.bad{ color:var(--amber-700); }
+input[readonly]{ background:var(--s-sunk); color:var(--ink-2); }

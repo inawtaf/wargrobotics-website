@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="analytics.js?v=20261018c"></script>
+<script src="analytics.js?v=20261109i"></script>
 <title>Choose a new password – Warg Robotics</title>
 <meta name="robots" content="noindex">
 
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102d">
+<link rel="stylesheet" href="warg.css?v=20261109i">
 </head>
 <body>
 
@@ -21,36 +21,29 @@
   <nav class="nav">
     <div class="wrap">
       <a class="lockup" href="/" aria-label="Warg Robotics home">
-        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="494" height="198">
       </a>
       <div class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#products">Products</a>
-        <a href="/#tech">How it works</a>
         <a href="/support">Support</a>
       </div>
     </div>
   </nav>
 </div>
-<nav class="crumb" aria-label="Breadcrumb">
-  <div class="wrap"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/login">Sign in</a><span aria-hidden="true">/</span><span aria-current="page">New password</span></div>
-</nav>
 
 <main id="main">
-  <section class="sec form-hero">
-    <div class="wrap">
-      <h1 class="t-section">Choose a new password</h1>
-      <p class="t-lede">After this, you will be signed in and other devices signed out.</p>
-    </div>
-  </section>
+  <!-- Same shape as login: one centred column, no hero, no breadcrumb. -->
   <section class="sec-sm">
     <div class="wrap auth">
+      <h1 class="auth-h">Choose a new password</h1>
+      <p class="auth-lede">After this you will be signed in, and signed out everywhere else.</p>
       <form class="form" id="reset-form" novalidate>
         <div class="field"><label for="rs-password">New password</label><input type="password" id="rs-password" name="password" required autocomplete="new-password" minlength="10">
           <p class="hint">At least 10 characters.</p></div>
         <div class="field"><label for="rs-password2">Confirm new password</label><input type="password" id="rs-password2" name="password_confirm" required autocomplete="new-password" minlength="10"></div>
-        <div class="form-foot"><button class="btn btn-solid" type="submit">Save password</button></div>
         <p class="form-status" role="status" aria-live="polite"></p>
+        <div class="form-foot form-foot-block"><button class="btn btn-solid btn-block" type="submit">Save password</button></div>
       </form>
     </div>
   </section>
@@ -66,7 +59,7 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261102a" defer></script>
-<script src="auth-page.js?v=20261031e" defer></script>
+<script src="site.js?v=20261109i" defer></script>
+<script src="auth-page.js?v=20261109i" defer></script>
 </body>
 </html>

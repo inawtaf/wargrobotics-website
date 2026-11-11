@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="analytics.js?v=20261018c"></script>
+<script src="analytics.js?v=20261109i"></script>
 <title>Your account – Warg Robotics</title>
 <meta name="robots" content="noindex">
 
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102d">
+<link rel="stylesheet" href="warg.css?v=20261109i">
 </head>
 <body>
 
@@ -21,12 +21,11 @@
   <nav class="nav">
     <div class="wrap">
       <a class="lockup" href="/" aria-label="Warg Robotics home">
-        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="494" height="198">
       </a>
       <div class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#products">Products</a>
-        <a href="/#tech">How it works</a>
         <a href="/support">Support</a>
       </div>
     </div>
@@ -41,25 +40,28 @@
     <div class="wrap">
       <h1 class="t-section" id="acct-h">Your account</h1>
       <p class="t-lede" id="acct-lede">Orders, tracking, invoices, addresses and service requests.</p>
-      <p><button class="btn btn-line" type="button" id="signout-top">Sign out</button></p>
+      <!-- Sign out used to sit here too, as the first thing a returning
+           customer saw. It is in the masthead and in Profile; twice is plenty. -->
     </div>
   </section>
   <section class="sec-sm">
     <div class="wrap">
       <p class="banner" id="acct-banner" hidden></p>
+      <!-- These are links with real URLs, not tabs, so they stay navigation —
+           but each panel now names the link it belongs to. -->
       <nav class="acct-tabs" aria-label="Account sections">
-        <a href="#orders" data-tab="orders">Orders</a>
-        <a href="#service" data-tab="service">Service</a>
-        <a href="#addresses" data-tab="addresses">Addresses</a>
-        <a href="#profile" data-tab="profile">Profile</a>
+        <a href="#orders" data-tab="orders" id="tabnav-orders">Orders</a>
+        <a href="#service" data-tab="service" id="tabnav-service">Service</a>
+        <a href="#addresses" data-tab="addresses" id="tabnav-addresses">Addresses</a>
+        <a href="#profile" data-tab="profile" id="tabnav-profile">Profile</a>
       </nav>
 
-      <div data-panel="orders">
+      <div data-panel="orders" role="region" aria-labelledby="tabnav-orders">
         <div id="orders-list" class="cards"></div>
         <div id="order-detail" hidden></div>
       </div>
 
-      <div data-panel="service" hidden>
+      <div data-panel="service" role="region" aria-labelledby="tabnav-service" hidden>
         <div class="checkout">
           <div><div id="service-list" class="cards"></div></div>
           <form class="form summary" id="service-form" novalidate>
@@ -79,7 +81,7 @@
         </div>
       </div>
 
-      <div data-panel="addresses" hidden>
+      <div data-panel="addresses" role="region" aria-labelledby="tabnav-addresses" hidden>
         <div class="checkout">
           <div><p class="t-body">Save your delivery and billing addresses here. At checkout you pick where to deliver and who the invoice is for.</p><div id="address-list" class="cards"></div></div>
           <form class="form summary" id="address-form" novalidate>
@@ -93,8 +95,13 @@
             <div class="field"><label for="af-city">City or town</label><input id="af-city" name="city" maxlength="80" autocomplete="address-level2"></div>
             <div class="field"><label for="af-pin">Pincode</label><input id="af-pin" name="pincode" maxlength="6" inputmode="numeric" autocomplete="postal-code"></div>
             <div class="field"><label for="af-state">State</label><select id="af-state" name="state_code"><option value="">Choose&hellip;</option></select></div>
-            <div class="field"><label for="af-biz">Business name (for GST invoice)</label><input id="af-biz" name="business_name" maxlength="150"></div>
-            <div class="field"><label for="af-gstin">GSTIN</label><input id="af-gstin" name="gstin" maxlength="15" autocapitalize="characters"><p class="hint">Optional, for business invoices. Must be registered in this address's state.</p></div>
+            <!-- Two of eleven fields, and only businesses need them, so they
+                 are folded away until asked for. -->
+            <details class="disclose disclose-field" id="af-business">
+              <summary>Business invoice</summary>
+              <div class="field"><label for="af-gstin">GSTIN</label><input id="af-gstin" name="gstin" maxlength="15" autocapitalize="characters" autocomplete="off"><p class="hint">Optional. Must be active and registered in this address's state. We check it with the GST records and fill in the registered business name.</p></div>
+              <div class="field"><label for="af-biz">Business name (for GST invoice)</label><input id="af-biz" name="business_name" maxlength="150"></div>
+            </details>
             <label class="check"><input type="checkbox" name="is_default" value="1"> Default delivery address</label>
             <label class="check"><input type="checkbox" name="is_default_billing" value="1"> Default billing address (for invoices)</label>
             <div class="form-foot"><button class="btn btn-solid" type="submit">Save address</button><button class="link-btn" type="button" id="af-cancel" hidden>Cancel</button></div>
@@ -103,7 +110,7 @@
         </div>
       </div>
 
-      <div data-panel="profile" hidden>
+      <div data-panel="profile" role="region" aria-labelledby="tabnav-profile" hidden>
         <div class="checkout">
           <div>
             <form class="form" id="profile-form" novalidate>
@@ -115,7 +122,7 @@
               <div class="form-foot"><button class="btn btn-solid" type="submit">Save</button></div>
               <p class="form-status" role="status" aria-live="polite"></p>
             </form>
-            <form class="form" id="password-form" novalidate style="margin-top:36px">
+            <form class="form pw-form" id="password-form" novalidate>
               <h2 class="field-legend" id="pw-h">Change password</h2>
               <div class="field" id="pw-current"><label for="pw-cur">Current password</label><input id="pw-cur" name="current_password" type="password" autocomplete="current-password"></div>
               <div class="field"><label for="pw-new">New password</label><input id="pw-new" name="new_password" type="password" autocomplete="new-password"><p class="hint">At least 10 characters. Other devices will be signed out.</p></div>
@@ -125,17 +132,25 @@
             </form>
           </div>
           <div class="summary">
-            <h2 class="field-legend">Google sign-in</h2>
-            <p class="t-body" id="g-state"></p>
-            <div class="card-actions"><a class="btn btn-line" id="g-link" href="/api/auth/google?mode=link&next=/account%23profile" hidden>Link Google account</a>
-              <button class="btn btn-line" id="g-unlink" type="button" hidden>Unlink Google</button></div>
-            <h2 class="field-legend" style="margin-top:28px">Sign out</h2>
-            <div class="card-actions"><button class="btn btn-line" id="signout" type="button">Sign out</button>
-              <button class="btn btn-line" id="signout-all" type="button">Sign out everywhere</button></div>
-            <p class="form-status" id="side-status" role="status"></p>
-            <h2 class="field-legend" style="margin-top:28px">Delete your account</h2>
-            <p class="t-body">To have your account and personal data deleted, email us from this address. <a href="/privacy#delete">What is deleted and what the law makes us keep</a>.</p>
-            <div class="card-actions"><a class="btn btn-line" id="delete-acct" href="mailto:hello@wargrobotics.com?subject=Delete%20my%20Warg%20account">Request deletion by email</a></div>
+            <div class="acct-group">
+              <h2 class="field-legend">Google sign-in</h2>
+              <p class="t-body" id="g-state"></p>
+              <div class="card-actions"><a class="btn btn-line" id="g-link" href="/api/auth/google?mode=link&next=/account%23profile" hidden>Link Google account</a>
+                <button class="btn btn-line" id="g-unlink" type="button" hidden>Unlink Google</button></div>
+            </div>
+            <div class="acct-group">
+              <h2 class="field-legend">This device and others</h2>
+              <div class="card-actions"><button class="btn btn-line" id="signout" type="button">Sign out</button>
+                <button class="btn btn-line" id="signout-all" type="button">Sign out everywhere</button></div>
+              <p class="form-status" id="side-status" role="status"></p>
+            </div>
+            <!-- Irreversible, so it is not a fourth identical outlined button
+                 in the stack above. -->
+            <div class="danger">
+              <h2 class="field-legend">Delete your account</h2>
+              <p>This cannot be undone. Email us from this address and we will delete your account and your personal data. <a href="/privacy#delete">What is deleted, and what the law makes us keep</a>.</p>
+              <div class="card-actions"><a class="btn btn-line" id="delete-acct" href="mailto:hello@wargrobotics.com?subject=Delete%20my%20Warg%20account">Request deletion by email</a></div>
+            </div>
           </div>
         </div>
       </div>
@@ -153,7 +168,7 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261102a" defer></script>
-<script src="account-page.js?v=20261102a" defer></script>
+<script src="site.js?v=20261109i" defer></script>
+<script src="account-page.js?v=20261109i" defer></script>
 </body>
 </html>

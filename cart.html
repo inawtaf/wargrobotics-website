@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="analytics.js?v=20261018c"></script>
+<script src="analytics.js?v=20261109i"></script>
 <title>Cart – Warg Robotics</title>
 <meta name="robots" content="noindex">
 
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102d">
+<link rel="stylesheet" href="warg.css?v=20261109i">
 </head>
 <body>
 
@@ -21,12 +21,11 @@
   <nav class="nav">
     <div class="wrap">
       <a class="lockup" href="/" aria-label="Warg Robotics home">
-        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="494" height="198">
       </a>
       <div class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#products">Products</a>
-        <a href="/#tech">How it works</a>
         <a href="/support">Support</a>
       </div>
     </div>
@@ -44,12 +43,22 @@
     <div class="wrap checkout">
       <div>
         <p class="banner ok" id="cart-banner" hidden></p>
-        <div id="cart-lines" class="cards" aria-live="polite"><div class="card">Loading&hellip;</div></div>
-        <p class="hint" style="margin-top:12px">Up to 9 units per order. For more, <a href="/contact">ask about a bulk order</a>. Pro onboard compute is launching soon &mdash; <a href="/contact">ask us about it</a>.</p>
-        <div class="card-actions">
-          <a class="btn btn-line" href="/cart?add=ghost" data-add="ghost">Add a Ghost</a>
-          <a class="btn btn-line" href="/cart?add=greywind" data-add="greywind">Add a Greywind</a>
-          <a class="btn btn-line" href="/cart?add=combo" data-add="combo">Add the Ghost + Greywind combo</a>
+        <!-- Quantity changes are announced here, as one short sentence. The
+             list itself is not a live region: replacing its contents made a
+             screen reader read the whole cart back on every tap. -->
+        <p class="vh" id="cart-live" role="status" aria-live="polite"></p>
+        <div id="cart-lines" class="cards"><div class="card">Loading&hellip;</div></div>
+        <div class="cart-foot" id="cart-foot" hidden>
+          <a class="link-more" href="/#products"><span>&rsaquo;</span> Continue shopping</a>
+          <p class="cart-note">Up to 9 units per order &mdash; <a href="/contact">ask about a bulk order</a> for more.
+            Pro onboard compute is launching soon; <a href="/contact">ask us about it</a>.</p>
+        </div>
+        <div class="cart-bar" id="cart-bar" hidden>
+          <div>
+            <p class="cart-bar-l">Total incl. GST</p>
+            <p class="cart-bar-v" id="cart-bar-total"></p>
+          </div>
+          <a class="btn btn-solid" data-checkout href="/checkout">Checkout</a>
         </div>
       </div>
       <aside class="summary" id="cart-summary" hidden>
@@ -61,9 +70,9 @@
           <div id="c-round" hidden><dt>Round off</dt><dd id="c-round-v"></dd></div>
           <div class="summary-total"><dt>Total (incl. GST)</dt><dd id="c-total"></dd></div>
         </dl>
-        <a class="btn btn-solid btn-lg" id="to-checkout" href="/checkout" style="width:100%;justify-content:center">Checkout</a>
+        <a class="btn btn-solid btn-lg btn-block" id="to-checkout" data-checkout href="/checkout">Checkout</a>
         <p class="coupon-hint" id="c-coupon" hidden></p>
-        <p class="hint" style="margin-top:12px">GST is split as CGST + SGST or IGST once you choose a delivery address. Delivery within India is included.</p>
+        <p class="hint summary-note">GST is split as CGST + SGST or IGST once you choose a delivery address. Delivery within India is included.</p>
       </aside>
     </div>
   </section>
@@ -79,7 +88,7 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261102a" defer></script>
-<script src="cart-page.js?v=20261102a" defer></script>
+<script src="site.js?v=20261109i" defer></script>
+<script src="cart-page.js?v=20261109i" defer></script>
 </body>
 </html>

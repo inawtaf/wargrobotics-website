@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="analytics.js?v=20261018c"></script>
+<script src="analytics.js?v=20261109i"></script>
 <title>Checkout – Warg Robotics</title>
 <meta name="robots" content="noindex">
 
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0D">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="warg.css?v=20261102d">
+<link rel="stylesheet" href="warg.css?v=20261109i">
 </head>
 <body>
 
@@ -21,12 +21,11 @@
   <nav class="nav">
     <div class="wrap">
       <a class="lockup" href="/" aria-label="Warg Robotics home">
-        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="1976" height="792">
+        <img class="lockup-img" src="img/colour.png" alt="Warg Robotics" width="494" height="198">
       </a>
       <div class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#products">Products</a>
-        <a href="/#tech">How it works</a>
         <a href="/support">Support</a>
       </div>
     </div>
@@ -49,6 +48,14 @@
         <p class="banner" id="verify-banner" hidden>Confirm your email to place an order: we sent a link to <b id="vb-email"></b>.
           <button class="link-btn" type="button" id="vb-resend">Send it again</button></p>
 
+        <!-- Three steps, because the page silently changed character between
+             filling in details and reviewing, with nothing to say so. -->
+        <ol class="order-steps steps-3" id="co-steps">
+          <li aria-current="step"><span class="step-n">1</span>Details</li>
+          <li><span class="step-n">2</span>Review</li>
+          <li><span class="step-n">3</span>Pay</li>
+        </ol>
+
         <div id="co-fields">
         <fieldset class="intents">
           <legend class="field-legend">Deliver to</legend>
@@ -70,10 +77,10 @@
           <div class="field-row">
             <div class="field"><label for="state_code">State</label><select id="state_code" name="state_code" autocomplete="shipping address-level1"><option value="">Choose&hellip;</option></select></div>
           </div>
-          <label class="check" style="margin-top:14px"><input type="checkbox" id="save-address" checked> Save this address to my account</label>
+          <label class="check check-save"><input type="checkbox" id="save-address" checked> Save this address to my account</label>
         </div>
 
-        <fieldset class="intents" style="margin-top:28px">
+        <fieldset class="intents field-block">
           <legend class="field-legend">Billing address</legend>
           <label class="check"><input type="checkbox" id="billing-same" checked> Same as the delivery address</label>
           <div id="billing-box" hidden>
@@ -93,7 +100,7 @@
               <div class="field-row">
                 <div class="field"><label for="b_state_code">State</label><select id="b_state_code" data-b="state_code" autocomplete="billing address-level1"><option value="">Choose&hellip;</option></select></div>
               </div>
-              <label class="check" style="margin-top:14px"><input type="checkbox" id="save-billing" checked> Save this billing address to my account</label>
+              <label class="check check-save"><input type="checkbox" id="save-billing" checked> Save this billing address to my account</label>
             </div>
           </div>
         </fieldset>
@@ -103,14 +110,14 @@
           <label class="addon-toggle">
             <input type="checkbox" id="is-business">
             <span class="addon-box"><span class="addon-name">Put my company on the invoice</span>
-              <span class="addon-sub">Company name, and your GSTIN if you have one so you can claim input tax credit. The GSTIN must be registered in the state of the billing address.</span></span>
+              <span class="addon-sub">Company name, and your GSTIN if you have one so you can claim input tax credit. The GSTIN must be active and registered in the state of the billing address.</span></span>
           </label>
           <div class="extra" data-addon="business" hidden>
+            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" autocomplete="off" placeholder="30ABCDE1234F1ZD"><p class="hint">Optional. We check it with the GST records and fill in the registered business name. Leave it empty if the company isn't GST registered.</p></div>
             <div class="field"><label for="business_name">Business name</label><input type="text" id="business_name" name="business_name" autocomplete="organization" maxlength="150"></div>
-            <div class="field"><label for="gstin">GSTIN</label><input type="text" id="gstin" name="gstin" maxlength="15" autocapitalize="characters" placeholder="30ABCDE1234F1Z5"><p class="hint">Optional. Leave it empty if the company isn't GST registered.</p></div>
           </div>
         </fieldset>
-        <p class="hint" id="tax-note"></p>
+        <p class="hint tax-note" id="tax-note"></p>
         </div>
 
         <div id="review" class="review" hidden aria-live="polite"></div>
@@ -120,7 +127,25 @@
         <div class="form-foot">
           <button class="btn btn-solid btn-lg" type="submit" id="pay-btn" disabled>Loading&hellip;</button>
           <button class="btn btn-line btn-lg" type="button" id="edit-btn" hidden>Edit details</button>
-          <p class="form-note">Payments by <b>Razorpay</b>. <a href="/cart">Edit cart</a><br>By paying you agree to our <a href="/terms" target="_blank" rel="noopener">terms of sale</a>, <a href="/refunds" target="_blank" rel="noopener">refund</a> and <a href="/shipping" target="_blank" rel="noopener">shipping</a> policies.</p>
+          <p class="form-note" id="step-note">Nothing is charged yet &mdash; you will see the whole order to confirm first.
+            Payments by <b>Razorpay</b>. <a href="/cart">Edit cart</a></p>
+        </div>
+        <!-- Terms are accepted by paying, so they belong with the Pay step, not
+             under a button that only opens the review. -->
+        <p class="form-note" id="pay-terms" hidden>By paying you agree to our
+          <a href="/terms" target="_blank" rel="noopener">terms of sale</a>,
+          <a href="/refunds" target="_blank" rel="noopener">refund</a> and
+          <a href="/shipping" target="_blank" rel="noopener">shipping</a> policies.
+          Payments by <b>Razorpay</b>.</p>
+
+        <!-- Phones: the summary sits after roughly fifteen fields, so the total
+             and the primary action travel with the viewport instead. -->
+        <div class="cart-bar" id="co-bar" hidden>
+          <div>
+            <p class="cart-bar-l">Total incl. GST</p>
+            <p class="cart-bar-v" id="co-bar-total"></p>
+          </div>
+          <button class="btn btn-solid" type="submit" id="pay-btn-m" disabled>Loading&hellip;</button>
         </div>
         <p class="form-status" role="status" aria-live="polite"></p>
       </form>
@@ -156,8 +181,8 @@
   </div>
 </footer>
 
-<script src="site.js?v=20261102a" defer></script>
+<script src="site.js?v=20261109i" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-<script src="checkout.js?v=20261102a" defer></script>
+<script src="checkout.js?v=20261109i" defer></script>
 </body>
 </html>
