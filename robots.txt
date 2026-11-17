@@ -1,0 +1,17 @@
+User-agent: *
+
+# The shop and the account area are private or per-visitor: there is nothing
+# for a crawler to index, and some of it needs a session to render at all.
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account
+Disallow: /order
+Disallow: /login
+Disallow: /reset
+Disallow: /admin
+Disallow: /api/
+
+# Pre-booking has closed; this path only redirects to the products.
+Disallow: /prebook
+
+Sitemap: https://wargrobotics.com/sitemap.xml

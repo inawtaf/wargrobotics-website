@@ -86,8 +86,13 @@
   function sumItems(items) { return (items || []).reduce(function (s, i) { return s + i.quantity; }, 0); }
 
   // ---------------------------------------------------------------- header
-  var countEls = [];
-  function setCount(n) { countEls.forEach(function (el) { el.textContent = n; el.hidden = !n; }); }
+  var countEls = [], cartLinks = [];
+  function setCount(n) {
+    countEls.forEach(function (el) { el.textContent = n; el.hidden = !n; });
+    cartLinks.forEach(function (a) {
+      a.setAttribute('aria-label', n ? 'Cart, ' + n + (n === 1 ? ' item' : ' items') : 'Cart, empty');
+    });
+  }
 
   // Ends this browser's session and forgets the signed-in cart count.
   function signOut() {
@@ -102,9 +107,12 @@
     var acct = document.createElement('a');
     acct.href = '/login'; acct.textContent = 'Sign in';
     var c = document.createElement('a');
-    c.href = '/cart'; c.className = 'nav-cart'; c.setAttribute('aria-label', 'Cart');
+    c.href = '/cart'; c.className = 'nav-cart';
     c.innerHTML = 'Cart <span class="nav-cart-n" hidden>0</span>';
+    // No static aria-label here: a fixed "Cart" overrode the whole accessible
+    // name, so the count beside it was never announced. setCount writes it.
     countEls.push(c.querySelector('.nav-cart-n'));
+    cartLinks.push(c);
     box.appendChild(acct); box.appendChild(c);
     whoami().then(function (d) {
       if (d.user) {
@@ -203,10 +211,47 @@
     }
   };
 
+  // Whole rupees print without paise \u2014 a cart of ".00" is six decimal points
+  // of noise on one screen. Anything that is not whole (GST, a round-off)
+  // still prints both places, so nothing is ever silently rounded on screen.
   window.inr = function (paise) {
-    return '\u20b9' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var places = paise % 100 === 0 ? 0 : 2;
+    return '\u20b9' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: places, maximumFractionDigits: 2 });
   };
   window.WargForm = form;
+
+  // GSTIN fields (checkout, address book): checked with the GST records as soon
+  // as all 15 characters are in. A verified GSTIN fills in the legal business
+  // name and locks it; the server checks again before saving or ordering.
+  //   gst, name: the inputs; stateOf(): the billing state code, if known.
+  window.WargGstin = function (gst, name, stateOf) {
+    var status = document.createElement('p');
+    status.className = 'gst-status'; status.setAttribute('aria-live', 'polite');
+    (gst.closest('.field') || gst.parentNode).appendChild(status);
+    var seq = 0, last = '';
+    function show(text, cls) { status.textContent = text || ''; status.className = 'gst-status' + (cls ? ' ' + cls : ''); }
+    function unlock() { if (name.readOnly) { name.readOnly = false; name.value = ''; } }
+    function check(force) {
+      var v = gst.value.toUpperCase().replace(/\s+/g, '');
+      if (gst.value !== v) gst.value = v;
+      if (v.length < 15) { last = ''; seq++; unlock(); show(''); return; }
+      if (v === last && !force) return;
+      last = v; var my = ++seq;
+      show('Checking with the GST records\u2026', 'busy');
+      api('/gstin/verify', { method: 'POST', body: { gstin: v, state_code: stateOf ? stateOf() : '' } }).then(function (d) {
+        if (my !== seq) return;
+        name.value = d.legal_name; name.readOnly = true;
+        show('\u2713 Verified with the GST records: ' + d.legal_name + (d.trade_name && d.trade_name !== d.legal_name ? ' (' + d.trade_name + ')' : '') + ' \u00b7 ' + d.status, 'ok');
+      }).catch(function (err) {
+        if (my !== seq) return;
+        last = ''; unlock();
+        show((err.data && err.data.fields && err.data.fields.gstin) || err.message, 'bad');
+      });
+    }
+    gst.addEventListener('input', function () { check(false); });
+    gst.addEventListener('blur', function () { check(false); });
+    return { check: function () { check(true); }, reset: function () { last = ''; seq++; name.readOnly = false; show(''); } };
+  };
 
   // Product pages: switch coupon prices back to the plain price once the
   // coupon has ended (date passed, or its order limit reached).

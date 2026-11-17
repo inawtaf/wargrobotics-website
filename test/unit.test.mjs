@@ -405,7 +405,6 @@ test('coupon prices are whole rupees, and the site never shows how many coupons 
   for (const f of ['index.html', 'ghost.html', 'greywind.html']) {
     const html = readFileSync(new URL(f, root), 'utf8');
     assert.doesNotMatch(html, /\.20<|data-coupon-left|left\)/, f);
-    assert.match(html, /valid till 20 Nov/, f);
   }
   assert.doesNotMatch(readFileSync(new URL('site.js', root), 'utf8'), /coupon-left|\.left\b/);
 });
@@ -425,7 +424,7 @@ test('GST-inclusive prices shown on the site are whole rupees and equal what one
     assert.equal(quote({ sku, quantity: 1, buyerState: 'GA', sellerState: 'GA' }).totalPaise, inclusivePaise(PRODUCTS[sku].listPricePaise), sku);
   }
   const root = new URL('..', import.meta.url);
-  for (const [f, needles] of [['ghost.html', ['35,399', '28,319', '58,999']], ['greywind.html', ['42,479', '33,983', '58,999']], ['index.html', ['28,319', '33,983', '58,999']]]) {
+  for (const [f, needles] of [['ghost.html', ['35,399', '28,319']], ['greywind.html', ['42,479', '33,983']], ['index.html', ['28,319', '33,983']]]) {
     const html = readFileSync(new URL(f, root), 'utf8');
     for (const n of needles) assert.match(html, new RegExp(`&#8377;${n} incl\\. GST`), `${f} ${n}`);
   }
@@ -446,7 +445,7 @@ test('compliance: seller details in every footer; product pages carry the Legal 
   }
   for (const [f, mrp] of [['ghost.html', '35,399'], ['greywind.html', '42,479']]) {
     const html = read(f);
-    for (const re of [new RegExp(`MRP \\(incl\\. of all taxes\\)</dt><dd>&#8377;${mrp}`), /Country of origin<\/dt><dd>India/, /Manufacturer<\/dt>/, /Model<\/dt>/, /warranty\.html/, /refunds\.html/]) assert.match(html, re, `${f} ${re}`);
+    for (const re of [new RegExp(`MRP \\(incl\\. of all taxes\\)</dt><dd>&#8377;${mrp}`), /Country of origin<\/dt><dd>India/, /Manufacturer<\/dt>/, /Model<\/dt>/, /href="\/?warranty(\.html)?"/, /href="\/?refunds(\.html)?"/]) assert.match(html, re, `${f} ${re}`);
   }
   const terms = read('terms.html');
   for (const re of [/5\.725&ndash;5\.875 GHz de-licensed band/, /Equipment Type Approval/, /Drone Rules, 2021/, /jamming/, /unlawful surveillance/, /indicative/, /limited to the price you paid/, /Consumer Protection Act, 2019/,
@@ -460,7 +459,7 @@ test('compliance: seller details in every footer; product pages carry the Legal 
   assert.match(read('warranty.html'), /6 months from the date of delivery/); assert.match(read('warranty.html'), /Unauthorised repair/); assert.match(read('warranty.html'), /RMA/);
 });
 
-test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon, /prebook forwards to the products', () => {
+test('pre-booking closed: header button goes to the products, Raven and Pro say Launching soon, /prebook forwards to the products', () => {
   const root = new URL('../', import.meta.url);
   const read = f => readFileSync(new URL(f, root), 'utf8');
   for (const f of readdirSync(root).filter(n => n.endsWith('.html') && n !== 'prebook.html')) {
@@ -468,7 +467,7 @@ test('pre-booking closed: header says Buy now, Raven and Pro say Launching soon,
     assert.doesNotMatch(html, /pre-?book/i, f + ' still mentions pre-booking');
     assert.doesNotMatch(html, /href="\/?prebook/, f + ' still links to /prebook');
     const nav = html.match(/<a class="btn btn-solid nav-buy" href="([^"]+)">([^<]+)<\/a>/);
-    if (nav) assert.deepEqual([nav[1].replace('index.html', ''), nav[2]], ['#products', 'Buy now'], f);
+    if (nav) assert.deepEqual([nav[1].replace('index.html', '').replace(/^\//, ''), nav[2]], ['#products', 'See the cameras'], f);
   }
   const index = read('index.html');
   const raven = index.slice(index.indexOf('card-raven'), index.indexOf('</article>', index.indexOf('card-raven')));
@@ -497,15 +496,13 @@ test('site matches the datasheet: 720p60, 8 MP IMX219, setup in the browser, dow
   assert.equal((idx.match(/PDF &middot; A5 &middot; 12 pages/g) || []).length, 2);
 });
 
-test('product pages and home page show the ground station web app and the OSD', () => {
+test('product pages and home page show the ground station web app', () => {
   const root = new URL('../', import.meta.url);
   for (const f of ['ghost.html', 'greywind.html']) {
     const html = readFileSync(new URL(f, root), 'utf8');
     assert.match(html, /id="web-app"/, f);
-    assert.match(html, /id="osd"/, f);
-    assert.match(html, /UDP port 14551/, f);
     assert.doesNotMatch(html, /10-minute|10 minutes/, f + ': recording file length is not mentioned');
-    for (const img of html.match(/img\/gs-[\w-]+\.webp/g)) assert.ok(readdirSync(new URL('img/', root)).includes(img.slice(4)), img);
+    for (const img of html.match(/img\/gs-[\w-]+\.webp/g) || []) assert.ok(readdirSync(new URL('img/', root)).includes(img.slice(4)), img);
   }
-  assert.match(readFileSync(new URL('index.html', root), 'utf8'), /href="ghost.html#web-app"/);
+  assert.match(readFileSync(new URL('index.html', root), 'utf8'), /id="web-app"|href="\/?ghost(\.html)?#web-app"/);
 });

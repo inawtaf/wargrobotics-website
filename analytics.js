@@ -40,6 +40,65 @@
     return;
   }
 
+  /* ---- consent --------------------------------------------------------
+     GA4 sets cookies, so nothing of it loads until the visitor says yes, and
+     a no is remembered. Cloudflare Web Analytics keeps counting either way:
+     it is cookieless and added at the edge, so basic traffic numbers never
+     depend on this answer. The choice lives in localStorage, not a cookie,
+     so declining sets nothing at all. */
+  var KEY = 'warg_analytics_consent';
+  function consent(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
+  function remember(v){ try { localStorage.setItem(KEY, v); } catch(e){} }
+
+  /* Saying no has to undo as well as prevent: anyone who visited before this
+     gate existed already carries _ga cookies, and leaving them would make the
+     refusal cosmetic. Cleared on every load while the answer is no. */
+  function clearGa(){
+    var host = location.hostname;
+    document.cookie.split(';').map(function(c){ return c.split('=')[0].trim(); })
+      .filter(function(n){ return n === '_ga' || n === '_gid' || n.indexOf('_ga_') === 0; })
+      .forEach(function(n){
+        ['', '; domain=' + host, '; domain=.' + host].forEach(function(d){
+          document.cookie = n + '=; Max-Age=0; path=/' + d;
+        });
+      });
+  }
+
+  function banner(){
+    var box = document.createElement('div');
+    box.className = 'consent';
+    box.setAttribute('role', 'region');
+    box.setAttribute('aria-label', 'Analytics consent');
+    var p = document.createElement('p');
+    p.className = 'consent-text';
+    p.innerHTML = 'We would like to use Google Analytics to see which pages get used. ' +
+      'It sets cookies. We count visitors without cookies either way, so you lose nothing by saying no. ' +
+      '<a href="/privacy">Privacy policy</a>.';
+    var row = document.createElement('div');
+    row.className = 'consent-row';
+    var yes = document.createElement('button');
+    yes.type = 'button'; yes.className = 'btn btn-solid'; yes.textContent = 'Accept';
+    var no = document.createElement('button');
+    no.type = 'button'; no.className = 'btn btn-line'; no.textContent = 'No thanks';
+    yes.onclick = function(){ remember('yes'); box.remove(); start(); };
+    no.onclick = function(){ remember('no'); box.remove(); clearGa(); };
+    row.appendChild(yes); row.appendChild(no);
+    box.appendChild(p); box.appendChild(row);
+    document.body.appendChild(box);
+  }
+
+  function ready(fn){
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  }
+
+  if(consent() === 'yes') start();
+  else if(consent() === 'no') clearGa();
+  else ready(banner);
+  return;
+
+  function start(){
+
   var s = document.createElement('script');
   s.async = true;
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
@@ -87,4 +146,6 @@
       page_section: sectionOf(el)
     });
   }, true);
+
+  }   /* end start() — nothing above runs until consent is given */
 })();
