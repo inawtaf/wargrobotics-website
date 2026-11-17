@@ -10,68 +10,169 @@
   var KIND = { repair: 'Repair', warranty: 'Warranty claim', return: 'Return', setup: 'Setup help', other: 'Other' };
   function pill(status) { return el('span', 'pill ' + status, STATUS[status] || status); }
 
+  // A labelled field for the order header: the label above, the value below.
+  function field(label, value, cls) {
+    var d = el('div', 'order-field' + (cls ? ' ' + cls : ''));
+    d.appendChild(el('p', 'order-k', label));
+    d.appendChild(el('p', 'order-v', value));
+    return d;
+  }
+  var ORDER_IMG = { ghost: 'img/card-ghost.webp', greywind: 'img/card-greywind.webp', raven: 'img/card-raven.webp' };
+  // What is actually in the order. The list endpoint may only carry `summary`,
+  // so fall back to it rather than assuming `items` is there.
+  function orderItems(o, withPrice) {
+    var box = el('div', 'order-items');
+    if (!o.items || !o.items.length) { box.appendChild(el('p', 'order-item-n', o.summary || '')); return box; }
+    o.items.forEach(function (i) {
+      var row = el('div', 'order-item');
+      var sku = (i.sku || String(i.product_name || '').toLowerCase());
+      if (ORDER_IMG[sku]) {
+        var img = document.createElement('img');
+        img.className = 'order-thumb'; img.src = ORDER_IMG[sku]; img.alt = '';
+        img.width = 56; img.height = 42; img.decoding = 'async';
+        row.appendChild(img);
+      }
+      var nameBox = el('div', '');
+      nameBox.appendChild(el('p', 'order-item-n', i.product_name + ' × ' + i.quantity));
+      if (withPrice && i.discount_label) nameBox.appendChild(el('p', 'ord-item-sub', i.discount_label));
+      else if (withPrice && i.price_type === 'offer') nameBox.appendChild(el('p', 'ord-item-sub', 'offer price'));
+      row.appendChild(nameBox);
+      if (withPrice && i.unit_price_paise != null) row.appendChild(el('p', 'ord-item-p', inr(i.unit_price_paise * i.quantity)));
+      box.appendChild(row);
+    });
+    return box;
+  }
+  // State names, for both account.html and order.html. renderOrder printed the
+  // bare GST code, so an address read "Panaji, 30 403001".
+  var states = {};
+  var statesReady = api('/products').then(function (p) {
+    (p.states || []).forEach(function (s) { states[s.code] = s.name; });
+  }).catch(function () {});
+  function stateName(code) { return states[code] || code; }
+
   // ---------------------------------------------------------------- one order (shared)
+  /* The order page was one flat column: a status trail, then a run of
+     headings with bare paragraphs under them. Nothing grouped, nothing to
+     scan. Each group is now a card that names what it holds, the two columns
+     split "where is it" from "what did I pay", and the address is set on its
+     own lines instead of a comma run-on. */
   function renderOrder(box, o, opts) {
     opts = opts || {};
     box.innerHTML = '';
-    var steps = el('ol', 'order-steps');
-    var reached = ['paid', 'processing', 'shipped', 'delivered'].indexOf(o.status);
-    ['Paid', 'Processing', 'Shipped', 'Delivered'].forEach(function (s, i) { var li = el('li', i <= reached ? 'done' : '', s); steps.appendChild(li); });
-    if (o.status === 'cancelled') steps = el('p', 'banner', 'This order was cancelled' + (o.cancel_reason ? ': ' + o.cancel_reason : '.') + ' A full refund goes back to the account you paid from.');
+
+    // Where the order has got to, across the top and alone: it is the thing
+    // every visit to this page is asking.
+    var top = el('div', 'ord-card ord-status');
+    if (o.status === 'cancelled') {
+      top.appendChild(el('p', 'banner', 'This order was cancelled' + (o.cancel_reason ? ': ' + o.cancel_reason : '.') + ' A full refund goes back to the account you paid from.'));
+    } else {
+      var steps = el('ol', 'order-steps');
+      var reached = ['paid', 'processing', 'shipped', 'delivered'].indexOf(o.status);
+      ['Paid', 'Processing', 'Shipped', 'Delivered'].forEach(function (s, i) {
+        var li = el('li', i < reached ? 'done' : i === reached ? 'done now' : '', s);
+        if (i === reached) li.setAttribute('aria-current', 'step');
+        steps.appendChild(li);
+      });
+      top.appendChild(steps);
+    }
+    box.appendChild(top);
 
     var wrap = el('div', 'checkout');
-    var left = el('div');
-    left.appendChild(steps);
+    var left = el('div', 'ord-stack');
+
+    // ---- what is in it
+    var itemsCard = el('div', 'ord-card');
+    itemsCard.appendChild(el('h2', 'field-legend', (o.items || []).length === 1 ? 'Your item' : 'Your items'));
+    itemsCard.appendChild(orderItems(o, true));
+    left.appendChild(itemsCard);
+
+    // ---- where it is, once there is anything to say about it
     if (o.tracking_number) {
-      var t = el('div', 'order-ship');
-      t.appendChild(el('h2', 'field-legend', 'Tracking'));
-      t.appendChild(el('p', '', o.courier + ' · ' + o.tracking_number));
-      if (o.expected_delivery && o.status === 'shipped') t.appendChild(el('p', '', 'Expected by ' + new Date(o.expected_delivery + 'T00:00:00+05:30').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })));
-      if (o.tracking_url) { var a = el('a', 'btn btn-line', 'Track your parcel'); a.href = o.tracking_url; a.target = '_blank'; a.rel = 'noopener'; t.appendChild(a); }
-      left.appendChild(t);
-    }
-    if (o.address_line1) {
-      left.appendChild(el('h2', 'field-legend', 'Delivering to'));
-      left.appendChild(el('p', 't-body', [o.customer_name, o.address_line1, o.address_line2, o.city + ', ' + o.state_code + ' ' + o.pincode, o.phone].filter(Boolean).join(', ')));
-      var b = o.billing;
-      if (b && (!b.same || o.gstin || o.business_name)) {
-        left.appendChild(el('h2', 'field-legend', 'Billed to'));
-        left.appendChild(el('p', 't-body', [o.business_name, b.same ? 'Same as delivery address' : [b.name, b.address_line1, b.address_line2, b.city + ', ' + b.state_code + ' ' + b.pincode].filter(Boolean).join(', '), o.gstin && 'GSTIN ' + o.gstin].filter(Boolean).join(' · ')));
+      var ship = el('div', 'ord-card');
+      ship.appendChild(el('h2', 'field-legend', 'Shipment'));
+      var sp = el('div', 'ord-pairs');
+      if (o.courier) sp.appendChild(field('Courier', o.courier));
+      sp.appendChild(field('Tracking number', o.tracking_number, 'order-num'));
+      if (o.expected_delivery && o.status === 'shipped') {
+        sp.appendChild(field('Expected by', new Date(o.expected_delivery + 'T00:00:00+05:30')
+          .toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })));
       }
+      ship.appendChild(sp);
+      if (o.tracking_url) {
+        var ta = el('div', 'card-actions');
+        var a = el('a', 'btn btn-line', 'Track your parcel');
+        a.href = o.tracking_url; a.target = '_blank'; a.rel = 'noopener';
+        ta.appendChild(a); ship.appendChild(ta);
+      }
+      left.appendChild(ship);
     }
-    var actions = el('div', 'card-actions');
-    if (opts.signedIn && o.invoice_available) { var inv = el('a', 'btn btn-line', 'Download invoice ' + (o.invoice_number || '')); inv.href = '/api/account/orders/' + encodeURIComponent(o.order_number) + '/invoice'; actions.appendChild(inv); }
-    if (opts.signedIn && o.status !== 'created') {
-      var re = el('button', 'btn btn-line', 'Buy again'); re.type = 'button';
-      re.onclick = function () { api('/account/orders/' + encodeURIComponent(o.order_number) + '/reorder', { method: 'POST' }).then(function () { location.href = '/cart'; }); };
-      actions.appendChild(re);
-      var sv = el('a', 'btn btn-line', 'Request service'); sv.href = '/account?order=' + encodeURIComponent(o.order_number) + '#service';
-      actions.appendChild(sv);
+
+    // ---- who it is going to, and who it is billed to
+    if (o.address_line1) {
+      var addr = el('div', 'ord-card');
+      addr.appendChild(el('h2', 'field-legend', 'Delivery and billing'));
+      var ap = el('div', 'ord-pairs');
+
+      var d = el('div', 'order-field');
+      d.appendChild(el('p', 'order-k', 'Delivering to'));
+      d.appendChild(el('p', 'ord-addr', [o.customer_name, o.address_line1, o.address_line2,
+        o.city + ', ' + stateName(o.state_code) + ' ' + o.pincode, o.phone].filter(Boolean).join('\n')));
+      ap.appendChild(d);
+
+      var b = o.billing;
+      var bl = el('div', 'order-field');
+      bl.appendChild(el('p', 'order-k', 'Billed to'));
+      bl.appendChild(el('p', 'ord-addr', (b && !b.same
+        ? [o.business_name, b.name, b.address_line1, b.address_line2,
+           b.city + ', ' + stateName(b.state_code) + ' ' + b.pincode]
+        : [o.business_name, 'Same as the delivery address'])
+        .concat([o.gstin && 'GSTIN ' + o.gstin]).filter(Boolean).join('\n')));
+      ap.appendChild(bl);
+
+      addr.appendChild(ap);
+      left.appendChild(addr);
     }
-    if (!opts.signedIn) { var lg = el('a', 'btn btn-line', 'Sign in to see invoices and service'); lg.href = '/login?next=' + encodeURIComponent('/account#orders'); actions.appendChild(lg); }
-    left.appendChild(actions);
-    if (o.timeline && o.timeline.length) {
-      left.appendChild(el('h2', 'field-legend', 'Updates'));
+
+    // ---- the dated history. The trail above says which stage; this says
+    //      when, and carries any note the team added, so it earns its place
+    //      only when it holds more than a restatement of the stage.
+    var tl = (o.timeline || []).filter(Boolean);
+    if (tl.length > 1 || tl.some(function (e) { return e.message; })) {
+      var up = el('div', 'ord-card');
+      up.appendChild(el('h2', 'field-legend', 'Updates'));
       var ol = el('ol', 'order-timeline');
-      o.timeline.slice().reverse().forEach(function (e) {
+      tl.slice().reverse().forEach(function (e) {
         var li = el('li');
         li.appendChild(el('time', '', new Date(e.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })));
         li.appendChild(el('span', '', e.message || STATUS[e.status] || ''));
         ol.appendChild(li);
       });
-      left.appendChild(ol);
-    }
-    if (opts.service && opts.service.length) {
-      left.appendChild(el('h2', 'field-legend', 'Service requests'));
-      opts.service.forEach(function (s) { var p = el('p', 't-body'); p.appendChild(pill(s.status)); p.appendChild(document.createTextNode(' ' + s.request_number + ' · ' + s.subject)); left.appendChild(p); });
+      up.appendChild(ol);
+      left.appendChild(up);
     }
 
+    // ---- anything raised against this order
+    if (opts.service && opts.service.length) {
+      var sv = el('div', 'ord-card');
+      sv.appendChild(el('h2', 'field-legend', opts.service.length === 1 ? 'Service request' : 'Service requests'));
+      opts.service.forEach(function (r) {
+        var row = el('div', 'card-head');
+        var t = el('p', 'card-title', r.subject);
+        row.appendChild(t); row.appendChild(pill(r.status));
+        sv.appendChild(row);
+        sv.appendChild(el('p', 'card-meta', r.request_number));
+      });
+      left.appendChild(sv);
+    }
+
+    // ---- what it cost, and what you can do about it
     var aside = el('aside', 'summary');
-    aside.appendChild(el('h2', 'field-legend', 'Order ' + o.order_number));
-    (o.items || []).forEach(function (i) {
-      aside.appendChild(el('p', 'summary-item', i.product_name + ' × ' + i.quantity));
-      aside.appendChild(el('p', 'summary-offer', inr(i.unit_price_paise * i.quantity) + (i.discount_label ? ' · ' + i.discount_label : i.price_type === 'offer' ? ' · offer price' : '')));
-    });
+    aside.appendChild(el('h2', 'field-legend', 'Payment'));
+    var meta = el('div', 'ord-pairs');
+    meta.appendChild(field('Order number', o.order_number, 'order-num'));
+    meta.appendChild(field('Order placed', date(o.paid_at || o.created_at)));
+    aside.appendChild(meta);
+
     var dl = el('dl', 'summary-lines');
     function row(k, v, cls) { var d = el('div', cls); d.appendChild(el('dt', '', k)); d.appendChild(el('dd', '', v)); dl.appendChild(d); }
     if (o.combo_discount_paise) row('Ghost + Greywind combo', '− ' + inr(o.combo_discount_paise));
@@ -81,7 +182,29 @@
     if (o.total_paise - o.subtotal_paise - o.gst_paise) row('Round off', inr(o.total_paise - o.subtotal_paise - o.gst_paise));
     row(o.status === 'created' ? 'Total' : 'Total paid', inr(o.total_paise), 'summary-total');
     aside.appendChild(dl);
-    aside.appendChild(el('p', 'hint', 'Placed ' + date(o.paid_at || o.created_at) + (o.invoice_number ? ' · invoice ' + o.invoice_number : '')));
+    if (o.invoice_number) aside.appendChild(el('p', 'hint', 'Invoice ' + o.invoice_number));
+
+    var actions = el('div', 'card-actions');
+    if (opts.signedIn && o.invoice_available) {
+      var inv = el('a', 'btn btn-line', 'Download invoice');
+      inv.href = '/api/account/orders/' + encodeURIComponent(o.order_number) + '/invoice';
+      actions.appendChild(inv);
+    }
+    if (opts.signedIn && o.status !== 'created') {
+      var re = el('button', 'btn btn-line', 'Buy again'); re.type = 'button';
+      re.onclick = function () { api('/account/orders/' + encodeURIComponent(o.order_number) + '/reorder', { method: 'POST' }).then(function () { location.href = '/cart'; }); };
+      actions.appendChild(re);
+      var sr = el('a', 'btn btn-line', 'Request service');
+      sr.href = '/account?order=' + encodeURIComponent(o.order_number) + '#service';
+      actions.appendChild(sr);
+    }
+    if (!opts.signedIn) {
+      var lg = el('a', 'btn btn-line', 'Sign in to see invoices and service');
+      lg.href = '/login?next=' + encodeURIComponent('/account#orders');
+      actions.appendChild(lg);
+    }
+    if (actions.childNodes.length) aside.appendChild(actions);
+
     wrap.appendChild(left); wrap.appendChild(aside);
     box.appendChild(wrap);
   }
@@ -118,7 +241,7 @@
         : o.status === 'processing' ? 'We are testing and packing your order. Tracking follows by email when it ships.'
         : o.status === 'shipped' ? 'Delivery instructions are in your email.' : '';
     };
-    load();
+    statesReady.then(load);
     return;
   }
 
@@ -135,7 +258,9 @@
     if (!d.user) { location.href = '/login?next=' + encodeURIComponent('/account' + location.hash); return; }
     me = d.user;
     $('acct-h').textContent = 'Hello, ' + me.name.split(' ')[0];
-    $('acct-lede').textContent = me.email + (me.email_verified ? ' · confirmed' : ' · not confirmed yet');
+    // A confirmed email is the normal case and needs no remark; only an
+    // unconfirmed one is worth the reader's attention.
+    $('acct-lede').textContent = me.email + (me.email_verified ? '' : ' · not confirmed yet');
     banners();
     profile();
     loadOrders().then(loadService);
@@ -175,12 +300,19 @@
       var box = $('orders-list'); box.innerHTML = '';
       if (!orders.length) { box.innerHTML = '<div class="empty">No orders yet. <a href="/#products">See the cameras</a>.</div>'; return; }
       orders.forEach(function (o) {
-        var c = el('div', 'card');
-        var head = el('div', 'card-head');
-        var t = el('p', 'card-title', o.order_number + ' · ' + inr(o.total_paise));
-        head.appendChild(t); head.appendChild(pill(o.status));
+        var c = el('div', 'card order-card');
+        // Every figure says what it is. An order number, a date and a total
+        // are indistinguishable otherwise, which is what the old single line
+        // "WR-2026-0184 - Rs 73,157" left the reader to work out.
+        var head = el('div', 'order-head');
+        head.appendChild(field('Order placed', date(o.paid_at || o.created_at)));
+        head.appendChild(field('Total', inr(o.total_paise), 'order-num'));
+        head.appendChild(field('Order number', o.order_number, 'order-num'));
+        var st = field('Status', '');
+        st.lastChild.appendChild(pill(o.status));
+        head.appendChild(st);
         c.appendChild(head);
-        c.appendChild(el('p', 'card-meta', date(o.paid_at || o.created_at) + ' · ' + o.summary));
+        c.appendChild(orderItems(o));
         var acts = el('div', 'card-actions');
         var view = el('button', 'btn btn-line', 'Details'); view.type = 'button';
         view.onclick = function () { openOrder(o.order_number); };
@@ -197,7 +329,7 @@
       var box = $('order-detail');
       box.hidden = false; $('orders-list').hidden = true;
       renderOrder(box, d.order, { signedIn: true, service: d.service_requests });
-      var back = el('button', 'link-btn', '← All orders'); back.type = 'button';
+      var back = el('button', 'link-btn ord-back', '← All orders'); back.type = 'button';
       back.onclick = function () { box.hidden = true; $('orders-list').hidden = false; };
       box.insertBefore(back, box.firstChild);
       box.scrollIntoView({ behavior: 'smooth' });
@@ -218,7 +350,7 @@
         head.appendChild(el('p', 'card-title', s.subject)); head.appendChild(pill(s.status));
         c.appendChild(head);
         c.appendChild(el('p', 'card-meta', s.request_number + ' · ' + KIND[s.kind] + (s.order_number ? ' · order ' + s.order_number : '') + ' · ' + date(s.created_at)));
-        if (s.team_note) { var n2 = el('p', 't-body'); n2.style.marginTop = '10px'; n2.textContent = 'Our update: ' + s.team_note; c.appendChild(n2); }
+        if (s.team_note) { c.appendChild(el('p', 't-body card-note', 'Our update: ' + s.team_note)); }
         box.appendChild(c);
       });
     });
@@ -233,10 +365,9 @@
   });
 
   // ---------------------------------------------------------------- addresses
-  var states = {};
   api('/products').then(function (p) {
     var sel = $('af-state');
-    p.states.forEach(function (s) { states[s.code] = s.name; var o = el('option', '', s.name); o.value = s.code; sel.appendChild(o); });
+    p.states.forEach(function (s) { var o = el('option', '', s.name); o.value = s.code; sel.appendChild(o); });
   });
   var aForm = $('address-form');
   function loadAddresses() {
@@ -247,22 +378,25 @@
         var c = el('div', 'card');
         var head = el('div', 'card-head');
         head.appendChild(el('p', 'card-title', (a.label ? a.label + ' · ' : '') + a.name));
-        if (a.is_default) head.appendChild(el('span', 'pill paid', 'Default delivery'));
-        if (a.is_default_billing) head.appendChild(el('span', 'pill processing', 'Default billing'));
+        // These mark a choice, not an order status — they borrowed `paid` and
+        // `processing` only for their colours.
+        // One idea, not two. Separate delivery and billing defaults read as a
+        // puzzle on an address book this size.
+        if (a.is_default) head.appendChild(el('span', 'pill pill-mark', 'Default'));
         c.appendChild(head);
-        c.appendChild(el('p', 'card-meta', [a.business_name, a.address_line1, a.address_line2, a.city + ', ' + (states[a.state_code] || a.state_code) + ' ' + a.pincode, a.phone, a.gstin && 'GSTIN ' + a.gstin].filter(Boolean).join(', ')));
+        c.appendChild(el('p', 'card-meta', [a.business_name, a.address_line1, a.address_line2, a.city + ', ' + (states[a.state_code] || a.state_code) + ' ' + a.pincode, a.phone, a.gstin && 'GSTIN ' + a.gstin + (a.gstin_verified_at ? ' \u2713' : '')].filter(Boolean).join(', ')));
         var acts = el('div', 'card-actions');
         var ed = el('button', 'btn btn-line', 'Edit'); ed.type = 'button'; ed.onclick = function () { editAddress(a); };
         acts.appendChild(ed);
         if (!a.is_default) {
-          var df = el('button', 'btn btn-line', 'Deliver here by default'); df.type = 'button';
-          df.onclick = function () { api('/account/addresses/' + a.id + '/default', { method: 'POST' }).then(loadAddresses); };
+          var df = el('button', 'btn btn-line', 'Make default'); df.type = 'button';
+          // Sets both ends of it, so "default" means one thing to the reader.
+          df.onclick = function () {
+            api('/account/addresses/' + a.id + '/default', { method: 'POST' })
+              .then(function () { return api('/account/addresses/' + a.id + '/default?for=billing', { method: 'POST' }); })
+              .then(loadAddresses);
+          };
           acts.appendChild(df);
-        }
-        if (!a.is_default_billing) {
-          var db = el('button', 'btn btn-line', 'Bill here by default'); db.type = 'button';
-          db.onclick = function () { api('/account/addresses/' + a.id + '/default?for=billing', { method: 'POST' }).then(loadAddresses); };
-          acts.appendChild(db);
         }
         var rm = el('button', 'btn btn-line', 'Delete'); rm.type = 'button';
         rm.onclick = function () { if (confirm('Delete this address?')) api('/account/addresses/' + a.id, { method: 'DELETE' }).then(loadAddresses); };
@@ -272,11 +406,15 @@
       });
     });
   }
+  var gstCheck = window.WargGstin($('af-gstin'), $('af-biz'), function () { return aForm.elements.state_code.value; });
   function editAddress(a) {
-    F.clear(aForm);
+    F.clear(aForm); gstCheck.reset();
     ['id', 'label', 'name', 'phone', 'address_line1', 'address_line2', 'city', 'pincode', 'state_code', 'business_name', 'gstin'].forEach(function (k) {
       aForm.elements[k].value = a ? (a[k] || '') : '';
     });
+    if (a && a.gstin) $('af-biz').readOnly = true;   // a saved GSTIN carries its verified legal name
+    // Open the business section only when this address actually uses it.
+    $('af-business').open = Boolean(a && (a.gstin || a.business_name));
     aForm.elements.is_default.checked = Boolean(a && a.is_default);
     aForm.elements.is_default_billing.checked = Boolean(a && a.is_default_billing);
     $('af-h').textContent = a ? 'Edit address' : 'Add an address';
@@ -299,9 +437,11 @@
   function profile() {
     var pf = $('profile-form');
     $('pf-name').value = me.name; $('pf-email').value = me.email; $('pf-phone').value = me.phone || '';
-    $('pf-email-hint').textContent = me.email_verified ? 'Confirmed. To change it, email us.' : 'Not confirmed yet: open the link we emailed you. You need a confirmed email to place an order.';
-    $('pf-email-pill').textContent = me.email_verified ? 'Confirmed' : 'Not confirmed';
-    $('pf-email-pill').className = 'pill ' + (me.email_verified ? 'delivered' : 'warn');
+    // Confirmed is the ordinary state, so it is not announced; the pill and
+    // the resend button appear only when something needs doing.
+    $('pf-email-hint').textContent = me.email_verified ? 'To change it, email us.' : 'Not confirmed yet: open the link we emailed you. You need a confirmed email to place an order.';
+    $('pf-email-pill').textContent = 'Not confirmed';
+    $('pf-email-pill').hidden = Boolean(me.email_verified);
     $('pf-verify-row').hidden = Boolean(me.email_verified);
     $('pf-verify').onclick = function () {
       var b = this; b.disabled = true;
@@ -314,31 +454,37 @@
       e.preventDefault(); F.clear(pf);
       api('/account/profile', { method: 'PATCH', body: F.values(pf) }).then(function () { F.status(pf, 'Saved.', 'ok'); }).catch(function (err) { F.fail(pf, err); });
     };
-    var pw = $('password-form');
-    if (!me.has_password) { $('pw-h').textContent = 'Set a password'; $('pw-current').hidden = true; }
+    // Password lives in a dialog. <dialog> gives focus handling and Esc for
+    // nothing; the panel only carries the button that opens it.
+    var pw = $('password-form'), dlg = $('pw-dialog'), setting = !me.has_password;
+    function pwLabels() {
+      setting = !me.has_password;
+      $('pw-h').textContent = setting ? 'Set a password' : 'Change password';
+      $('pw-open').textContent = setting ? 'Set a password' : 'Change password';
+      $('pw-open-p').textContent = setting
+        ? 'You sign in with Google. Set a password to sign in with your email too.'
+        : 'Changing it signs you out on your other devices.';
+      $('pw-current').hidden = setting;
+    }
+    pwLabels();
+    $('pw-open').onclick = function () { F.clear(pw); dlg.showModal(); };
+    $('pw-close').onclick = function () { dlg.close(); };
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
     pw.onsubmit = function (e) {
       e.preventDefault(); F.clear(pw);
       if ($('pw-new').value !== $('pw-new2').value) { F.errors(pw, { new_password_confirm: 'The two passwords do not match.' }); return; }
       api('/account/password', { method: 'POST', body: F.values(pw) }).then(function () {
-        pw.reset(); me.has_password = true; $('pw-h').textContent = 'Change password'; $('pw-current').hidden = false;
-        F.status(pw, 'Password saved. Other devices have been signed out.', 'ok'); googleState();
+        pw.reset(); me.has_password = true; pwLabels(); dlg.close();
+        note('Password saved. Your other devices have been signed out.', true);
       }).catch(function (err) { F.fail(pw, err); });
     };
     googleState();
-    $('g-unlink').onclick = function () {
-      api('/account/google/unlink', { method: 'POST' }).then(function () { me.google_linked = false; googleState(); })
-        .catch(function (e) { $('side-status').textContent = e.message; });
-    };
-    $('signout').onclick = $('signout-top').onclick = function () { window.WargSignOut(); };
+    $('signout').onclick = function () { window.WargSignOut(); };
     $('delete-acct').href = 'mailto:hello@wargrobotics.com?subject=' + encodeURIComponent('Delete my Warg account') +
       '&body=' + encodeURIComponent('Please delete my Warg Robotics account and personal data.\n\nAccount email: ' + me.email);
-    $('signout-all').onclick = function () { api('/auth/logout-all', { method: 'POST' }).then(function () { location.href = '/login'; }); };
   }
   function googleState() {
     $('g-state').textContent = me.google_linked ? 'You can sign in with Google.' : 'Link a Google account to sign in with one click.';
     $('g-link').hidden = me.google_linked;
-    $('g-unlink').hidden = !me.google_linked;
-    $('g-unlink').disabled = !me.has_password;
-    $('g-unlink').title = me.has_password ? '' : 'Set a password first';
   }
 })();

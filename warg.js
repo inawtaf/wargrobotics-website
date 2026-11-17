@@ -316,7 +316,11 @@ document.documentElement.classList.add('js');
    scrim closes it and hands focus back to the trigger. */
 (function(){
   var scrim = document.querySelector('.pop-scrim');
-  var triggers = Array.prototype.slice.call(document.querySelectorAll('.car-more'));
+  /* `[aria-controls]`, not every .car-more. This bound anything wearing the
+     class and called preventDefault() on it, so a plain link borrowed for the
+     same look silently stopped navigating. A trigger without a panel to open
+     is not a trigger. */
+  var triggers = Array.prototype.slice.call(document.querySelectorAll('.car-more[aria-controls]'));
   if(!scrim || !triggers.length) return;
   var openPop = null, openTrig = null;
 

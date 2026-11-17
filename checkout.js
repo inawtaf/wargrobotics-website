@@ -100,6 +100,7 @@
     var a = saved(billChoice()); return a ? a.state_code : '';
   }
   function hasGst() { return $('is-business').checked && $('gstin').value.trim().length === 15; }
+  var gstCheck = window.WargGstin($('gstin'), $('business_name'), function () { return billingState(); });
   // GST place of supply: the GSTIN's (billing) state for a business invoice, else the delivery state.
   function stateCode() { return hasGst() ? billingState() : deliveryState(); }
   // Picking a saved address that carries a GSTIN fills in the GST box.
@@ -107,8 +108,9 @@
     var id = $('billing-same').checked ? choice() : billChoice();
     var a = saved(id);
     if (a && (a.gstin || a.business_name)) {
-      $('is-business').checked = true; $('gstin').value = a.gstin || ''; $('business_name').value = a.business_name || '';
+      $('is-business').checked = true; gstCheck.reset(); $('gstin').value = a.gstin || ''; $('business_name').value = a.business_name || '';
       form.querySelector('[data-addon="business"]').hidden = false;
+      if (a.gstin) gstCheck.check();   // checked again now; the order is checked once more on the server
     }
   }
   form.addEventListener('change', function (e) {
@@ -158,8 +160,15 @@
       quote.lines.forEach(function (l) {
         var p = document.createElement('p'); p.className = 'summary-item';
         p.textContent = l.productName + ' × ' + l.quantity;
-        var s = document.createElement('p'); s.className = 'summary-offer';
-        s.textContent = window.inr(l.listSubtotalPaise) + (l.discountLabel ? ' · ' + l.discountLabel : '');
+        // What this line costs, with the list price struck through. It showed
+        // the list price alone, which reads as the amount due.
+        var s = document.createElement('p'); s.className = 'summary-price';
+        if (l.discountPaise) {
+          var st = document.createElement('s');
+          st.textContent = window.inr(l.listSubtotalPaise);
+          s.appendChild(st);
+        }
+        s.appendChild(document.createTextNode(window.inr(l.subtotalPaise)));
         box.appendChild(p); box.appendChild(s);
       });
       $('sum-subtotal').textContent = window.inr(quote.listSubtotalPaise);
@@ -181,15 +190,34 @@
       });
       $('sum-total').textContent = window.inr(quote.totalPaise);
       $('tax-note').textContent = sc ? 'GST place of supply: ' + (states[sc] || sc) + (hasGst() ? ' (state of your GSTIN).' : ' (delivery state).') : '';
+      if (barTotal) { barTotal.textContent = window.inr(quote.totalPaise); $('co-bar').hidden = false; }
       if (!busy) setBusy(false);
     });
   }
 
+  // Both the footer button and the phone bar are submit buttons for this form,
+  // so they carry the same label and the same disabled state.
+  var btnM = $('pay-btn-m'), barTotal = $('co-bar-total');
   function setBusy(on, label) {
     busy = on;
-    btn.disabled = on || !user || !user.email_verified;
+    var off = on || !user || !user.email_verified;
     var q = reviewing ? reviewing.quote : quote;
-    btn.textContent = label || (reviewing ? 'Pay ' + window.inr(q.totalPaise) : 'Review order');
+    var text = label || (reviewing ? 'Pay ' + window.inr(q.totalPaise) : 'Review order');
+    btn.disabled = off; btn.textContent = text;
+    if (btnM) { btnM.disabled = off; btnM.textContent = text; }
+  }
+
+  // 1 Details · 2 Review · 3 Pay. The page used to change character between
+  // filling in and reviewing with nothing to say so.
+  function setStep(n) {
+    Array.prototype.forEach.call(document.querySelectorAll('#co-steps li'), function (li, i) {
+      if (i === n - 1) li.setAttribute('aria-current', 'step');
+      else li.removeAttribute('aria-current');
+    });
+    $('pay-terms').hidden = n < 2;
+    $('step-note').hidden = n >= 2;
+    var grid = document.querySelector('.checkout');
+    if (grid) grid.classList.toggle('reviewing', n >= 2);
   }
 
   // ---------------------------------------------------------------- review step
@@ -216,7 +244,14 @@
     box.appendChild(grid);
     var t = el('table');
     function row(a, b, cls) { var tr = el('tr', cls); tr.appendChild(el('td', '', a)); tr.appendChild(el('td', '', b)); t.appendChild(tr); }
-    r.quote.lines.forEach(function (l) { row(l.productName + ' × ' + l.quantity + ' @ ' + window.inr(l.unitPricePaise), window.inr(l.listSubtotalPaise)); });
+    // Unit price derived from the amount in the same row, so the two always
+    // agree. Pairing unitPricePaise with listSubtotalPaise showed, for Ghost,
+    // "× 2 @ ₹19,999" against ₹45,998 — the discount is pulled out below, but
+    // the row did not add up. Worth asking the API side which one it means.
+    r.quote.lines.forEach(function (l) {
+      var listUnit = Math.round(l.listSubtotalPaise / Math.max(1, l.quantity));
+      row(l.productName + ' × ' + l.quantity + ' @ ' + window.inr(listUnit), window.inr(l.listSubtotalPaise));
+    });
     r.quote.discounts.forEach(function (d) { row(d.label, '− ' + window.inr(d.paise), 'disc'); });
     row(r.quote.discounts.length ? 'Subtotal after discounts' : 'Subtotal', window.inr(r.quote.subtotalPaise));
     r.quote.taxLines.forEach(function (l) { row(l.label, window.inr(l.paise)); });
@@ -227,12 +262,14 @@
     box.hidden = false;
     $('co-fields').hidden = true;
     $('edit-btn').hidden = false;
+    setStep(2);
     setBusy(false);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function editDetails() {
     reviewing = null;
     $('review').hidden = true; $('co-fields').hidden = false; $('edit-btn').hidden = true;
+    setStep(1);
     F.clear(form); setBusy(false);
   }
   $('edit-btn').onclick = editDetails;

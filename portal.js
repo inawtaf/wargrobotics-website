@@ -194,7 +194,7 @@
       o.billing_line1 ? 'Bill to: ' + o.billing_name : 'Bill to: same as delivery',
       o.billing_line1 ? o.billing_line1 : null, o.billing_line2 || null,
       o.billing_line1 ? o.billing_city + ', ' + o.billing_state_code + ' ' + o.billing_pincode : null,
-      o.gstin ? 'GSTIN ' + o.gstin : null,
+      o.gstin ? 'GSTIN ' + o.gstin + (o.gstin_verified_at ? ' (verified Active ' + when(o.gstin_verified_at) + ')' : ' (not verified: placed before checks began)') : null,
       'Place of supply: ' + (o.place_of_supply || o.state_code) + (o.tax_kind === 'intra' ? ' (CGST+SGST)' : ' (IGST)')
     ].filter(function (l) { return l !== null && l !== undefined; }).join('\n').replace(/\n{3,}/g, '\n\n');
     $('d-repeat').textContent = (d.account ? 'Account email ' + (d.account.email_verified ? 'confirmed' : 'NOT confirmed') + '. ' : '') +
@@ -219,7 +219,7 @@
     $('d-pay').textContent = [
       o.razorpay_payment_id ? 'Razorpay ' + o.razorpay_payment_id : 'Not paid',
       o.paid_at ? 'Paid ' + when(o.paid_at) : null,
-      'Invoice ' + (o.invoice_number || '—'),
+      'Invoice ' + (o.invoice_number || '–'),
       o.confirmation_sent_at ? 'Confirmation emailed ' + when(o.confirmation_sent_at) : 'Confirmation not sent',
       o.tracking_number ? o.courier + ' ' + o.tracking_number + (o.expected_delivery ? ' · expected ' + o.expected_delivery : '') : null,
       o.cancel_reason ? 'Cancelled: ' + o.cancel_reason : null
@@ -377,7 +377,7 @@
 
   // ---------------------------------------------------------------- setup check
   var healthRan = false;
-  var SECTION = { settings: 'Settings and secrets', database: 'Database', google: 'Google sign-in', email: 'Email (Resend)', razorpay: 'Razorpay', zoho: 'Zoho Books' };
+  var SECTION = { settings: 'Settings and secrets', database: 'Database', google: 'Google sign-in', email: 'Email (Resend)', razorpay: 'Razorpay', gstin: 'GSTIN check (Cashfree)', zoho: 'Zoho Books' };
   function healthFlash(box, msg, bad) { box.hidden = !msg; box.textContent = msg || ''; box.className = 'p-flash' + (bad ? ' bad' : ''); }
   function runHealth() {
     healthRan = true;
@@ -422,7 +422,7 @@
     api('/admin/carts' + (cartDays ? '?days=' + cartDays : '')).then(function (d) {
       tb.innerHTML = '';
       var t = d.totals;
-      $('carts-sum').textContent = t.carts + ' open carts · ' + t.units + ' units · ' + inr(t.subtotal_paise).replace(/\.\d\d$/, '') + ' before GST — ' +
+      $('carts-sum').textContent = t.carts + ' open carts · ' + t.units + ' units · ' + inr(t.subtotal_paise).replace(/\.\d\d$/, '') + ' before GST · ' +
         t.cart + ' in cart, ' + t.checkout + ' started checkout without paying, ' + t.unverified + ' waiting on email confirmation';
       $('carts-empty').hidden = d.carts.length > 0;
       d.carts.forEach(function (c) {
@@ -475,7 +475,7 @@
           st.appendChild(el('br')); st.appendChild(b);
         }
         tr.appendChild(st);
-        tr.appendChild(el('td', '', [c.has_google && 'Google', c.has_password && 'Password'].filter(Boolean).join(' + ') || '—'));
+        tr.appendChild(el('td', '', [c.has_google && 'Google', c.has_password && 'Password'].filter(Boolean).join(' + ') || '–'));
         tr.appendChild(el('td', '', when(c.created_at)));
         tr.appendChild(el('td', '', c.paid_orders ? c.paid_orders + ' · ' + inr(c.spent_paise).replace(/\.\d\d$/, '') : '0'));
         tr.appendChild(el('td', '', c.cart_units ? c.cart_units + ' units' : ''));
